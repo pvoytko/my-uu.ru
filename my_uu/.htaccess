@@ -1,4 +1,0 @@
-AddHandler wsgi-script .wsgi
-RewriteEngine on
-RewriteCond %{REQUEST_FILENAME} !-f
-RewriteRule ^(.*)$ /django.wsgi/$1 [QSA,PT,L]
