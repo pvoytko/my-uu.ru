@@ -1,0 +1,27 @@
+<!doctype html>
+<html>
+<head>
+    <title>Мой Удобный Учет: Личный Кабинет</title>
+    <style>
+        .logout__link {
+            color: darkblue;
+        }
+        .logout__link:hover {
+            color: red;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div>
+        <a href="http://rq2.land-page-service.ru/uu/" style="text-decoration: none; color: #333399; font-size: 28px; font-weight: bold; font-family: 'lucida sans unicode', 'lucida grande', sans-serif;">
+            «Мой Удобный Учет»
+        </a>
+    </div>
+
+    {{ request.user.username }}
+    <a class="logout_link" href="/logout_user/">Выход</a>
+
+</body>
+</html>
