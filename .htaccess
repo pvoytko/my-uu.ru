@@ -1,3 +1,10 @@
+Alias /robots.txt /home/users2/p/pvoytko/domains/my-uu.ru/robots.txt
+Alias /static/ /home/users2/p/pvoytko/domains/my-uu.ru/my_uu/static/
+<Directory /home/users2/p/pvoytko/domains/my-uu.ru/my_uu/static>
+Order deny,allow
+Allow from all
+</Directory>
+
 AddHandler wsgi-script .wsgi
 RewriteEngine on
 RewriteCond %{REQUEST_FILENAME} !-f
