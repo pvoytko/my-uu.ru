@@ -30,10 +30,32 @@ def main(request):
 
 # Отправка письма
 # Код взят из https://docs.djangoproject.com/en/dev/topics/email/
-def sendHtmlEmailFromSupport(toEmail, subj, htmlContent):
+def sendHtmlEmailFromSupport(toEmail, subj, emailTemplateName, emailTemplateContext):
+
+    # Рендерим шаблон, получаем HTML тело сообщения
+    from django.template.loader import get_template
+    from django.template import Context
+    htmly = get_template(emailTemplateName)
+    c = emailTemplateContext
+    htmlContent = htmly.render(c)
+
+    # Отправляем HTML тело сообщения
     msg = EmailMessage(subj, htmlContent, "support@my-uu.ru", [toEmail])
     msg.content_subtype = "html"
     msg.send()
+
+
+# Отправляет Email что регистрация завершена.
+def sendEmailRegistrationPerformed(toEmail, userEmail, userPassword):
+    sendHtmlEmailFromSupport(
+        toEmail,
+        u'[my-uu.ru] Регистрация в сервисе Мой Удобный Учет',
+        'email_registration_performed.html',
+        {
+            'userEmail': userEmail,
+            'userPassword': userPassword
+        }
+    )
 
 
 # Регистрация юзера по переданным email и паролю.
@@ -52,7 +74,7 @@ def register_user_ajax(request):
             return HttpResponse('register_exists')
 
     # Регистрация прошла успешно - высылаем email
-    sendHtmlEmailFromSupport('pvoytko@gmail.com', 'Тема', '<b>Тело</b> сообщение')
+    sendEmailRegistrationPerformed('pvoytko@gmail.com', 'testemail', 'testpassword')
 
     # И теперь тут же логиним
     user = _authenticateByEmailAndPassword(**data)
