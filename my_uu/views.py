@@ -30,13 +30,13 @@ def main(request):
 
 # Отправка письма
 # Код взят из https://docs.djangoproject.com/en/dev/topics/email/
-def sendHtmlEmailFromSupport(toEmail, subj, emailTemplateName, emailTemplateContext):
+def sendHtmlEmailFromSupport(toEmail, subj, emailTemplateName, emailTemplateContextDict):
 
     # Рендерим шаблон, получаем HTML тело сообщения
     from django.template.loader import get_template
     from django.template import Context
     htmly = get_template(emailTemplateName)
-    c = emailTemplateContext
+    c = Context(emailTemplateContextDict)
     htmlContent = htmly.render(c)
 
     # Отправляем HTML тело сообщения
@@ -74,7 +74,7 @@ def register_user_ajax(request):
             return HttpResponse('register_exists')
 
     # Регистрация прошла успешно - высылаем email
-    sendEmailRegistrationPerformed('pvoytko@gmail.com', 'testemail', 'testpassword')
+    sendEmailRegistrationPerformed(data['email'], data['email'], data['password'])
 
     # И теперь тут же логиним
     user = _authenticateByEmailAndPassword(**data)
