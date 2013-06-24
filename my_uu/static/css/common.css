@@ -1,0 +1,17 @@
+.logo__text {
+    text-decoration: none;
+    color: #333399;
+    font-size: 28px;
+    font-weight: bold;
+    font-family: 'lucida sans unicode', 'lucida grande', sans-serif;
+    background-color: #e9eb84;
+    padding: 2px;
+    margin-top: 12px;
+    position: relative;
+    left: -6px;
+    display: inline-block;
+}
+.page_content_container{
+    width: 860px;
+    margin: 0 auto;
+}

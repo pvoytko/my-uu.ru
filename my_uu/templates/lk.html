@@ -2,26 +2,39 @@
 <html>
 <head>
     <title>Мой Удобный Учет: Личный Кабинет</title>
+    <link rel="stylesheet" href="/static/css/common.css" />
     <style>
+        .logout{
+            float: right;
+            margin-top: 22px;
+        }
         .logout__link {
             color: darkblue;
         }
         .logout__link:hover {
             color: red;
         }
+        .logout__email{
+            color: grey;
+        }
+
     </style>
 </head>
 
 <body>
 
-    <div>
-        <a href="http://rq2.land-page-service.ru/uu/" style="text-decoration: none; color: #333399; font-size: 28px; font-weight: bold; font-family: 'lucida sans unicode', 'lucida grande', sans-serif;">
+    <div class="page_content_container">
+
+        <a class="logo__text" href="{% url 'my_uu.views.lk_main' %} " >
             «Мой Удобный Учет»
         </a>
+
+        <div class="logout">
+            <span class="logout__email">{{ request.user.username }}</span>
+            <a class="logout__link" href="/logout_user/">Выход</a>
+        </div>
     </div>
 
-    {{ request.user.username }}
-    <a class="logout_link" href="/logout_user/">Выход</a>
 
 </body>
 </html>

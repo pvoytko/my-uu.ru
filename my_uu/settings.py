@@ -7,8 +7,17 @@ DEBUG = True
 TEMPLATE_DEBUG = DEBUG
 
 ADMINS = (
-    # ('Your Name', 'your_email@example.com'),
+    ('Павел Войтко', 'pvoytko@gmail.com'),
 )
+
+
+# Для отправки сообщений
+# Код взят из https://docs.djangoproject.com/en/dev/topics/email/
+EMAIL_HOST = 'smtp.jino.ru'
+EMAIL_PORT = 587
+EMAIL_HOST_USER = 'support@my-uu.ru'
+EMAIL_HOST_PASSWORD = 'JqhGC9I2'
+
 
 MANAGERS = ADMINS
 
@@ -62,11 +71,13 @@ MEDIA_URL = ''
 
 CSRF_COOKIE_NAME = "XSRF-TOKEN"
 
+APP_ROOT = os.path.dirname(os.path.abspath(__file__))
+
 # Absolute path to the directory static files should be collected to.
 # Don't put anything in this directory yourself; store your static files
 # in apps' "static/" subdirectories and in STATICFILES_DIRS.
 # Example: "/var/www/example.com/static/"
-STATIC_ROOT = os.path.join(os.path.expanduser('~'), 'domains/my-uu.ru/my_uu/')
+STATIC_ROOT = APP_ROOT
 
 # URL prefix for static files.
 # Example: "http://example.com/static/", "http://static.example.com/"
