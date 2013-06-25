@@ -1,3 +1,4 @@
+/* Логотип */
 .logo__text, .logo__text:hover {
     text-decoration: none;
     color: #333399;
@@ -11,7 +12,36 @@
     left: -6px;
     display: inline-block;
 }
+
+
+/* Контейнер внутри которого крутится основное содержимое страницы */
 .page_content_container{
     width: 860px;
     margin: 0 auto;
+}
+
+
+/* Переопределяем стиль bootstrap чтобы отсутп уменьшить */
+.nav{
+    margin-bottom: 2px;
+}
+
+
+/* Блок выхода из ЛК */
+.logout{
+    position: fixed;
+    margin-right: 50%;
+    right: -430px;
+    z-index: 101;
+    top: 37px;
+}
+.logout__link {
+    color: darkblue;
+    text-decoration: underline;
+}
+.logout__link:hover {
+    color: red;
+}
+.logout__email{
+    color: grey;
 }

@@ -8,28 +8,7 @@
     <link href="{{ STATIC_URL }}libs/bootstrap/css/bootstrap.min.css" rel="stylesheet" media="screen">
     <script src="{{ STATIC_URL }}libs/bootstrap/js/bootstrap.min.js"></script>
 
-    <link rel="stylesheet" href="/static/css/common.css" />
-    <style>
-        /* Переопределяем стиль bootstrap чтобы отсутп уменьшить */
-        .nav{
-            margin-bottom: 2px;
-        }
-        .logout{
-            float: right;
-            margin-top: 22px;
-        }
-        .logout__link {
-            color: darkblue;
-            text-decoration: underline;
-        }
-        .logout__link:hover {
-            color: red;
-        }
-        .logout__email{
-            color: grey;
-        }
-
-    </style>
+    <link rel="stylesheet" href="{{ STATIC_URL }}css/common.css" />
 
     {% block add_to_head %}
     {% endblock %}

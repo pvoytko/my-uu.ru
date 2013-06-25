@@ -19,6 +19,8 @@
     <script type="text/javascript" src="{{ STATIC_URL }}libs/jqwidgets-2.9.0/jqwidgets/jqxgrid.columnsresize.js"></script>
     <script type="text/javascript" src="{{ STATIC_URL }}libs/jqwidgets-2.9.0/jqwidgets/jqxdata.js"></script>
     <script type="text/javascript" src="{{ STATIC_URL }}libs/jqwidgets-2.9.0/jqwidgets/jqxgrid.edit.js"></script>
+    <script type="text/javascript" src="{{ STATIC_URL }}libs/jqwidgets-2.9.0/jqwidgets/jqxcombobox.js"></script>
+
 
     <style>
         .balance {
@@ -36,6 +38,14 @@
         }
         .balance-total{
             font-weight: bold;
+        }
+
+        /*
+            По умолчанию у заголовков таблицы z-index 494 почему-то в jqxGrid установлен
+            Тут мы его сбрасываем чтобы при проекруте заголовок был невидим (был под нашими fixed шапкой).
+        */
+        .jqx-grid-column-header {
+            z-index: 1 !important;
         }
     </style>
 
@@ -78,6 +88,9 @@
             };
             var dataAdapter = new $.jqx.dataAdapter(source);
 
+            var editedTypeRowInndex = -1;
+            var nowInCloseHandler = false;
+
             $("#uuGrid").jqxGrid({
                 theme: 'darkblue',
                 width: 860,
@@ -86,7 +99,41 @@
                 editable: true,
                 columns: [
                     { text: 'Дата', datafield: 'date', width: 100 },
-                    { text: 'Тип', datafield: 'type', width: 70 },
+                    {
+                        text: 'Тип',
+                        datafield: 'type',
+                        width: 90,
+                        columntype: 'dropdownlist',
+                        createeditor: function (row, column, editor) {
+                            var list = ['Расход', 'Перевод', 'Доход'];
+                            editor.jqxDropDownList({
+                                autoDropDownHeight: true,
+                                source: list
+                            });
+                            /* С помощью этого обработчика мы скрываем выпадающий список сразу после выбора */
+                            $("#dropdownlisteditoruuGridtype").bind('close', function(event){
+
+                                // Из endcelledit вызывается close обработчик снова поэтому
+                                // тут делаем проверку. Иначе образуется рекурсия и краш при отмене выбора
+                                // (клик вне области выпадающего списка).
+                                if (!nowInCloseHandler){
+                                    nowInCloseHandler = true;
+                                    $("#uuGrid").jqxGrid('endcelledit', editedTypeRowInndex, 'type', false);
+                                }
+                                nowInCloseHandler = false;
+                            });
+                        },
+                        initeditor: function (row, column, editor) {
+
+                            /* Тут сначала делаем видимым а лишь потом открыаем */
+                            /* Если не делать block то выпаюащий список не имеет координат и его отображение */
+                            /* покажет его не в нужном месте у яейки а у края страницы (глюк при открытии) */
+                            editor.css('display', 'block');
+                            editor.jqxDropDownList('open');
+                            editedTypeRowInndex = row;
+
+                        }
+                    },
                     { text: 'Сумма', datafield: 'sum', width: 90 },
                     { text: 'Счет', datafield: 'account', width: 100 },
                     { text: 'Категория', datafield: 'category', width: 100 },
@@ -98,7 +145,8 @@
             $("#uuGrid").jqxGrid('selectcell', 0, 'date');
         });
 
-        // Делат шапку jqxGrid fixed
+        // Делат шапку jqxGrid fixed (копируя слой поверх)
+        /*
         $(document).ready(function () {
             var $elem = $('.jqx-grid-header'); // Original element with attached data
             var start = $elem.offset().top;
@@ -106,6 +154,8 @@
             $elem.css('top', '111px' );
             $elem.css('z-index', '100');
         });
+        */
+
 
         // Устанавливаем обработчик на смену выделения чтобы выделенная ячейка была видима
         $(document).ready(function () {
@@ -123,19 +173,16 @@
                 // Скроллинг если ячейка выходит за рамки видимости снизу
                 var footerHeight = $('#uuFooterFixed').outerHeight();
                 var footerTop = $(window).height() - footerHeight;
-                console.log(footerTop);
                 var elemBottomRelToDoc = $('#row' + event.args.rowindex + 'uuGrid').offset().top + $('#row' + event.args.rowindex + 'uuGrid').height();
                 var elemBottomRelToWin = elemTopRelToWin + $('#row' + event.args.rowindex + 'uuGrid').height();
                 if (elemBottomRelToWin > footerTop){
                     $(window).scrollTop($(window).scrollTop() + (elemBottomRelToWin - footerTop));
                 };
-
-                console.log("elemBottomRelToDoc " + elemBottomRelToDoc + ", winScroll " + winScroll + ", elemBottomRelToWin " + elemBottomRelToWin);
             });
         });
     </script>
 
-    <div id='uuGrid' style="border: 0px solid grey; padding-top: 26px;"></div>
+    <div id='uuGrid' style="border: 0px solid grey; margin-top: 68px;"></div>
 
     <button id="btnAdd" class="btn btn-info" style='position: fixed; bottom: 65px; z-index: 101;'>Добавить</button>
 
