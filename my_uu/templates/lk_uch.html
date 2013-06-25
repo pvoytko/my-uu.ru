@@ -1,0 +1,181 @@
+{% extends 'lk_base.html' %}
+
+{% block add_to_head %}
+
+    <link rel="stylesheet" href="{{ STATIC_URL }}libs/jqwidgets-2.9.0/jqwidgets/styles/jqx.base.css" type="text/css" />
+    <link rel="stylesheet" href="{{ STATIC_URL }}libs/jqwidgets-2.9.0/jqwidgets/styles/jqx.darkblue.css" type="text/css" />
+    <script type="text/javascript" src="{{ STATIC_URL }}libs/jqwidgets-2.9.0/jqwidgets/jqxcore.js"></script>
+    <script type="text/javascript" src="{{ STATIC_URL }}libs/jqwidgets-2.9.0/jqwidgets/jqxdata.js"></script>
+    <script type="text/javascript" src="{{ STATIC_URL }}libs/jqwidgets-2.9.0/jqwidgets/jqxbuttons.js"></script>
+    <script type="text/javascript" src="{{ STATIC_URL }}libs/jqwidgets-2.9.0/jqwidgets/jqxscrollbar.js"></script>
+    <script type="text/javascript" src="{{ STATIC_URL }}libs/jqwidgets-2.9.0/jqwidgets/jqxmenu.js"></script>
+    <script type="text/javascript" src="{{ STATIC_URL }}libs/jqwidgets-2.9.0/jqwidgets/jqxcheckbox.js"></script>
+    <script type="text/javascript" src="{{ STATIC_URL }}libs/jqwidgets-2.9.0/jqwidgets/jqxlistbox.js"></script>
+    <script type="text/javascript" src="{{ STATIC_URL }}libs/jqwidgets-2.9.0/jqwidgets/jqxdropdownlist.js"></script>
+    <script type="text/javascript" src="{{ STATIC_URL }}libs/jqwidgets-2.9.0/jqwidgets/jqxgrid.js"></script>
+    <script type="text/javascript" src="{{ STATIC_URL }}libs/jqwidgets-2.9.0/jqwidgets/jqxgrid.sort.js"></script>
+    <script type="text/javascript" src="{{ STATIC_URL }}libs/jqwidgets-2.9.0/jqwidgets/jqxgrid.pager.js"></script>
+    <script type="text/javascript" src="{{ STATIC_URL }}libs/jqwidgets-2.9.0/jqwidgets/jqxgrid.selection.js"></script>
+    <script type="text/javascript" src="{{ STATIC_URL }}libs/jqwidgets-2.9.0/jqwidgets/jqxgrid.columnsresize.js"></script>
+    <script type="text/javascript" src="{{ STATIC_URL }}libs/jqwidgets-2.9.0/jqwidgets/jqxdata.js"></script>
+    <script type="text/javascript" src="{{ STATIC_URL }}libs/jqwidgets-2.9.0/jqwidgets/jqxgrid.edit.js"></script>
+
+    <style>
+        .balance {
+            width: 100px;
+            border: 1px solid #449bca;
+        }
+        .balance div {
+            width: 100px;
+            padding: 3px;
+            font-size: 13px;
+            color: #003451;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .balance-total{
+            font-weight: bold;
+        }
+    </style>
+
+{% endblock %}
+
+{% block uch_active %} class="active"{% endblock %}
+
+{% block lk_content %}
+    <script type="text/javascript">
+        $(document).ready(function () {
+
+
+            dt = new Date();
+            dt.setFullYear(2013, 4, 4);
+
+            var data = new Array();
+            for (var i = 0; i < 3; i++) {
+                var row = {};
+                row['date'] = '14 июн Пн';
+                row['type'] = 'Расход';
+                row['sum'] = -17500;
+                row['account'] = 'нал';
+                row['category'] = 'Хата';
+                row['comment'] = 'Заплатил за коммунальные';
+                data[i] = row;
+            }
+            var source =
+            {
+                localdata: data,
+                datafields:
+                [
+                    { name: 'date', type: 'string'},
+                    { name: 'type', type: 'string'},
+                    { name: 'sum', type: 'string'},
+                    { name: 'account', type: 'string'},
+                    { name: 'category', type: 'string'},
+                    { name: 'comment', type: 'string'},
+                ],
+                datatype: "array"
+            };
+            var dataAdapter = new $.jqx.dataAdapter(source);
+
+            $("#uuGrid").jqxGrid({
+                theme: 'darkblue',
+                width: 860,
+                height: '120',
+                selectionmode: 'multiplecellsextended',
+                editable: true,
+                columns: [
+                    { text: 'Дата', datafield: 'date', width: 100 },
+                    { text: 'Тип', datafield: 'type', width: 70 },
+                    { text: 'Сумма', datafield: 'sum', width: 90 },
+                    { text: 'Счет', datafield: 'account', width: 100 },
+                    { text: 'Категория', datafield: 'category', width: 100 },
+                    { text: 'Комментарий', datafield: 'comment' }
+                ],
+                source: dataAdapter
+            });
+
+            $("#uuGrid").jqxGrid('selectcell', 0, 'date');
+        });
+
+        // Делат шапку jqxGrid fixed
+        $(document).ready(function () {
+            var $elem = $('.jqx-grid-header'); // Original element with attached data
+            var start = $elem.offset().top;
+            $elem.css('position', 'fixed' );
+            $elem.css('top', '111px' );
+            $elem.css('z-index', '100');
+        });
+
+        // Устанавливаем обработчик на смену выделения чтобы выделенная ячейка была видима
+        $(document).ready(function () {
+            $("#uuGrid").on('cellselect', function (event) {
+
+                // Скроллинг если ячейка выходит за рамки видимости сверху
+                var headerHeight = $('.jqx-grid-header').position().top + $('.jqx-grid-header').outerHeight();
+                var elemTopRelToDoc = $('#row' + event.args.rowindex + 'uuGrid').offset().top;
+                var winScroll = $(window).scrollTop();
+                var elemTopRelToWin = elemTopRelToDoc - winScroll;
+                if (elemTopRelToWin < headerHeight){
+                    $(window).scrollTop($(window).scrollTop() - (headerHeight - elemTopRelToWin));
+                };
+
+                // Скроллинг если ячейка выходит за рамки видимости снизу
+                var footerHeight = $('#uuFooterFixed').outerHeight();
+                var footerTop = $(window).height() - footerHeight;
+                console.log(footerTop);
+                var elemBottomRelToDoc = $('#row' + event.args.rowindex + 'uuGrid').offset().top + $('#row' + event.args.rowindex + 'uuGrid').height();
+                var elemBottomRelToWin = elemTopRelToWin + $('#row' + event.args.rowindex + 'uuGrid').height();
+                if (elemBottomRelToWin > footerTop){
+                    $(window).scrollTop($(window).scrollTop() + (elemBottomRelToWin - footerTop));
+                };
+
+                console.log("elemBottomRelToDoc " + elemBottomRelToDoc + ", winScroll " + winScroll + ", elemBottomRelToWin " + elemBottomRelToWin);
+            });
+        });
+    </script>
+
+    <div id='uuGrid' style="border: 0px solid grey; padding-top: 26px;"></div>
+
+    <button id="btnAdd" class="btn btn-info" style='position: fixed; bottom: 65px; z-index: 101;'>Добавить</button>
+
+    <script>
+        $('#btnAdd').on('click', function(){
+            // Добавляем строку, перед этим увеличив высоту грида (чтобы избежать его собственного скроллинга)
+            var hg = parseInt($('#uuGrid').jqxGrid('height')) + 25;
+            $('#uuGrid').jqxGrid({'height': hg});
+            $('#uuGrid').jqxGrid('addrow', null, {'date': '25 июн Вт'});
+
+            // Снимаем выделение (ранее имевшееся) и выделяем первый столбец у добавленной строки
+            $("#uuGrid").jqxGrid('clearselection');
+            $("#uuGrid").jqxGrid('selectcell', $("#uuGrid").jqxGrid("getrows").length-1, 'date');
+
+            // Скроллинг к последнему пикселю
+            $(window).scrollTop(1000 + hg);
+        });
+    </script>
+
+    <div style="padding-bottom: 120px;"></div>
+
+    <div id="uuFooterFixed" style="position: fixed; height: 100px; background-color: white; z-index: 99; bottom: 0px; width: 860px; border-top: 10px solid #449bca;">
+
+        <div style="margin-left: 200px; margin-top: 5px;">
+            <h5 style="margin: 3px 0; color: rgb(39, 100, 133);">Остатки по счетам</h5>
+            <table cellpadding="0" cellspacing="0" style="border: 1px solid #449bca;">
+                <tr>
+                    <td class="balance"><div>Нал.</div></td>
+                    <td class="balance"><div>Карта ВТБ24 авыаываываыв ываыва</div></td>
+                    <td class="balance balance-total"><div>Итого</div></td>
+                </tr>
+                <tr>
+                    <td class="balance"><div>0 руб.</div></td>
+                    <td class="balance"><div>4 555 руб.</div></td>
+                    <td class="balance balance-total"><div>4 555 руб.</div></td>
+                </tr>
+            </table>
+        </div>
+
+
+    </div>
+
+{% endblock %}

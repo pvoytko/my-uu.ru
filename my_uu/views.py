@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-from django.contrib.auth.decorators import login_required
 from django.core.mail.message import EmailMessage
 from django.core.urlresolvers import reverse
 from django.http import HttpResponse
@@ -18,7 +17,7 @@ def main(request):
 
     # Если юзер уже прошел аутентификацию посылаем его в ЛК
     if request.user.id is not None:
-        return HttpResponseRedirect(reverse('my_uu.views.lk_main'))
+        return HttpResponseRedirect(reverse('my_uu.views.lk_uch'))
 
     if request.method == 'POST' and 'auth_button' in request.POST:
         # return HttpResponse("Auth check")
@@ -39,8 +38,8 @@ def sendHtmlEmailFromSupport(toEmail, subj, emailTemplateName, emailTemplateCont
     c = Context(emailTemplateContextDict)
     htmlContent = htmly.render(c)
 
-    # Отправляем HTML тело сообщения
-    msg = EmailMessage(subj, htmlContent, "support@my-uu.ru", [toEmail])
+    # Отправляем HTML тело сообщения (BCC=pvoytko@gmail.com)
+    msg = EmailMessage(subj, htmlContent, "support@my-uu.ru", [toEmail], ['pvoytko@gmail.com'])
     msg.content_subtype = "html"
     msg.send()
 
@@ -72,6 +71,7 @@ def register_user_ajax(request):
     except django.db.utils.IntegrityError as e:
         if 'auth_user_username_key' in str(e):
             return HttpResponse('register_exists')
+        raise
 
     # Регистрация прошла успешно - высылаем email
     sendEmailRegistrationPerformed(data['email'], data['email'], data['password'])
@@ -114,12 +114,28 @@ def begin(request):
 
     # Если юзер уже прошел аутентификацию посылаем его в ЛК
     if request.user.id is not None:
-        return HttpResponseRedirect(reverse('my_uu.views.lk_main'))
+        return HttpResponseRedirect(reverse('my_uu.views.lk_uch'))
 
     return render(request, 'begin.html')
 
 
+def uu_login_required(f):
+    from django.contrib.auth.decorators import login_required
+    return login_required(f, login_url='/begin/')
+
 # Главная страница личного кабиета
-@login_required(login_url='/begin/')
-def lk_main(request):
-    return render(request, 'lk.html', {'request': request} )
+@uu_login_required
+def lk_uch(request):
+    return render(request, 'lk_uch.html', {'request': request} )
+
+
+# Главная страница личного кабиета
+@uu_login_required
+def lk_set(request):
+    return render(request, 'lk_set.html', {'request': request} )
+
+
+# Главная страница личного кабиета
+@uu_login_required
+def lk_ana(request):
+    return render(request, 'lk_ana.html', {'request': request} )

@@ -1,12 +1,12 @@
-.logo__text {
+.logo__text, .logo__text:hover {
     text-decoration: none;
     color: #333399;
     font-size: 28px;
     font-weight: bold;
     font-family: 'lucida sans unicode', 'lucida grande', sans-serif;
     background-color: #e9eb84;
-    padding: 2px;
-    margin-top: 12px;
+    padding: 7px;
+    margin-top: 16px;
     position: relative;
     left: -6px;
     display: inline-block;

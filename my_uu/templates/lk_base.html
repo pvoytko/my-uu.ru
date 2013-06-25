@@ -1,0 +1,68 @@
+<!doctype html>
+<html>
+<head>
+    <title>Мой Удобный Учет: Личный Кабинет</title>
+
+    <script src="http://code.jquery.com/jquery-1.10.1.min.js"></script>
+
+    <link href="{{ STATIC_URL }}libs/bootstrap/css/bootstrap.min.css" rel="stylesheet" media="screen">
+    <script src="{{ STATIC_URL }}libs/bootstrap/js/bootstrap.min.js"></script>
+
+    <link rel="stylesheet" href="/static/css/common.css" />
+    <style>
+        /* Переопределяем стиль bootstrap чтобы отсутп уменьшить */
+        .nav{
+            margin-bottom: 2px;
+        }
+        .logout{
+            float: right;
+            margin-top: 22px;
+        }
+        .logout__link {
+            color: darkblue;
+            text-decoration: underline;
+        }
+        .logout__link:hover {
+            color: red;
+        }
+        .logout__email{
+            color: grey;
+        }
+
+    </style>
+
+    {% block add_to_head %}
+    {% endblock %}
+
+</head>
+
+<body>
+
+    <div class="page_content_container" style="position: relative; padding-top: 69px;">
+
+        <a class="logo__text" href="{% url 'my_uu.views.lk_uch' %} " style="position: fixed; top: 16px; margin-left: 50%; left: -430px; z-index: 101;">
+            «Мой Удобный Учет»
+        </a>
+
+        <div class="logout">
+            <span class="logout__email">{{ request.user.username }}</span>
+            <a class="logout__link" href="/logout_user/">Выход</a>
+        </div>
+
+        <ul class="nav nav-pills" style="position: fixed; visibility: block; top: 73px; z-index: 101;">
+            <li{% block uch_active %}{% endblock %}><a href="/lk/">Учет</a></li>
+            <li{% block ana_active %}{% endblock %}><a href="/lk/ana/">Анализ</a></li>
+            <li{% block set_active %}{% endblock %}><a href="/lk/set/">Настройки</a></li>
+        </ul>
+
+        <div style="background-color: white; height: 120px; z-index: 100; position: fixed; width: 860px; top: 0px;"></div>
+
+        {% block lk_content %}
+
+        {% endblock %}
+
+    </div>
+
+
+</body>
+</html>

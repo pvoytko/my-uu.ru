@@ -75,7 +75,7 @@
                   $scope.errorText = 'Пользователь с таким эл. адресом уже существует.'
               }
               else if (data == 'auth_email_password_incorrect') {
-                  $scope.errorText = 'Неверный парольи или адрес эл. почты.'
+                  $scope.errorText = 'Неверный пароль или адрес эл. почты.'
               }
               else if (data == 'ok') {
                   $scope.redirecting = true;
