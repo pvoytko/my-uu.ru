@@ -47,6 +47,11 @@
         .jqx-grid-column-header {
             z-index: 1 !important;
         }
+
+        /* Переопределяем курсор над ячейками на excel-евский */
+        .jqx-grid-cell {
+            cursor: url("{{ STATIC_URL }}img/excel_cursor.png"), pointer;
+        }
     </style>
 
 {% endblock %}
@@ -88,8 +93,49 @@
             };
             var dataAdapter = new $.jqx.dataAdapter(source);
 
-            var editedTypeRowInndex = -1;
-            var nowInCloseHandler = false;
+            // Класс икапсулирует в себе код для того чтобы выпадающий список показывался сразу при
+            // начале редактировании ячейки и скрывался сразу после выбора в нем значение.
+            // Стандартное jqxGrid поведение несколько иное: для открытия надо нажать клавишу, а для
+            // завершения редактирования надо нажать ввода. Т.е. 2 дополнительных клика.
+            function InplaceDropDown(valuesList, datafield) {
+                var self = this;
+                this.editedTypeRowInndex = -1;
+                this.nowInCloseHandler = false;
+                this.createEditor = function(row, column, editor){
+                    editor.jqxDropDownList({
+                        autoDropDownHeight: true,
+                        source: valuesList
+                    });
+                    /* С помощью этого обработчика мы скрываем выпадающий список сразу после выбора */
+                    $("#dropdownlisteditoruuGrid" + datafield).bind('close', function(event){
+
+                        // Из endcelledit вызывается close обработчик снова поэтому
+                        // тут делаем проверку. Иначе образуется рекурсия и краш при отмене выбора
+                        // (клик вне области выпадающего списка).
+                        if (!self.nowInCloseHandler){
+                            self.nowInCloseHandler = true;
+                            $("#uuGrid").jqxGrid('endcelledit', self.editedTypeRowInndex, datafield, false);
+                        }
+                        self.nowInCloseHandler = false;
+                    });
+                };
+                // С помощью этого обработчика мы открываем выпадающий список сразу при начале редактирования ячейки
+                this.initEditor = function(row, column, editor){
+                    /* Тут сначала делаем видимым а лишь потом открыаем */
+                    /* Если не делать block то выпаюащий список не имеет координат и его отображение */
+                    /* покажет его не в нужном месте у яейки а у края страницы (глюк при открытии) */
+                    editor.css('display', 'block');
+                    editor.jqxDropDownList('open');
+                    self.editedTypeRowInndex = row;
+                }
+            };
+
+            var typeInplaceDropDown = new InplaceDropDown(['Расход', 'Перевод', 'Доход'], 'type');
+
+            var accountList = ['Нал', 'Карта ВТБ24', 'Счет ВТБ24', 'Киви', 'WM', 'Стаб. фонд', 'Место дома'];
+            var accountInplaceDropDown = new InplaceDropDown(accountList, 'account');
+            var categoryList = ['Жилье', 'Питание', 'Отдых', 'Остальное'];
+            var categoryInplaceDropDown = new InplaceDropDown(categoryList, 'category');
 
             $("#uuGrid").jqxGrid({
                 theme: 'darkblue',
@@ -104,39 +150,26 @@
                         datafield: 'type',
                         width: 90,
                         columntype: 'dropdownlist',
-                        createeditor: function (row, column, editor) {
-                            var list = ['Расход', 'Перевод', 'Доход'];
-                            editor.jqxDropDownList({
-                                autoDropDownHeight: true,
-                                source: list
-                            });
-                            /* С помощью этого обработчика мы скрываем выпадающий список сразу после выбора */
-                            $("#dropdownlisteditoruuGridtype").bind('close', function(event){
-
-                                // Из endcelledit вызывается close обработчик снова поэтому
-                                // тут делаем проверку. Иначе образуется рекурсия и краш при отмене выбора
-                                // (клик вне области выпадающего списка).
-                                if (!nowInCloseHandler){
-                                    nowInCloseHandler = true;
-                                    $("#uuGrid").jqxGrid('endcelledit', editedTypeRowInndex, 'type', false);
-                                }
-                                nowInCloseHandler = false;
-                            });
-                        },
-                        initeditor: function (row, column, editor) {
-
-                            /* Тут сначала делаем видимым а лишь потом открыаем */
-                            /* Если не делать block то выпаюащий список не имеет координат и его отображение */
-                            /* покажет его не в нужном месте у яейки а у края страницы (глюк при открытии) */
-                            editor.css('display', 'block');
-                            editor.jqxDropDownList('open');
-                            editedTypeRowInndex = row;
-
-                        }
+                        createeditor: typeInplaceDropDown.createEditor,
+                        initeditor: typeInplaceDropDown.initEditor
                     },
                     { text: 'Сумма', datafield: 'sum', width: 90 },
-                    { text: 'Счет', datafield: 'account', width: 100 },
-                    { text: 'Категория', datafield: 'category', width: 100 },
+                    {
+                        text: 'Счет',
+                        datafield: 'account',
+                        width: 100,
+                        columntype: 'dropdownlist',
+                        createeditor: accountInplaceDropDown.createEditor,
+                        initeditor: accountInplaceDropDown.initEditor
+                    },
+                    {
+                        text: 'Категория',
+                        datafield: 'category',
+                        width: 100,
+                        columntype: 'dropdownlist',
+                        createeditor: categoryInplaceDropDown.createEditor,
+                        initeditor: categoryInplaceDropDown.initEditor
+                    },
                     { text: 'Комментарий', datafield: 'comment' }
                 ],
                 source: dataAdapter
@@ -146,15 +179,14 @@
         });
 
         // Делат шапку jqxGrid fixed (копируя слой поверх)
-        /*
         $(document).ready(function () {
             var $elem = $('.jqx-grid-header'); // Original element with attached data
-            var start = $elem.offset().top;
-            $elem.css('position', 'fixed' );
-            $elem.css('top', '111px' );
-            $elem.css('z-index', '100');
+            var $elem2 = $elem.clone().appendTo($elem.parent())
+            var start = $elem2.offset().top;
+            $elem2.css('position', 'fixed' );
+            $elem2.css('top', '111px' );
+            $elem2.css('z-index', '100');
         });
-        */
 
 
         // Устанавливаем обработчик на смену выделения чтобы выделенная ячейка была видима
@@ -182,10 +214,11 @@
         });
     </script>
 
-    <div id='uuGrid' style="border: 0px solid grey; margin-top: 68px;"></div>
+    <div id='uuGrid' style="border: 0px solid grey; margin-top: 42px;"></div>
 
     <button id="btnAdd" class="btn btn-info" style='position: fixed; bottom: 65px; z-index: 101;'>Добавить</button>
 
+    <!-- Добалвение новой строки учета -->
     <script>
         $('#btnAdd').on('click', function(){
             // Добавляем строку, перед этим увеличив высоту грида (чтобы избежать его собственного скроллинга)
@@ -207,7 +240,7 @@
     <div id="uuFooterFixed" style="position: fixed; height: 100px; background-color: white; z-index: 99; bottom: 0px; width: 860px; border-top: 10px solid #449bca;">
 
         <div style="margin-left: 200px; margin-top: 5px;">
-            <h5 style="margin: 3px 0; color: rgb(39, 100, 133);">Остатки по счетам</h5>
+            <h5 style="margin: 3px 0; color: rgb(39, 100, 133);">Денег на счетах, для сверки</h5>
             <table cellpadding="0" cellspacing="0" style="border: 1px solid #449bca;">
                 <tr>
                     <td class="balance"><div>Нал.</div></td>
