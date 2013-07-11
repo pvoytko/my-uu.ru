@@ -26,7 +26,7 @@
                 url: '/register_user/',
                 data: $scope._getDataDictFromScope(),
                 cache: false,
-                timeout: 5000
+                timeout: 15000
             });
             $scope._setupServerCallbacks(httpObj);
         }
@@ -42,7 +42,7 @@
                 url: '/login_user/',
                 data: $scope._getDataDictFromScope(),
                 cache: false,
-                timeout: 5000
+                timeout: 15000
             });
             $scope._setupServerCallbacks(httpObj);
         }

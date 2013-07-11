@@ -7,8 +7,15 @@ from django.http.response import HttpResponseRedirect
 from django.shortcuts import render
 from django.contrib.auth.models import User
 from django.contrib.auth import login, authenticate
-import json
+from django.db.models import Count, Sum, Min, Max
+from django.core.serializers.json import DjangoJSONEncoder
+import django.core.exceptions
 import django.db.utils
+
+import json
+import datetime
+
+import my_uu.models
 
 
 # Главная страница.
@@ -69,9 +76,16 @@ def register_user_ajax(request):
         u = User.objects.create_user(data['email'], data['email'], data['password'])
         u.save()
     except django.db.utils.IntegrityError as e:
-        if 'auth_user_username_key' in str(e):
+        if 'Duplicate entry' in str(e):
             return HttpResponse('register_exists')
         raise
+
+    # Для нового юзера надо создать счет и категорию
+    my_uu.models.Category.objects.create(name = 'Остальное', user = u).save()
+    my_uu.models.Category.objects.create(name = 'Жилье', user = u).save()
+    my_uu.models.Category.objects.create(name = 'Питание', user = u).save()
+    my_uu.models.Account.objects.create(name = 'Кошелек', user = u).save()
+    my_uu.models.Account.objects.create(name = 'Карта', user = u).save()
 
     # Регистрация прошла успешно - высылаем email
     sendEmailRegistrationPerformed(data['email'], data['email'], data['password'])
@@ -123,19 +137,269 @@ def uu_login_required(f):
     from django.contrib.auth.decorators import login_required
     return login_required(f, login_url='/begin/')
 
+
+def _getAccountBalanceList(request):
+    accountBalanceList = my_uu.models.Account.objects.filter(user=request.user)
+    accountBalanceList = accountBalanceList.annotate(balance = Sum('uchet__sum'))
+    accountBalanceList = accountBalanceList.order_by('id')
+    return list(accountBalanceList.values('id', 'name', 'balance'))
+
+
 # Главная страница личного кабиета
 @uu_login_required
 def lk_uch(request):
-    return render(request, 'lk_uch.html', {'request': request} )
+
+    return render(request, 'lk_uch.html', {
+        'request': request,
+        'uchetRecords': my_uu.models.Uchet.objects.filter(user=request.user).order_by('date', '-utype', 'id'),
+        'uTypeList': my_uu.models.UType.objects.all().order_by('id'),
+        'accountList': my_uu.models.Account.objects.filter(user=request.user).order_by('id'),
+        'categoryList': my_uu.models.Category.objects.filter(user=request.user).order_by('id'),
+        'accountBalanceListJson': json.dumps(_getAccountBalanceList(request), cls=DjangoJSONEncoder),
+    })
 
 
-# Главная страница личного кабиета
+# Страница Настройки личного кабиета
 @uu_login_required
 def lk_set(request):
-    return render(request, 'lk_set.html', {'request': request} )
+    import json
+
+    # Получаем счета и категории с указанием количества записей
+    rowsA = my_uu.models.Account.objects.annotate(count = Count('uchet'))
+    rowsA = rowsA.filter(user=request.user).values('id', 'name', 'count')
+    rowsC = my_uu.models.Category.objects.annotate(count = Count('uchet'))
+    rowsC = rowsC.filter(user=request.user).values('id', 'name', 'count')
+
+    # Отдаем на выход
+    accountListJsonString = json.dumps(list(rowsA))
+    categoryListJsonString = json.dumps(list(rowsC))
+
+    return render(request, 'lk_set.html', {
+        'request': request,
+        'accountListJsonString': accountListJsonString,
+        'categoryListJsonString': categoryListJsonString
+    } )
 
 
-# Главная страница личного кабиета
+# Страница Анализ личного кабиета
 @uu_login_required
 def lk_ana(request):
-    return render(request, 'lk_ana.html', {'request': request} )
+
+    # Уникальный список категорий
+    categoryList = request.user.category_set.all().distinct()
+
+    # Максимальные и минимальные номера недель которые есть в учете для этого юзера
+    minMaxDate = request.user.uchet_set.aggregate(min_date = Min('date'), max_date = Max('date'))
+
+    l = []
+
+    # Если есть хотя бы одна запись учета, то формируем содержание списка на выдачу
+    if minMaxDate['min_date'] != None:
+        assert minMaxDate['max_date'] != None, u'Если минимальня дата не None, то и максимальная должна быть не None.'
+
+        # Для каждой категории
+        for (i, item) in enumerate(categoryList):
+
+            # Получаем суммы по неделям
+            sumForWeeks = request.user.uchet_set.filter(category = item).values('date').annotate(sum = Sum('sum'))['sum']
+            sum = request.user.uchet_set.filter(category = item).aggregate(sum = Sum('sum'))['sum']
+
+            # Номера недель
+            minWeek = max(minMaxDate['min_date'], datetime.date(2013, 1, 1)).isocalendar()[1]
+            maxWeek = min(minMaxDate['max_date'], datetime.date(2013, 12, 31)).isocalendar()[1]
+
+            # Формируем словарь с суммами по неделям для категори и сохраняем его в список
+            # Если ни одной суммы для этой категории нет, то такую категорию не показываем.
+            if len(sumForWeeks) > 0:
+                d = dict()
+                d['category'] = item.name
+                for w in xrange(minWeek, maxWeek+1):
+                    d[str(w)] = sum
+                l.append(d)
+
+    return render(request, 'lk_ana.html', {
+        'request': request,
+        'anaDataJson': json.dumps(l, cls=DjangoJSONEncoder)
+    } )
+
+
+class JsonResponseWithStatusError(HttpResponse):
+    def __init__(self, exception):
+        super(JsonResponseWithStatusError, self).__init__(
+            json.dumps({
+                'status': 'error',
+                'text': unicode(exception)
+            }, cls=DjangoJSONEncoder)
+        )
+
+
+class JsonResponseWithStatusOk(HttpResponse):
+    def __init__(self, **kwargs):
+        d = kwargs
+        d['status'] = 'ok'
+        super(JsonResponseWithStatusOk, self).__init__(
+            json.dumps(d, cls=DjangoJSONEncoder)
+        )
+
+
+# Сохранить данные учета (через Аякс вызывается)
+@uu_login_required
+def lk_save_uchet_ajax(request):
+    rowsForUpdateAndInsert = json.loads(request.POST['rows_json'])
+
+    # Перебираем все полученные строки
+    # Если в ней есть serverRecordId, значит эта строка есть уже в БД, ее надо update.
+    # Если в полученных данны нет serverRecordId, значит эту строку надо insert
+    for r in rowsForUpdateAndInsert:
+
+        # На основе пришедших данных делаем стркоу для вставки в БД
+        import copy
+        rowDbData = copy.copy(r)
+
+        # Шаг №1 - заменить названия счетов и категорий на их id в БД
+        rowDbData['account'] = my_uu.models.Account.objects.get(name=r['account'])
+        rowDbData['category'] = my_uu.models.Category.objects.get(name=r['category'])
+        rowDbData['utype'] = my_uu.models.UType.objects.get(name=r['utype'])
+        rowDbData['date'] = datetime.datetime.strptime(r['date'], '%d.%m.%Y')
+        rowDbData['user'] = request.user
+
+        # С клиента приходят в формате с ",", меняем на "."
+        rowDbData['sum'] = r['sum'].replace(',', '.')
+
+        # Получаем id строки на сервере если есть и удаляем лишние поля (чтоб не вылазило ошибки при update)
+        serverRowId = None
+        if 'serverRowId' in r:
+            serverRowId = rowDbData['serverRowId']
+            del rowDbData['serverRowId']
+        del rowDbData['uid']
+
+        # Обновление, если есть serverRowId
+        if serverRowId is not None:
+            my_uu.models.Uchet.objects.filter(id=serverRowId).update(**rowDbData)
+
+        # Добавление
+        # Полученный serverRecordId устанавливаем для этой строки.
+        else:
+            u = my_uu.models.Uchet.objects.create(**rowDbData)
+            u.save()
+            r['serverRowId'] = u.id
+
+    # Возвращаем то же самое (только серверные id поставили)
+    return JsonResponseWithStatusOk(
+        rows_json = rowsForUpdateAndInsert,
+        accountBalanceList = _getAccountBalanceList(request)
+    )
+
+
+# Удалить строку учета (через Аякс вызывается)
+@uu_login_required
+def lk_delete_uchet_ajax(request):
+    rowForDelete = json.loads(request.POST['rowForDelete'])
+    rowId = rowForDelete['serverRowId']
+    my_uu.models.Uchet.objects.get(id= rowId).delete()
+    return JsonResponseWithStatusOk(accountBalanceList = _getAccountBalanceList(request))
+
+
+class MyUUUIException(BaseException):
+    pass
+
+
+class AccountNameValidationError(MyUUUIException):
+    def __init__(self, errText):
+        super(AccountNameValidationError, self).__init__(
+            u"Не удалось сохранить изменения. " + errText
+        )
+
+
+class DeleteAccountWithUchetRecordsException(MyUUUIException):
+    def __init__(self):
+        super(DeleteAccountWithUchetRecordsException, self).__init__(
+            u"Есть связанные записи учета. Удаление невозможно."
+        )
+
+
+class DeleteLastAccountException(MyUUUIException):
+    def __init__(self, isAccount):
+        texts = {
+            True: u"Нельзя удалить последний счет. Должен оставаться хотя бы один счет.",
+            False: u"Нельзя удалить последнюю категорию. Должна оставаться хотя бы одна категория.",
+        }
+
+        super(DeleteLastAccountException, self).__init__( texts[isAccount] )
+
+
+def _lk_save_settings_ajax(request, userPropName, modelClass):
+
+    newAccountData = json.loads(request.body)
+
+    # Создаем новый или изменяем существующий счет
+    if 'id' in newAccountData:
+        a = getattr(request.user, userPropName).get(id = newAccountData['id'])
+    else:
+        a = modelClass()
+        a.user = request.user
+
+    a.name = newAccountData['name']
+
+
+    try:
+        try:
+            a.full_clean()
+            a.save()
+
+        # Если исключение в поле name, то такой вид исключений обрабатываем переделываем в наш вид
+        # который мы умеем обрабатывать.
+        except django.core.exceptions.ValidationError, e:
+            if 'name' in e.message_dict:
+                raise AccountNameValidationError(u" ".join(e.message_dict['name']))
+
+    # Если исключение при проверке поля Account.name, то показываем текст этой ошибки юзеру.
+    except MyUUUIException, e:
+        return JsonResponseWithStatusError(e)
+
+    # Ошибок не возникло, все ОК.
+    return JsonResponseWithStatusOk(id = a.id)
+
+
+@uu_login_required
+def _lk_delete_settings_ajax(request, userPropName):
+    try:
+
+        accountData = json.loads(request.body)
+        a = getattr(request.user, userPropName).get(id = accountData['id'])
+
+        # Нельзя удалять если есть связанные записи учета
+        if a.uchet_set.count() != 0:
+            raise DeleteAccountWithUchetRecordsException()
+
+        # Нельзя удалять если это последний счет (категория).
+        # Так как в этом случае заглючит таблица учета в которой ни одного счета ни одной категории.
+        if getattr(request.user, userPropName).count() == 1:
+            assert userPropName == 'account_set' or userPropName == 'category_set', u'Должно быть либо то либо другое.'
+            isAccount = userPropName == 'account_set'
+            raise DeleteLastAccountException(isAccount)
+
+        a.delete()
+
+    except MyUUUIException, e:
+        return JsonResponseWithStatusError(e)
+
+    # Ошибок не возникло, все ОК.
+    return JsonResponseWithStatusOk()
+
+
+@uu_login_required
+def lk_save_account_ajax(request):
+    return _lk_save_settings_ajax(request, 'account_set', my_uu.models.Account)
+
+@uu_login_required
+def lk_delete_account_ajax(request):
+    return _lk_delete_settings_ajax(request, 'account_set')
+
+@uu_login_required
+def lk_save_category_ajax(request):
+    return _lk_save_settings_ajax(request, 'category_set', my_uu.models.Category)
+
+@uu_login_required
+def lk_delete_category_ajax(request):
+    return _lk_delete_settings_ajax(request, 'category_set')

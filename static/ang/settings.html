@@ -1,0 +1,72 @@
+<style>
+    input[type='text'] {
+        margin-bottom: 6px;
+    }
+    .account_list__button{
+        position: relative;
+        top: -4px;
+        display: none;
+    }
+    .account_list__msg{
+        display: none;
+        position: absolute;
+        width: 245px;
+        top: -5px;
+        right: 0px;
+    }
+    .account_list__msg1{
+        position: absolute;
+        width: 245px;
+        top: -5px;
+        right: 0px;
+    }
+    .account_list__delete_icon {
+        float: none;
+        color: red;
+        opacity: 0.1;
+        top: -3px;
+        position: relative;
+    }
+    .account_list__delete_icon:hover {
+        color: red;
+        opacity: 0.8;
+    }
+    [disabled].account_list__delete_icon {
+        opacity: 0.2;
+        color: black;
+    }
+    [disabled].account_list__delete_icon:hover {
+        opacity: 0.2;
+        color: black;
+    }
+</style>
+<div ng-repeat="listData in namedList">
+    <h5>{{ listData.hdr }}</h5>
+    <div ng-repeat="a in listData.list" style="position: relative;">
+        <button id="{{ listData.id }}_butdel{{ a.clientId }}" class="close account_list__delete_icon" title="Удалить" ng-click="deleteAccount(listData, a)">&times;</button>
+        <input id="{{ listData.id }}_inp{{ a.clientId }}" ng-model="a.name" ng-change="onChangeAccountName(listData, a)" type="text" />
+        <span class="muted" style="width: 110px; display: inline-block;">{{ getLabelText(a.count) }}</span>
+        <button id="{{ listData.id }}_butapp{{ a.clientId }}" class="btn account_list__button" ng-click="saveAccountNameToServer(listData, a)">Применить</button>
+        <button id="{{ listData.id }}_butcan{{ a.clientId }}" class="btn account_list__button" ng-click="cancelAccountNameChanging(listData, a)">Отменить</button>
+        <div class="account_list__msg1 alert alert-success" ng-show="a.accountSTSDC.is_s">
+            <button type="button" class="close" ng-click="a.accountSTSDC.clear()">&times;</button>
+            <span>Изменения сохранены.</span>
+        </div>
+        <div class="account_list__msg1 alert alert-info" ng-show="a.accountSTSDC.is_w">
+            <span>Сохранение, подождите...</span>
+        </div>
+        <div class="account_list__msg1 alert alert-error" ng-show="a.accountSTSDC.is_e">
+            <button type="button" class="close" ng-click="a.accountSTSDC.clear()">&times;</button>
+            <span>{{ a.accountSTSDC.errorText }}</span>
+        </div>
+    </div>
+    <button class="btn" ng-click="addNewAccount(listData)" style="margin-left: 16px;">Добавить</button>
+</div>
+
+<!--
+<h5>Категории</h5>
+<div ng-repeat="c in categoryList">
+    <input type="text" value="{{ c.name }}" />
+    <span class="muted">{{ c.count }} записей</span>
+</div>
+-->

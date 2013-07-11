@@ -2,6 +2,7 @@
 
 {% block add_to_head %}
 
+    <!-- jqxGrid -->
     <link rel="stylesheet" href="{{ STATIC_URL }}libs/jqwidgets-2.9.0/jqwidgets/styles/jqx.base.css" type="text/css" />
     <link rel="stylesheet" href="{{ STATIC_URL }}libs/jqwidgets-2.9.0/jqwidgets/styles/jqx.darkblue.css" type="text/css" />
     <script type="text/javascript" src="{{ STATIC_URL }}libs/jqwidgets-2.9.0/jqwidgets/jqxcore.js"></script>
@@ -21,6 +22,14 @@
     <script type="text/javascript" src="{{ STATIC_URL }}libs/jqwidgets-2.9.0/jqwidgets/jqxgrid.edit.js"></script>
     <script type="text/javascript" src="{{ STATIC_URL }}libs/jqwidgets-2.9.0/jqwidgets/jqxcombobox.js"></script>
 
+    <!-- Форматирование дат -->
+    <script type="text/javascript" src="{{ STATIC_URL }}libs/moment/moment.min.js"></script>
+
+    <!-- Angular для остатков по счетам -->
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.0.7/angular.min.js"></script>
+
+    <!-- Вспомогательные разные функции -->
+    <script src="{{ STATIC_URL }}js/uu_utils.js"></script>
 
     <style>
         .balance {
@@ -52,209 +61,812 @@
         .jqx-grid-cell {
             cursor: url("{{ STATIC_URL }}img/excel_cursor.png"), pointer;
         }
+
+        /*
+            Эти 2 стиля ставятся для ячеек если ни одной записи учета или для пустых строк под
+            строками с данными. В обоих случаях курсор покажем обычный.
+        */
+        .jqx-grid-cleared-cell, .jqx-grid-empty-cell  {
+            cursor: default;
+        }
+
+        .editedRow {
+            color: rgb(248, 133, 8);
+        }
+
+        .deleteIcon {
+            color: red;
+            opacity: 0.2;
+            cursor: pointer;
+            padding-top: 2px;
+            font-weight: bold;
+            font-size: 15px;
+            text-shadow: 0 1px 0 #fff;
+        }
+        .deleteIcon:hover {
+            opacity: 0.8;
+        }
+        [disabled].deleteIcon {
+            color: black;
+            opacity: 0.5;
+            cursor: default;
+        }
     </style>
 
 {% endblock %}
-
 {% block uch_active %} class="active"{% endblock %}
 
 {% block lk_content %}
-    <script type="text/javascript">
-        $(document).ready(function () {
 
+    <div ng-app="project">
 
-            dt = new Date();
-            dt.setFullYear(2013, 4, 4);
+        <script>
 
-            var data = new Array();
-            for (var i = 0; i < 3; i++) {
-                var row = {};
-                row['date'] = '14 июн Пн';
-                row['type'] = 'Расход';
-                row['sum'] = -17500;
-                row['account'] = 'нал';
-                row['category'] = 'Хата';
-                row['comment'] = 'Заплатил за коммунальные';
-                data[i] = row;
-            }
-            var source =
-            {
-                localdata: data,
-                datafields:
-                [
-                    { name: 'date', type: 'string'},
-                    { name: 'type', type: 'string'},
-                    { name: 'sum', type: 'string'},
-                    { name: 'account', type: 'string'},
-                    { name: 'category', type: 'string'},
-                    { name: 'comment', type: 'string'},
-                ],
-                datatype: "array"
-            };
-            var dataAdapter = new $.jqx.dataAdapter(source);
+            var projectModule = angular.module('project',[]);
 
-            // Класс икапсулирует в себе код для того чтобы выпадающий список показывался сразу при
-            // начале редактировании ячейки и скрывался сразу после выбора в нем значение.
-            // Стандартное jqxGrid поведение несколько иное: для открытия надо нажать клавишу, а для
-            // завершения редактирования надо нажать ввода. Т.е. 2 дополнительных клика.
-            function InplaceDropDown(valuesList, datafield) {
-                var self = this;
-                this.editedTypeRowInndex = -1;
-                this.nowInCloseHandler = false;
-                this.createEditor = function(row, column, editor){
-                    editor.jqxDropDownList({
-                        autoDropDownHeight: true,
-                        source: valuesList
-                    });
-                    /* С помощью этого обработчика мы скрываем выпадающий список сразу после выбора */
-                    $("#dropdownlisteditoruuGrid" + datafield).bind('close', function(event){
-
-                        // Из endcelledit вызывается close обработчик снова поэтому
-                        // тут делаем проверку. Иначе образуется рекурсия и краш при отмене выбора
-                        // (клик вне области выпадающего списка).
-                        if (!self.nowInCloseHandler){
-                            self.nowInCloseHandler = true;
-                            $("#uuGrid").jqxGrid('endcelledit', self.editedTypeRowInndex, datafield, false);
-                        }
-                        self.nowInCloseHandler = false;
-                    });
-                };
-                // С помощью этого обработчика мы открываем выпадающий список сразу при начале редактирования ячейки
-                this.initEditor = function(row, column, editor){
-                    /* Тут сначала делаем видимым а лишь потом открыаем */
-                    /* Если не делать block то выпаюащий список не имеет координат и его отображение */
-                    /* покажет его не в нужном месте у яейки а у края страницы (глюк при открытии) */
-                    editor.css('display', 'block');
-                    editor.jqxDropDownList('open');
-                    self.editedTypeRowInndex = row;
+            // Когда на сервере ни одной записи учета, то сумма баланса приходит null
+            // Тут мы преобразовываем эту величину к 0.00
+            function adjustServerBalance(arr){
+                for (var i=0; i<arr.length; ++i)
+                {
+                    if (arr[i].balance == null)
+                    {
+                        arr[i].balance = 0.00;
+                    }
+                    else {
+                        arr[i].balance = parseFloat(String(arr[i].balance).replace(',', '.'));
+                    }
                 }
-            };
+                return arr;
+            }
 
-            var typeInplaceDropDown = new InplaceDropDown(['Расход', 'Перевод', 'Доход'], 'type');
-
-            var accountList = ['Нал', 'Карта ВТБ24', 'Счет ВТБ24', 'Киви', 'WM', 'Стаб. фонд', 'Место дома'];
-            var accountInplaceDropDown = new InplaceDropDown(accountList, 'account');
-            var categoryList = ['Жилье', 'Питание', 'Отдых', 'Остальное'];
-            var categoryInplaceDropDown = new InplaceDropDown(categoryList, 'category');
-
-            $("#uuGrid").jqxGrid({
-                theme: 'darkblue',
-                width: 860,
-                height: '120',
-                selectionmode: 'multiplecellsextended',
-                editable: true,
-                columns: [
-                    { text: 'Дата', datafield: 'date', width: 100 },
-                    {
-                        text: 'Тип',
-                        datafield: 'type',
-                        width: 90,
-                        columntype: 'dropdownlist',
-                        createeditor: typeInplaceDropDown.createEditor,
-                        initeditor: typeInplaceDropDown.initEditor
-                    },
-                    { text: 'Сумма', datafield: 'sum', width: 90 },
-                    {
-                        text: 'Счет',
-                        datafield: 'account',
-                        width: 100,
-                        columntype: 'dropdownlist',
-                        createeditor: accountInplaceDropDown.createEditor,
-                        initeditor: accountInplaceDropDown.initEditor
-                    },
-                    {
-                        text: 'Категория',
-                        datafield: 'category',
-                        width: 100,
-                        columntype: 'dropdownlist',
-                        createeditor: categoryInplaceDropDown.createEditor,
-                        initeditor: categoryInplaceDropDown.initEditor
-                    },
-                    { text: 'Комментарий', datafield: 'comment' }
-                ],
-                source: dataAdapter
-            });
-
-            $("#uuGrid").jqxGrid('selectcell', 0, 'date');
-        });
-
-        // Делат шапку jqxGrid fixed (копируя слой поверх)
-        $(document).ready(function () {
-            var $elem = $('.jqx-grid-header'); // Original element with attached data
-            var $elem2 = $elem.clone().appendTo($elem.parent())
-            var start = $elem2.offset().top;
-            $elem2.css('position', 'fixed' );
-            $elem2.css('top', '111px' );
-            $elem2.css('z-index', '100');
-        });
-
-
-        // Устанавливаем обработчик на смену выделения чтобы выделенная ячейка была видима
-        $(document).ready(function () {
-            $("#uuGrid").on('cellselect', function (event) {
-
-                // Скроллинг если ячейка выходит за рамки видимости сверху
-                var headerHeight = $('.jqx-grid-header').position().top + $('.jqx-grid-header').outerHeight();
-                var elemTopRelToDoc = $('#row' + event.args.rowindex + 'uuGrid').offset().top;
-                var winScroll = $(window).scrollTop();
-                var elemTopRelToWin = elemTopRelToDoc - winScroll;
-                if (elemTopRelToWin < headerHeight){
-                    $(window).scrollTop($(window).scrollTop() - (headerHeight - elemTopRelToWin));
-                };
-
-                // Скроллинг если ячейка выходит за рамки видимости снизу
-                var footerHeight = $('#uuFooterFixed').outerHeight();
-                var footerTop = $(window).height() - footerHeight;
-                var elemBottomRelToDoc = $('#row' + event.args.rowindex + 'uuGrid').offset().top + $('#row' + event.args.rowindex + 'uuGrid').height();
-                var elemBottomRelToWin = elemTopRelToWin + $('#row' + event.args.rowindex + 'uuGrid').height();
-                if (elemBottomRelToWin > footerTop){
-                    $(window).scrollTop($(window).scrollTop() + (elemBottomRelToWin - footerTop));
+            projectModule.factory('balanceService', function() {
+                return {
+                    accountBalanceList: adjustServerBalance(JSON.parse('{{ accountBalanceListJson|escapejs }}'))
                 };
             });
-        });
-    </script>
 
-    <div id='uuGrid' style="border: 0px solid grey; margin-top: 42px;"></div>
+        </script>
 
-    <button id="btnAdd" class="btn btn-info" style='position: fixed; bottom: 65px; z-index: 101;'>Добавить</button>
-
-    <!-- Добалвение новой строки учета -->
-    <script>
-        $('#btnAdd').on('click', function(){
-            // Добавляем строку, перед этим увеличив высоту грида (чтобы избежать его собственного скроллинга)
-            var hg = parseInt($('#uuGrid').jqxGrid('height')) + 25;
-            $('#uuGrid').jqxGrid({'height': hg});
-            $('#uuGrid').jqxGrid('addrow', null, {'date': '25 июн Вт'});
-
-            // Снимаем выделение (ранее имевшееся) и выделяем первый столбец у добавленной строки
-            $("#uuGrid").jqxGrid('clearselection');
-            $("#uuGrid").jqxGrid('selectcell', $("#uuGrid").jqxGrid("getrows").length-1, 'date');
-
-            // Скроллинг к последнему пикселю
-            $(window).scrollTop(1000 + hg);
-        });
-    </script>
-
-    <div style="padding-bottom: 120px;"></div>
-
-    <div id="uuFooterFixed" style="position: fixed; height: 100px; background-color: white; z-index: 99; bottom: 0px; width: 860px; border-top: 10px solid #449bca;">
-
-        <div style="margin-left: 200px; margin-top: 5px;">
-            <h5 style="margin: 3px 0; color: rgb(39, 100, 133);">Денег на счетах, для сверки</h5>
-            <table cellpadding="0" cellspacing="0" style="border: 1px solid #449bca;">
-                <tr>
-                    <td class="balance"><div>Нал.</div></td>
-                    <td class="balance"><div>Карта ВТБ24 авыаываываыв ываыва</div></td>
-                    <td class="balance balance-total"><div>Итого</div></td>
-                </tr>
-                <tr>
-                    <td class="balance"><div>0 руб.</div></td>
-                    <td class="balance"><div>4 555 руб.</div></td>
-                    <td class="balance balance-total"><div>4 555 руб.</div></td>
-                </tr>
-            </table>
+        <!-- Блок с ошибкой показывается если не удалось сохраниться на сервер -->
+        <div id="syncErrorMessageBlock" class="alert alert-error" style="z-index: 1000; position: fixed; width: 400px; margin-right: 50%; right: -432px; top: 70px; border: 3px solid #b94a48; display: none;">
+            <h4 style="display: inline;">Внимание!</h4>
+            Ошибка при сохранении данных на сервер. Несохраненные строки остались отмечены рыжим цветом.
         </div>
 
+        <!-- Блок с ошибкой показывается если не удалось удалить строку с сервера -->
+        <div id="deleteErrorMessageBlock" class="alert alert-error" style="z-index: 1000; position: fixed; width: 400px; margin-right: 50%; right: -432px; top: 70px; border: 3px solid #b94a48; display: none;">
+            <h4 style="display: inline;">Внимание!</h4>
+            Ошибка при удалении строки с сервера. Строка не удалена. Повторите попытку позднее.
+        </div>
+
+        <script type="text/javascript">
+
+
+            // Оборачиваем весь код в angular-контроллер чтобы иметь
+            // доступ к balanceService (помещать в него ответ текущий баланс от сервера).
+            function GridCtrl($scope, $rootScope, balanceService){
+
+                // Считает высоту грида для числа строк. Подробности см. функцию adjustGridHeightToNewRowsCount
+                window.calcGridHeightToNewRowsCount = function(newRowsCount){
+                    var gh = newRowsCount * 25 + 120;
+
+                    // Если убрать эту ветку, то в момент удаления последней строки из grida
+                    // Фраза "no data display" смещается уезжает влево за край (в хроме видно этот баг).
+                    if (newRowsCount == 0) {
+                        return 145;
+                    }
+
+                    return gh;
+                }
+
+                // Функция изменяет высоту грида в зависимости от числа строк.
+                // Вообще высота должна быть равна числу строк + пустое поле 100 пикселей.
+                // Это поле нужно для того чтобы в самой нижней точке редактируемая строка
+                // была не у самого плинтуса (неудобно вводить) в ближе к середине области грида.
+                // newRowsCount число строк которое будет.
+                // Функция вызывается перед добавлением новой строки, так что фактическое число строк
+                // меньше чем то которое будет через миг под которое нам надо изменить высоту.
+                // Поэтому планируемое число строк поступает в аргументе а не берется из грида.
+                // Возвращает высоту грида в пикселях. Новую.
+                window.adjustGridHeightToNewRowsCount = function(newRowsCount){
+                    var newHeight = calcGridHeightToNewRowsCount(newRowsCount);
+                    $('#uuGrid').jqxGrid({'height': newHeight});
+                    return newHeight;
+                }
+
+
+                $(document).ready(function () {
+
+                    // Класс отвечает за хранение id удаляемых строк (запрос ушел на сервер но ответ еще не пришел ждем).
+                    function GridDeletedRowsServerSyncronization(){
+                        // В списке храним id строк которые были удалены (отправляются на сервер)
+                        var self = this;
+                        this.deletedRows = new Array();
+
+                        this.isRowDisabled = function(rowId){
+                            for(var i=0; i<this.deletedRows.length; ++i){
+                                if (rowId == this.deletedRows[i]){
+                                    return true;
+                                };
+                            }
+                            return false;
+                        };
+
+                        this.markRowAsDisabled = function(rowId){
+                            this.deletedRows.push(rowId);
+                        }
+
+                        this.removeRowAsDisabled = function(rowId){
+                            var i = this.deletedRows.indexOf(rowId);
+                            this.deletedRows.splice(i, 1);
+                        }
+
+                    }
+
+                    window.deletedRowsServerSync = new GridDeletedRowsServerSyncronization();
+
+                    // Класс отвечает за синхронизацию с сервером отредактированных строк.
+                    function GridEditedRowsServerSyncronization(){
+
+                        var self = this;
+                        self._isWaitForServerResponse = false;
+
+                        // В списке храним id строк и данные для отправки на сервер.
+                        this._editedRows = new Array();
+
+                        // Тут храним индекс последней записи в editedRows перед отправкой запроса на сервер.
+                        // Надо для очистки после синхронизации.
+                        this._editedRowsCountBeforeSynchronization = 0;
+
+                        // Функция возвращает true если строка rowGridId еще является несинхронизированной.
+                        this._isRowWasEdited = function(rowGridId) {
+                            for (var i = 0; i < self._editedRows.length; i++) {
+                                if (self._editedRows[i].uid == rowGridId) {
+                                    return "editedRow";
+                                }
+                            }
+                        }
+
+                        this._handleCounter = 0;
+
+                        // Вызывается в момент получения от сервера ответа после отправки запроса для синхронизации
+                        this._handleServerResponse = function(successStatus, httpErrorCode, httpSuccessData) {
+
+                            self._handleCounter++;
+
+                            // Синхронизация прошла успешно -
+                            if (successStatus){
+
+                                // Скрываем блок ошибки при сохранении на сервер
+                                $('#syncErrorMessageBlock').hide();
+
+                                // Обновляем источник данных - добавляем в него serverRowId (для инстертнутых в БД строк)
+                                var rowsFromServer = JSON.parse(httpSuccessData).rows_json;
+                                var boundrows = $('#uuGrid').jqxGrid('getboundrows');
+                                for(var ri=0; ri<rowsFromServer.length; ++ri) {
+                                    var rid = rowsFromServer[ri].uid;
+                                    var brix = $('#uuGrid').jqxGrid('getrowboundindexbyid', rid);
+                                    boundrows[brix].serverRowId = rowsFromServer[ri].serverRowId;
+                                };
+
+                                // Стираем записи из массива которые в нем были на момент отправки запроса.
+                                // Стирать важно перед тем как затем удаляем класс с выделенных строк.
+                                // Потому что при удалении класса почему-то снова вызываетя рендер для строк
+                                // и если мы еще не удалили индекс строк то в результате синхронизированные строки
+                                // при удалении стиля снова на миг подсвечиваются и возникает мигание.
+                                // Этот эффект было заметно если изменить строку 1. До получения ответа - затем изменить
+                                // стркоу 2. И в момент полчения ответа по строке 1 она сначала поткухнет а потом снова
+                                // загорится а потом со строкой 2 потухнет.
+                                // Поэтому используем вспомогательный массив originalArray.
+                                originalArray = self._editedRows.slice(0);
+                                self._editedRows.splice(0, self._editedRowsCountBeforeSynchronization);
+
+                                // Код далее удаляет класс editedRows который проставляется в ячейки строки
+                                // а удаляем его чтобы снять выделние с ячеек которые синхронизировались с сервером.
+                                for (var i=0; i<self._editedRowsCountBeforeSynchronization; ++i){
+                                    var rowGridId = originalArray[i].uid;
+                                    var rowGridInHtmlId = '#row' + rowGridId + 'uuGrid';
+                                    $('#uuGrid').find(rowGridInHtmlId).find('[role="gridcell"]').removeClass('editedRow');
+                                }
+
+                                // Сообщаем что баланс поменялся во вью с балансом по счетам.
+                                var abl = adjustServerBalance(JSON.parse(httpSuccessData).accountBalanceList);
+                                balanceService.accountBalanceList = abl;
+                                $rootScope.$broadcast('balanceChanged');
+
+                            } else {
+
+                                // Показываем блок ошибки при сохранении на сервер
+                                $('#syncErrorMessageBlock').show();
+
+                            }
+
+                            // Сбрасываем флаг что ждали ответа.
+                            self._isWaitForServerResponse = false;
+
+                            // Если есть записи для отправки (появились пока ждали ответ от сервера)
+                            // то заного инициируем синхронизацию
+                            if (self._editedRows.length > 0) {
+
+                                // Если была ошибка, то следующий запрос надо послать не ранее
+                                // чем через 20 секунд. Иначе они начинают слаться друг за другом
+                                // непрерырвно и все с ошибкой завершаются.
+                                if (successStatus){
+                                    self._startAsyncSynchronizationWithServer();
+                                }else{
+                                     setTimeout(self._startAsyncSynchronizationWithServer, 20000);
+                                }
+                            }
+                        }
+
+                        // Запускает асинхронную синхронизацию.
+                        // Предполагается что записи в editedRows имеются на момент вызова.
+                        // То есть проверку на наличие элементов в editedRows (необходимость синхронизации)
+                        // делает вызывающая сторона.
+                        this._startAsyncSynchronizationWithServer = function(){
+
+                            // Если синхронизация уже выполняется (ждем ответа от сервера), то запускать ее повторно
+                            // не надо чтобы не плодить запросов. Дождемся сначала ответа а потом запустим следующую.
+                            if (self._isWaitForServerResponse)
+                                return;
+
+                            // Устанавливаем флаг что пошел запрос
+                            self._isWaitForServerResponse = true;
+
+                            // Сохраняем число элементов при отправке этого запроса на сервер для синхронизации
+                            this._editedRowsCountBeforeSynchronization = self._editedRows.length;
+
+                            // Отправляем запрос и принимаем ответ
+                            $.post(
+                                "{% url 'my_uu.views.lk_save_uchet_ajax' %}",
+                                { rows_json: JSON.stringify(
+                                    self._editedRows.slice(0, this._editedRowsCountBeforeSynchronization)
+                                )}
+                            ).done(function(data, textStatus, jqXHR){
+                                self._handleServerResponse(true, 0, data);
+                            }).fail(function(jqXHR, textStatus, errorThrown){
+                                self._handleServerResponse(false, 0);
+                            });
+                        }
+
+                        // Вызывается из Grid Source при измеении строки
+                        this.updateRowGridSourceCallback = function (rowid, rowdata, commit) {
+
+                            // Сохраняем какая строка была изменнеа
+                            self._editedRows.push( rowdata );
+
+                            // Если тут выставить false, то реализация jqxgrid вызовет setcellvalue со старым значением
+                            // после чего снова вызовается updaterow и будет бесконечная рекурсия. Так что
+                            // если ставить false, то надо учесть эту особенность реализации.
+                            // Пока же ставим true. Предполагая что если не удастся синхронизировать
+                            // то мы просто юзеру покажем эту ошибку и уже будет не важно что данные в таблице
+                            // будут несовпадать с данными на сервере.
+                            commit(true);
+
+                            // Запуск асинхронной синхронизации
+                            self._startAsyncSynchronizationWithServer();
+                        };
+
+                        this.addRowGridSourceCallback = function (rowid, rowdata, position, commit) {
+                            self.updateRowGridSourceCallback(rowid, rowdata, commit);
+                        }
+
+                        // Подсветка строки пока она не синхронизирована с сервером
+                        // Коллбек вызывается при отрисовке ячеек грида.
+                        this.getCellClassNameGridCallback = function (rowGridIndex, datafield, value, rowdata) {
+                            rowGridId = $('#uuGrid').jqxGrid('getrowid', rowGridIndex);
+                            if (self._isRowWasEdited(rowGridId)) {
+                                return "editedRow";
+                            }
+                        };
+                    }
+
+                    var editedRowsServerSync = new GridEditedRowsServerSyncronization();
+
+                    // Данные для таблицы
+                    var data = new Array();
+                    {% for u in uchetRecords %}
+
+                        (function(){
+                            var row = {};
+                            row['serverRowId'] = {{ u.id }};
+                            row['date'] = '{{ u.dateDDMMYYYY }}';
+                            row['utype'] = '{{ u.utype.name }}';
+                            row['sum'] = String('{{ u.sum }}').replace('.', ',');
+                            row['account'] = '{{ u.account.name }}';
+                            row['category'] = '{{ u.category.name }}';
+                            row['comment'] = '{{ u.comment }}';
+                            data[{{ forloop.counter0 }}] = row;
+                        })();
+
+                    {% endfor %}
+
+                    // Справочные значения (тип записи, счет, категория)
+                    // Используются также при добавлении новой записи.
+                    window.uTypeList = [
+                        {% for t in uTypeList %}
+                            '{{ t.name }}'
+                            {% if not forloop.last %}
+                                ,
+                            {% endif %}
+                        {% endfor %}
+                    ];
+                    window.accountList = [
+                        {% for a in accountList %}
+                            '{{ a.name }}'
+                            {% if not forloop.last %}
+                                ,
+                            {% endif %}
+                        {% endfor %}
+                    ];
+                    window.categoryList = [
+                        {% for c in categoryList %}
+                            '{{ c.name }}'
+                            {% if not forloop.last %}
+                                ,
+                            {% endif %}
+                        {% endfor %}
+                    ];
+
+
+                    // Функция получает на вход данные для строки. И номер строки.
+                    // Если формат данных для полей "Сумма" или "Дата" не нормализован, то
+                    // функция сохраняет в грид нормализованные данные и вернет true.
+                    // Если нормализован, то вернет false.
+                    function checkGridDataNormalizationAndNormalize(rowdata, rowIndex){
+                        // Нормализация для столбца даты
+                        var dateOriginalValue = rowdata['date'];
+                        var dateNormalizedValue = dateOriginalValue;
+
+                        if (dateOriginalValue.match(/^\s*\d{0,1}\d\.\d{0,1}\d.\d{0,1}\d\s*$/)){
+                            dateNormalizedValue = moment(dateOriginalValue, 'DD.MM.YY').format('DD.MM.YYYY');
+                        }
+                        else{
+                            dateNormalizedValue = moment(dateOriginalValue, 'DD.MM.YYYY').format('DD.MM.YYYY');
+                        }
+
+                        // Если значение изменилось после нормализации - сохраним его в грид.
+                        // Если не делать эту проверку на изменение значения то будет рекурсия бесконечная
+                        // так как при установке нового значения снова вызовется текущий обработчик.
+                        if (dateNormalizedValue != dateOriginalValue) {
+                            $("#uuGrid").jqxGrid('setcellvalue', rowIndex, 'date', dateNormalizedValue);
+                            return true;
+                        }
+
+                        // Нормализация для столбца суммы
+                        var sumOriginalValue = rowdata['sum'];
+                        var sumNormalizedValue = sumOriginalValue;
+
+                        // Сохраняем в грид с запятой, в виде строки.
+                        // Хотя это не очень правильно (числа хранятся как строки и сортировка например будет
+                        // неправильно работать), нам это сейчас походит, потому что
+                        // при редактировании (когда отображается поле ввода) чтобы числа были с запятыми
+                        // а сортировка пока нам не нужна.
+                        sumNormalizedValue = parseFloat(String(sumOriginalValue).replace(',', '.')).toFixed(2);
+                        sumNormalizedValue = String(sumNormalizedValue).replace('.', ',');
+
+                        // Если значение изменилось после нормализации - сохраним его в грид.
+                        // Если не делать эту проверку на изменение значения то будет рекурсия бесконечная
+                        // так как при установке нового значения снова вызовется текущий обработчик.
+                        if (sumOriginalValue != sumNormalizedValue) {
+                            $("#uuGrid").jqxGrid('setcellvalue', rowIndex, 'sum', sumNormalizedValue);
+                            return true;
+                        }
+
+                        return false;
+                    }
+
+                    var source =
+                    {
+                        localdata: data,
+                        datafields:
+                        [
+                            { name: 'serverRowId', type: 'string'},
+                            { name: 'date', type: 'string'},
+                            { name: 'utype', type: 'string'},
+                            { name: 'sum', type: 'string'},
+                            { name: 'account', type: 'string'},
+                            { name: 'category', type: 'string'},
+                            { name: 'comment', type: 'string'},
+                        ],
+                        datatype: "array",
+
+                        // Подсветка строки пока она не синхроинизирована с сервером
+                        // Эта функция вызывается после каждго редактирования любой ячейки.
+                        updaterow: function (rowid, rowdata, commit) {
+
+                            // Если юзер набрал дату 1.1.1, то в грид сохраним 01.01.2001
+                            // Если юзер набрал сумму 34,3, то в грид сохраним 34.30
+                            // Сначала, при первом вызове, мы устанавливаем в грид новые данные, нормализованные.
+                            // После чего функция вызовется повторно но уже с нормализованными данными.
+                            // Если нормализация уже выполнена, то checkGridDataNormalizationAndNormalize вернет
+                            // false и тогда вторым шагом при второ вызове - сохраним нормализованные данные
+                            // на сервер.
+                            // Тут более правильно передавать не rowid а rowindex но я не нашел быстрого
+                            // способа получить одно из другого и пока подойдет и rowid так что его и передаю.
+                            if (!checkGridDataNormalizationAndNormalize(rowdata, rowid)) {
+                                editedRowsServerSync.updateRowGridSourceCallback(rowid, rowdata, commit);
+                            }
+                        },
+                        addrow: editedRowsServerSync.addRowGridSourceCallback
+
+                    };
+                    var dataAdapter = new $.jqx.dataAdapter(source);
+
+                    // Класс икапсулирует в себе код для того чтобы выпадающий список показывался сразу при
+                    // начале редактировании ячейки и скрывался сразу после выбора в нем значение.
+                    // Стандартное jqxGrid поведение несколько иное: для открытия надо нажать клавишу, а для
+                    // завершения редактирования надо нажать ввода. Т.е. 2 дополнительных клика.
+                    function InplaceDropDown(valuesList, datafield) {
+                        var self = this;
+                        this.editedTypeRowInndex = -1;
+                        this.nowInCloseHandler = false;
+                        this.createEditor = function(row, column, editor){
+                            editor.jqxDropDownList({
+                                autoDropDownHeight: true,
+                                source: valuesList
+                            });
+                            /* С помощью этого обработчика мы скрываем выпадающий список сразу после выбора */
+                            $("#dropdownlisteditoruuGrid" + datafield).bind('close', function(event){
+
+                                // Из endcelledit вызывается close обработчик снова поэтому
+                                // тут делаем проверку. Иначе образуется рекурсия и краш при отмене выбора
+                                // (клик вне области выпадающего списка).
+                                if (!self.nowInCloseHandler){
+                                    self.nowInCloseHandler = true;
+                                    $("#uuGrid").jqxGrid('endcelledit', self.editedTypeRowInndex, datafield, false);
+                                }
+                                self.nowInCloseHandler = false;
+                            });
+                        };
+                        // С помощью этого обработчика мы открываем выпадающий список сразу при начале редактирования ячейки
+                        this.initEditor = function(row, column, editor){
+                            /* Тут сначала делаем видимым а лишь потом открыаем */
+                            /* Если не делать block то выпаюащий список не имеет координат и его отображение */
+                            /* покажет его не в нужном месте у яейки а у края страницы (глюк при открытии) */
+                            editor.css('display', 'block');
+                            editor.jqxDropDownList('open');
+                            self.editedTypeRowInndex = row;
+                        }
+                    };
+
+                    var typeInplaceDropDown = new InplaceDropDown(uTypeList, 'utype');
+                    var accountInplaceDropDown = new InplaceDropDown(accountList, 'account');
+                    var categoryInplaceDropDown = new InplaceDropDown(categoryList, 'category');
+
+                    // HTML по умолчанию имеет вид <div ...>Значение</div>. Заменяем в нем "значение" на другой текст.
+                    // С нужным нам форматированием.
+                    function replateCellHtmlOldValueWithNewValue(cellHtml, oldValue, newValue) {
+                        return cellHtml.substr(0, cellHtml.length - oldValue.length - 6) + newValue + '</div>';
+                    }
+
+                    // Форматирует значение суммы в красивый вид (добавляет группы и точку меняет на ,)
+                    var sumCellsRenderer = function (row, columnfield, value, defaulthtml, columnproperties) {
+                        // В гриде для простоы мы храним и отображаем суммы как строки с запятой в кач. разделителя.
+                        // Поэтому тут, чтобы отформатировать как денежная величина, мы сначала преобразуем ее
+                        // обратно в число с плавающей точкой, из которого снова форматируем в строку...
+                        // Ах, да, да, взад-вперед :-( ... Зато работает.
+                        var currencyValue = parseFloat(value.replace(',', '.'));
+                        var withRoubleValue = window.uuFormatCurrency(currencyValue);
+                        return replateCellHtmlOldValueWithNewValue(defaulthtml, value, withRoubleValue);
+                    }
+
+                    // Выводит крестик кликая на который можно удалить строку.
+                    var deleteRowCellRenderer = function (row, columnfield, value, defaulthtml, columnproperties) {
+                        var id = $("#uuGrid").jqxGrid('getrowid', row);
+                        var dis = "";
+                        if (deletedRowsServerSync.isRowDisabled(id)){
+                            dis = " disabled = 'disabled' ";
+                        }
+                        return replateCellHtmlOldValueWithNewValue(defaulthtml, value,
+                                "<span title='Удалить' class='deleteIcon' " + dis + "uu-row-id='" + id + "'>&times;</span>");
+                    }
+
+                    // Форматирует значение даты в красивый вид.
+                    var dateCellsRenderer = function (row, columnfield, value, defaulthtml, columnproperties) {
+
+                        // Формируем значение в зависимости от даты-времени.
+                        var dt = moment(value, 'DD.MM.YYYY');
+                        var newValue = dt.format("D MMM dddd");
+                        return replateCellHtmlOldValueWithNewValue(defaulthtml, value, newValue);
+                    }
+
+                    $("#uuGrid").jqxGrid({
+                        theme: 'darkblue',
+                        width: 860,
+                        height: calcGridHeightToNewRowsCount(data.length),
+                        selectionmode: 'multiplecellsextended',
+                        editable: true,
+                        editmode: 'dblclick',
+                        columns: [
+                            {
+                                text: '',
+                                datafield: null,
+                                width: 25,
+                                editable: false,
+                                cellsrenderer: deleteRowCellRenderer
+                            },
+                            {
+                                text: 'Дата',
+                                datafield: 'date',
+                                width: 100,
+                                cellclassname: editedRowsServerSync.getCellClassNameGridCallback,
+                                cellsrenderer: dateCellsRenderer,
+                                validation: function (cell, value) {
+                                    if (!moment(value, 'DD.MM.YYYY').isValid()) {
+                                        return { result: false, message: "Дата должна иметь формат ДД.ММ.ГГГГ" };
+                                    }
+                                    return true;
+                                }
+                            },
+                            {
+                                text: 'Тип',
+                                datafield: 'utype',
+                                width: 90,
+                                cellclassname: editedRowsServerSync.getCellClassNameGridCallback,
+                                columntype: 'dropdownlist',
+                                createeditor: typeInplaceDropDown.createEditor,
+                                initeditor: typeInplaceDropDown.initEditor
+                            },
+                            {
+                                text: 'Сумма',
+                                datafield: 'sum',
+                                width: 110,
+                                cellclassname: editedRowsServerSync.getCellClassNameGridCallback,
+                                cellsrenderer: sumCellsRenderer,
+                                cellsalign: 'right',
+                                validation: function (cell, value) {
+                                    floatVal = parseFloat(value)
+                                    if (isNaN(floatVal)){
+                                        return { result: false, message: "Значение должно быть числом (+-NNN или +-NNN.,NN)" };
+                                    }
+                                    return true;
+                                }
+                            },
+                            {
+                                text: 'Счет',
+                                datafield: 'account',
+                                width: 100,
+                                cellclassname: editedRowsServerSync.getCellClassNameGridCallback,
+                                columntype: 'dropdownlist',
+                                createeditor: accountInplaceDropDown.createEditor,
+                                initeditor: accountInplaceDropDown.initEditor
+                            },
+                            {
+                                text: 'Категория',
+                                datafield: 'category',
+                                width: 100,
+                                cellclassname: editedRowsServerSync.getCellClassNameGridCallback,
+                                columntype: 'dropdownlist',
+                                createeditor: categoryInplaceDropDown.createEditor,
+                                initeditor: categoryInplaceDropDown.initEditor
+                            },
+                            {
+                                text: 'Комментарий',
+                                cellclassname: editedRowsServerSync.getCellClassNameGridCallback,
+                                datafield: 'comment'
+                            }
+                        ],
+                        source: dataAdapter
+                    });
+
+                    // Установка русской строки для пустого грида (вместо дефолтовой No data to display)
+                    uuLocalizeJqxGrid("uuGrid");
+
+                    // Эта пара вызовов делает grid активным (клавишы влево вправо вверх вниз начинают
+                    // работать на нем). Если убрать эти вызовы то клавишы не работают пока не кликнем в грид.
+                    // Выбираем ячейку самую первую
+                    $("#uuGrid").jqxGrid('selectcell', $("#uuGrid").jqxGrid("getrows").length-1, 'sum');
+                    $("#contentuuGrid").attr('tabindex', 2);
+                    $("#contentuuGrid").focus();
+
+                    // Отлключаем выделение текста средствами браузера.
+                    // Оно путает когда работаем с гридом когда начинаем выделять несколько ячеек получается
+                    // задница гридовское выделение и браузерное пересекаются.
+                    $('#uuGrid').jqxGrid({ enablebrowserselection: false});
+
+                    // При клике на "-" (к примеру при вводе расхода -5 рублей) грид не включает режим редактирования
+                    // для ячейки суммы почему-то. Исправляем это поведение.
+                    $('#uuGrid').jqxGrid({ handlekeyboardnavigation: function(event) {
+
+                        // Тестируем если нажат -
+                        var key = event.charCode ? event.charCode : event.keyCode ? event.keyCode : 0;
+                        if (key == 189) {
+
+                            // Включаем режим редктирования для выделенной ячейки
+                            var cell = $('#uuGrid').jqxGrid('getselectedcell');
+                            $("#uuGrid").jqxGrid('begincelledit', cell.rowindex, cell.datafield);
+
+                            // Конструкция ниже помещает в очередь интерпретатора JS задание вставить минус
+                            // в поле ввода и переместить курсор в конец в этом поле ввода. Если убрать setTimeout,
+                            // то в поле ввода тоже вставится минус но этот минус будет выделен, то есть при нажатии
+                            // любой клавишы юзером этот минус сотрется. Видимо так происходит потому что begincelledit
+                            // помещает событие focus в очередь, поэтому код снизу и работает, так как помещает
+                            // изменение текста после focus а не до.
+                            setTimeout(function(){
+                                $('.jqx-input').val('');
+                                $('.jqx-input').val('-');
+                            }, 10);
+
+                            // true сообщает в jqxGrid что использовать дефолтов обработчик НЕ надо мы обработали.
+                            return true;
+                        };
+
+                        // false сообщает в jqxGrid что использовать дефолтов обработчик
+                        return false;
+                    }});
+
+                });
+
+
+
+                // Делат шапку jqxGrid fixed (копируя слой поверх)
+                $(document).ready(function () {
+                    var $elem = $('.jqx-grid-header'); // Original element with attached data
+                    var $elem2 = $elem.clone().appendTo($elem.parent())
+                    $elem2.css('position', 'fixed' );
+                    $elem2.css('top', '111px' );
+                    $elem2.css('z-index', '100');
+                    $elem2.attr('uu-visible-header', '1')
+                });
+
+                // Устанавливаем обработчик на смену выделения чтобы выделенная ячейка была видима
+                $(document).ready(function () {
+                    $("#uuGrid").on('cellselect', function (event) {
+
+                        // Скроллинг если ячейка выходит за рамки видимости сверху
+                        var headerHeight = $('[uu-visible-header="1"]').position().top + $('[uu-visible-header="1"]').outerHeight();
+                        var elemTopRelToDoc = $('#row' + event.args.rowindex + 'uuGrid').offset().top;
+                        var winScroll = $(window).scrollTop();
+                        var elemTopRelToWin = elemTopRelToDoc - winScroll;
+                        if (elemTopRelToWin < headerHeight){
+                            $(window).scrollTop($(window).scrollTop() - (headerHeight - elemTopRelToWin));
+                        };
+
+                        // Скроллинг если ячейка выходит за рамки видимости снизу
+                        var footerHeight = $('#uuFooterFixed').outerHeight();
+                        var footerTop = $(window).height() - footerHeight;
+                        var elemBottomRelToDoc = $('#row' + event.args.rowindex + 'uuGrid').offset().top + $('#row' + event.args.rowindex + 'uuGrid').height();
+                        var elemBottomRelToWin = elemTopRelToWin + $('#row' + event.args.rowindex + 'uuGrid').height();
+                        if (elemBottomRelToWin > footerTop){
+                            $(window).scrollTop($(window).scrollTop() + (elemBottomRelToWin - footerTop) + 1);
+                        };
+                    });
+                });
+
+                // Устанавливаем обработчик на клик удаления строки
+                $(document).ready(function () {
+                    $("#uuGrid").on('click', '[class = "deleteIcon"]', function (event) {
+
+                        // На время пока запрос идет к серверу и ждем ответ выставляется атрибут disabled
+                        // и тут мы его проверяем если он стоит - значит удаление этой строки уже отправлено к серверу.
+                        // и мы еще не получили ответа а ждем, повторно ничего делать не надо.
+                        if ($(event.target).attr('disabled') != undefined) {
+                            return;
+                        }
+
+                        var rid = $(event.target).attr('uu-row-id');
+                        if (confirm('Подтверждаете удаление?')) {
+
+                            var rowData = $("#uuGrid").jqxGrid("getrowdatabyid", rid);
+
+                            // Дисаблим
+                            deletedRowsServerSync.markRowAsDisabled(rid);
+                            $("[uu-row-id='" + rid + "']").attr('disabled', 'disabled');
+
+                            // Тут забито на проверку есть ли строка на сервере или ее там еще нет.
+                            // Просто шлем запрос на сервер.
+                            // Отправляем запрос и принимаем ответ
+                            $.post(
+                                "{% url 'my_uu.views.lk_delete_uchet_ajax' %}",
+                                { rowForDelete: JSON.stringify(rowData) }
+                            ).done(function(data, textStatus, jqXHR){
+
+                                // Скрываем ошибку если показывалась
+                                $('#deleteErrorMessageBlock').hide();
+
+                                // Удаляем строку с клиентской таблицы
+                                deletedRowsServerSync.removeRowAsDisabled(rid);
+                                $("#uuGrid").jqxGrid('deleterow', rid);
+
+                                // Уменьшаем высоту грида
+                                adjustGridHeightToNewRowsCount($('#uuGrid').jqxGrid('getrows').length);
+
+                                // Обновляем баланс на счетах согласно полученному от сервера.
+                                var abl = adjustServerBalance(JSON.parse(data).accountBalanceList);
+                                balanceService.accountBalanceList = abl;
+                                $rootScope.$broadcast('balanceChanged');
+
+
+                            }).fail(function(jqXHR, textStatus, errorThrown){
+
+                                // Показываем удаление и разблокируем.
+                                $('#deleteErrorMessageBlock').show();
+                                deletedRowsServerSync.removeRowAsDisabled(rid);
+                                $("[uu-row-id='" + rid + "']").removeAttr('disabled');
+
+                            });
+
+                        }
+
+                    })
+                });
+            }
+
+        </script>
+
+        <div ng-controller="GridCtrl">
+            <div id='uuGrid' style="border: 0px solid grey; margin-top: -3px;"></div>
+        </div>
+
+        <button id="btnAdd" class="btn btn-info" style='position: fixed; bottom: 65px; z-index: 101;'>Добавить</button>
+
+        <!-- Добалвение новой строки учета -->
+        <script>
+
+            $('#btnAdd').on('click', function(){
+
+                // Добавляем строку, перед этим увеличив высоту грида (чтобы избежать его собственного скроллинга)
+                var newHeight = adjustGridHeightToNewRowsCount($('#uuGrid').jqxGrid('getrows').length + 1);
+                $('#uuGrid').jqxGrid('addrow', null, {
+                    'date': moment().format('DD.MM.YYYY'),
+                    'utype': uTypeList[0],
+                    'sum': '0,00',
+                    'account': accountList[0],
+                    'category': categoryList[0]
+                });
+
+                // Снимаем выделение (ранее имевшееся) и выделяем первый столбец у добавленной строки
+                $("#uuGrid").jqxGrid('clearselection');
+                $("#uuGrid").jqxGrid('selectcell', $("#uuGrid").jqxGrid("getrows").length-1, 'sum');
+
+                // Эта пара вызовов делает grid активным (клавишы влево вправо вверх вниз начинают
+                // работать на нем). Если убрать эти вызовы то клавишы не работают пока не кликнем в грид.
+                $("#contentuuGrid").attr('tabindex', 2);
+                $("#contentuuGrid").focus();
+
+                // Скроллинг к последнему пикселю
+                $(window).scrollTop(1000 + newHeight);
+
+            });
+        </script>
+
+        <div style="padding-bottom: 120px;"></div>
+
+        <div id="uuFooterFixed" style="position: fixed; height: 100px; background-color: white; z-index: 99; bottom: 0px; width: 860px; border-top: 10px solid #449bca;">
+
+            <script>
+
+                function BalanceCtrl($scope, balanceService){
+
+                    $scope.formatBalance = function(v){
+                        return window.uuFormatCurrency(v);
+                    }
+
+                    $scope.$on('balanceChanged', function() {
+                        $scope.$apply(function(){
+                            $scope.accountBalanceList = balanceService.accountBalanceList;
+                        });
+                    });
+
+
+                    $scope.accountBalanceList = balanceService.accountBalanceList;
+
+                    $scope.getTotalBalance = function(){
+                        tot = 0.00;
+                        for(var i=0; i<$scope.accountBalanceList.length; ++i){
+                            tot += $scope.accountBalanceList[i].balance;
+                        }
+                        return window.uuFormatCurrency(tot);
+                    }
+                }
+            </script>
+            <div style="margin-left: 200px; margin-top: 5px;">
+                <ng-include src="'/static/ang/balance.html'" />
+            </div>
+
+        </div>
 
     </div>
 

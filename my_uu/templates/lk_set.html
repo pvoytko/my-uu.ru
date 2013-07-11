@@ -1,9 +1,230 @@
 {% extends 'lk_base.html' %}
 
+{% block add_to_head %}
+    <script src="http://code.jquery.com/jquery-1.9.1.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.0.7/angular.min.js"></script>
+{% endblock %}
+
 {% block set_active %} class="active"{% endblock %}
 
 {% block lk_content %}
 
-        Настройки
+    <script>
+
+        // Класс управляет отображением сообщений о состоянии взаимодейсвия с сервером.
+        //
+        // Предоставляет флаги
+        // is_s показать успех
+        // is_w показать ожидание
+        // is_e показать ошибку
+        // errorText тут хранится текст ошибки последней
+        // --
+        // Предоставляет команды
+        // send       перед отправкой запроса
+        // success    при получении ОК
+        // error(tx)  при получении Error(текст ошибки)
+        // clear      очистка состояния
+        function SendToServerDisplayController() {
+            // Возможные состояния
+            //
+            // [ state = 'normal'                         ]
+            // [ display = 'none' || 'success' || 'error' ]
+            //     ||    /\
+            //     ||    ||
+            //     \/    ||
+            // [ state = 'waiting' ]
+            // [ display = 'none'  ]
+            this.display = 'none';
+            this.state = 'normal';
+            this.errorText = '';
+            var self = this;
+
+            this._recalcFlags = function() {
+                // Показать waiting
+                self.is_w = self.state == 'waiting';
+                // Показать success
+                self.is_s = self.display == 'success';
+                // Показать error
+                self.is_e = self.display == 'error';
+            }
+            this.send = function() {
+                self.state = 'waiting';
+                self.display = 'none';
+                self._recalcFlags();
+            }
+            this.success = function() {
+                self.state = 'normal';
+                self.display = 'success';
+                self._recalcFlags();
+            }
+            this.error = function(errorText) {
+                self.state = 'normal';
+                self.display = 'error';
+                self.errorText = errorText;
+                self._recalcFlags();
+            }
+            this.clear = function(){
+                self.state = 'normal';
+                self.display = 'none';
+                self._recalcFlags();
+            }
+
+            self._recalcFlags();
+        }
+
+        function SettingsCtrl($scope, $http){
+
+            $scope.accountList = JSON.parse('{{ accountListJsonString|escapejs }}');
+            $scope.categoryList = JSON.parse('{{ categoryListJsonString|escapejs }}');
+
+            $scope.namedList = [
+                {
+                    hdr: 'Счета',
+                    id: 'accountList',
+                    list: $scope.accountList,
+                    saveUrl: '{% url "my_uu.views.lk_save_account_ajax" %}',
+                    deleteUrl: '{% url "my_uu.views.lk_delete_account_ajax" %}'
+                },
+                {
+                    hdr: 'Категории',
+                    id: 'categoryList',
+                    list: $scope.categoryList,
+                    saveUrl: '{% url "my_uu.views.lk_save_category_ajax" %}',
+                    deleteUrl: '{% url "my_uu.views.lk_delete_category_ajax" %}'
+                }
+            ];
+
+            for (var j=0;j<$scope.namedList.length; ++j){
+                var list = $scope.namedList[j].list;
+                for (var i=0;i<list.length; ++i){
+                    list[i].serverName = list[i].name;
+                    list[i].clientId = i;
+                    list[i].accountSTSDC = new SendToServerDisplayController();
+                }
+            }
+            $scope.onChangeAccountName = function(listData, accountData){
+                $('#' + listData.id + '_butapp' + accountData.clientId).show();
+                $('#' + listData.id + '_butcan' + accountData.clientId).show();
+                accountData.accountSTSDC.clear();
+            }
+            $scope.cancelAccountNameChanging = function(listData, accountData){
+                accountData.name = accountData.serverName;
+                $('#' + listData.id + '_butapp' + accountData.clientId).hide();
+                $('#' + listData.id + '_butcan' + accountData.clientId).hide();
+                accountData.accountSTSDC.clear();
+            }
+            $scope.saveAccountNameToServer = function(listData, accountData){
+
+                // Может измениться с момента отправки до момента ответа поэтому сохраним в промежут. переменной
+                var sendedToServerAccountName = accountData.name;
+
+                $('#' + listData.id + '_butapp' + accountData.clientId).hide();
+                $('#' + listData.id + '_butcan' + accountData.clientId).hide();
+
+                accountData.accountSTSDC.send();
+
+                httpObj = $http({
+                    method: 'POST',
+                    url: listData.saveUrl,
+                    data: JSON.stringify(accountData),
+                    cache: false,
+                    timeout: 15000
+                }).success(function(data, status){
+                    if (data.status == 'ok'){
+                        $('#' + listData.id + '_butapp' + accountData.clientId).hide();
+                        $('#' + listData.id + '_butcan' + accountData.clientId).hide();
+                        accountData.serverName = sendedToServerAccountName;
+                        accountData.accountSTSDC.success();
+
+                        // От сервера всегда приходит серверный ID в переменной serverId
+                        // того итема который сохранили (или добавли если это новый).
+                        // Устанавливаем этот serverId. Это надо делать для вновь-добавляемых итемов.
+                        // сохранять их серверный ID. Чтобы последующие операции удаления или
+                        // изменения для этого итема посылали на сервер его serverId.
+                        accountData.id = data.id
+                    }
+                    else {
+                        $('#' + listData.id + '_butapp' + accountData.clientId).show();
+                        $('#' + listData.id + '_butcan' + accountData.clientId).show();
+                        accountData.accountSTSDC.error(data.text);
+                    }
+                }).error(function(data, status){
+                    $('#' + listData.id + '_butapp' + accountData.clientId).show();
+                    $('#' + listData.id + '_butcan' + accountData.clientId).show();
+                    accountData.accountSTSDC.error("Ошибка связи с сервером. Код " + status);
+                });
+            }
+            $scope.getLabelText = function(cnt){
+                if (cnt != undefined){
+                    return cnt + " записей";
+                }else{
+                    return "";
+                }
+            }
+            $scope.addNewAccount = function(listData){
+                listData.list.push({
+                    name: '',
+                    clientId: listData.list[listData.list.length-1].clientId + 1,
+                    accountSTSDC: new SendToServerDisplayController()
+                });
+            }
+            $scope.deleteAccount = function(listData, accountData){
+                if (confirm("Подтвержаете удаление счета?")){
+                    $('#' + listData.id + '_butdel' + accountData.clientId).attr('disabled', 'disabled');
+
+                    // Если со счетом есть связанный на сервере объект - шлем туда запрос
+                    if (accountData.id != undefined) {
+
+                        accountData.accountSTSDC.send();
+                        httpObj = $http({
+                            method: 'POST',
+                            url: listData.deleteUrl,
+                            data: JSON.stringify(accountData),
+                            cache: false,
+                            timeout: 15000
+                        }).success(function(data, status){
+                            if (data.status == 'ok'){
+                                accountData.accountSTSDC.success();
+                                $scope._removeAccountInClientSide(listData, accountData.clientId);
+                            }
+                            else {
+                                accountData.accountSTSDC.error(data.text);
+                                $('#' + listData.id + '_butdel' + accountData.clientId).removeAttr('disabled');
+                            }
+                        }).error(function(data, status){
+                            accountData.accountSTSDC.error("Ошибка связи с сервером. Код " + status);
+                            $('#' + listData.id + '_butdel' + accountData.clientId).removeAttr('disabled');
+                        });
+
+                    // А иначе - просто удаляем на клиенте
+                    } else {
+                        $scope._removeAccountInClientSide(listData, accountData.clientId);
+                    }
+                }
+            }
+
+            $scope._removeAccountInClientSide = function(listData, clientId){
+                var indx = $scope._getClientArrayIndexByClientId(listData, clientId)
+                listData.list.splice(indx, 1);
+            }
+
+            // Возвращает индекс элемента в массиве accountList по его clientId
+            $scope._getClientArrayIndexByClientId = function(listData, clientId){
+                for (var i=0;i<listData.list.length; ++i){
+                    if (listData.list[i].clientId == clientId){
+                        return i;
+                    };
+                }
+
+                // Недостижимая точка
+                alert('Ошибка JS. Несуществующий cliendId');
+                return undefined;
+            }
+        }
+    </script>
+
+    <div ng-app ng-controller="SettingsCtrl">
+         <ng-include src="'/static/ang/settings.html'" />
+    </div>
 
 {% endblock %}

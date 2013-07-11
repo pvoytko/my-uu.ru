@@ -1,9 +1,178 @@
 {% extends 'lk_base.html' %}
 
+{% block add_to_head %}
+
+    <!-- jqxGrid -->
+    <link rel="stylesheet" href="{{ STATIC_URL }}libs/jqwidgets-2.9.0/jqwidgets/styles/jqx.base.css" type="text/css" />
+    <link rel="stylesheet" href="{{ STATIC_URL }}libs/jqwidgets-2.9.0/jqwidgets/styles/jqx.darkblue.css" type="text/css" />
+    <script type="text/javascript" src="{{ STATIC_URL }}libs/jqwidgets-2.9.0/jqwidgets/jqxcore.js"></script>
+    <script type="text/javascript" src="{{ STATIC_URL }}libs/jqwidgets-2.9.0/jqwidgets/jqxdata.js"></script>
+    <script type="text/javascript" src="{{ STATIC_URL }}libs/jqwidgets-2.9.0/jqwidgets/jqxbuttons.js"></script>
+    <script type="text/javascript" src="{{ STATIC_URL }}libs/jqwidgets-2.9.0/jqwidgets/jqxscrollbar.js"></script>
+    <script type="text/javascript" src="{{ STATIC_URL }}libs/jqwidgets-2.9.0/jqwidgets/jqxmenu.js"></script>
+    <script type="text/javascript" src="{{ STATIC_URL }}libs/jqwidgets-2.9.0/jqwidgets/jqxcheckbox.js"></script>
+    <script type="text/javascript" src="{{ STATIC_URL }}libs/jqwidgets-2.9.0/jqwidgets/jqxlistbox.js"></script>
+    <script type="text/javascript" src="{{ STATIC_URL }}libs/jqwidgets-2.9.0/jqwidgets/jqxdropdownlist.js"></script>
+    <script type="text/javascript" src="{{ STATIC_URL }}libs/jqwidgets-2.9.0/jqwidgets/jqxgrid.js"></script>
+    <script type="text/javascript" src="{{ STATIC_URL }}libs/jqwidgets-2.9.0/jqwidgets/jqxgrid.sort.js"></script>
+    <script type="text/javascript" src="{{ STATIC_URL }}libs/jqwidgets-2.9.0/jqwidgets/jqxgrid.pager.js"></script>
+    <script type="text/javascript" src="{{ STATIC_URL }}libs/jqwidgets-2.9.0/jqwidgets/jqxgrid.selection.js"></script>
+    <script type="text/javascript" src="{{ STATIC_URL }}libs/jqwidgets-2.9.0/jqwidgets/jqxgrid.columnsresize.js"></script>
+    <script type="text/javascript" src="{{ STATIC_URL }}libs/jqwidgets-2.9.0/jqwidgets/jqxgrid.aggregates.js"></script>
+    <script type="text/javascript" src="{{ STATIC_URL }}libs/jqwidgets-2.9.0/jqwidgets/jqxdata.js"></script>
+    <script type="text/javascript" src="{{ STATIC_URL }}libs/jqwidgets-2.9.0/jqwidgets/jqxgrid.edit.js"></script>
+    <script type="text/javascript" src="{{ STATIC_URL }}libs/jqwidgets-2.9.0/jqwidgets/jqxcombobox.js"></script>
+
+    <!-- Форматирование дат -->
+    <script type="text/javascript" src="{{ STATIC_URL }}libs/moment/moment.min.js"></script>
+
+    <!-- Вспомогательные разные функции -->
+    <script src="{{ STATIC_URL }}js/uu_utils.js"></script>
+
+    <style>
+
+        /* Переопределяем курсор над ячейками на excel-евский */
+        .jqx-grid-cell {
+            cursor: url("{{ STATIC_URL }}img/excel_cursor.png"), pointer;
+        }
+
+        /*
+            Эти 2 стиля ставятся для ячеек если ни одной записи учета или для пустых строк под
+            строками с данными. В обоих случаях курсор покажем обычный.
+        */
+        .jqx-grid-cleared-cell, .jqx-grid-empty-cell  {
+            cursor: default;
+        }
+
+        /*
+            По умолчанию у заголовков таблицы z-index 494 почему-то в jqxGrid установлен
+            Тут мы его сбрасываем чтобы при проекруте заголовок был невидим (был под нашими fixed шапкой).
+        */
+        .jqx-grid-column-header {
+            z-index: 1 !important;
+        }
+
+        /* Высоту заголовка меняем чтобы там номера недель и даты показывать */
+        .jqx-grid-header
+        {
+            height: 40px !important;
+        }
+
+    </style>
+
+{% endblock %}
+
+
 {% block ana_active %} class="active"{% endblock %}
 
 {% block lk_content %}
 
-        Анализ
+    <script>
+
+        $(document).ready(function () {
+
+            // Получаем данные с сервера и форматируем столбцы с суммами
+            var data = JSON.parse('{{ anaDataJson|escapejs }}');
+            for(var i=0; i<data.length; ++i){
+                var row = data[i];
+                Object.keys(row).forEach(function(k, v){
+                    if (k != 'category'){
+                        if (row[k] == null){
+                            row[k] = 0;
+                        }
+                        row[k] = uuFormatCurrency(parseFloat(row[k]), false);
+                    }
+                })
+            }
+
+            var dataAdapter = new $.jqx.dataAdapter({
+                localdata: data,
+                datatype: "array"
+            });
+
+            function getCurrencyAgregatesRenderer(fieldName){
+                function agregatesRenderer(){
+                    var rows = $("#uuGrid").jqxGrid('getrows');
+                    var agVal = 0;
+                    for (var i=0; i<rows.length; ++i){
+                        agVal += parseFloat(String(rows[i][fieldName]).replace('р.', '').replace(' ', ''));
+                    }
+                    return "<div style='padding-top: 4px; text-align: right; padding-right: 2px;'>" +
+                            uuFormatCurrency(agVal, false) + "</div>";
+                }
+                return agregatesRenderer;
+            }
+
+            // Тут формируем набор колонок для грида - это либо номера недель либо одна длинная пустая
+            // колонка если ни одной записи.
+            var gridColumns = [];
+            gridColumns.push({
+                text: '<br />Категория',
+                datafield: 'category',
+                width: 175
+            });
+            var gridFullWidth = gridColumns[gridColumns.length-1].width;
+            if (data.length == 0) {
+                gridColumns.push({
+                    text: '',
+                    datafield: null,
+                    width: 200
+                });
+                gridFullWidth += gridColumns[gridColumns.length-1].width;
+            } else {
+                Object.keys(data[0]).forEach(function(k, v){
+                    if (k != 'category') {
+                        gridColumns.push({
+                            // 'Неделя 28<br />8 - 14 июл'
+                            text: 'Неделя ' + k + "<br />" + uuFormatWeekNumberToDates(k),
+                            datafield: k,
+                            width: 100,
+                            cellsalign: 'right',
+                            aggregatesrenderer: getCurrencyAgregatesRenderer(k)
+                        });
+                        gridFullWidth += gridColumns[gridColumns.length-1].width;
+                    }
+                });
+            }
+
+            $("#uuGrid").jqxGrid({
+                theme: 'darkblue',
+                width: Math.min(860, gridFullWidth),
+                selectionmode: 'multiplecellsextended',
+                autoheight: true,
+                editable: false,
+                showaggregates: true,
+                showstatusbar: true,
+                statusbarheight: 25,
+                columns: gridColumns,
+                source: dataAdapter
+            });
+
+            // Установка русской строки для пустого грида (вместо дефолтовой No data to display)
+            uuLocalizeJqxGrid("uuGrid");
+        });
+
+    </script>
+
+    <div style="padding-bottom: 7px;">
+
+        <label class="radio inline">
+          <input type="radio" name="period" value="option1" checked="true"> по неделям
+        </label>
+        <label class="radio inline muted">
+          <input type="radio" name="period" value="option2" disabled="disabled"> по месяцам (скоро)
+        </label>
+        <label class="radio inline muted">
+          <input type="radio" name="period" value="option3" disabled="disabled"> по кварталам (скоро)
+        </label>
+        <label class="radio inline muted">
+          <input type="radio" name="period" value="option3" disabled="disabled"> по годам (скоро)
+        </label>
+
+    </div>
+
+    <div style="padding-bottom: 200px;">
+        <div id='uuGrid' style="border: 0px;"></div>
+    </div>
 
 {% endblock %}
