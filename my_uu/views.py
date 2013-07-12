@@ -147,14 +147,18 @@ def uuAdmLoginRequired(f):
     return uuAdmLoginRequiredWrapper
 
 # Декоратор до вызова view сохраняет в журнал событие
-def uuTrackEvent(eventConstant):
-    def uuTrackEventDecor(f):
+def uuTrackEventDecor(eventConstant):
+    def uuTrackEventDecorImpl(f):
         def uuTrackEventWrapper(request, *args, **kwargs):
             # Отслеживаем (сохраняем в журнал) это действие юзера
-            request.user.eventlog_set.create(event = eventConstant)
+            request.user.eventlog_set.create(event = my_uu.models.Event.objects.get(id = eventConstant))
             return f(request, *args, **kwargs)
         return uuTrackEventWrapper
-    return uuTrackEventDecor
+    return uuTrackEventDecorImpl
+
+# Сохраняет запись о событии
+def uuTrackEventDynamic(request, eventConstant):
+    request.user.eventlog_set.create(event = my_uu.models.Event.objects.get(id = eventConstant))
 
 
 def _getAccountBalanceList(request):
@@ -166,7 +170,7 @@ def _getAccountBalanceList(request):
 
 # Главная страница личного кабиета
 @uu_login_required
-@uuTrackEvent(my_uu.models.EVENT_VISIT_UCH)
+@uuTrackEventDecor(my_uu.models.Event.VISIT_UCH)
 def lk_uch(request):
 
     return render(request, 'lk_uch.html', {
@@ -181,12 +185,8 @@ def lk_uch(request):
 
 # Страница Настройки личного кабиета
 @uu_login_required
-@uuTrackEvent(my_uu.models.EVENT_VISIT_SET)
+@uuTrackEventDecor(my_uu.models.Event.VISIT_SET)
 def lk_set(request):
-
-    # Отслеживаем (сохраняем в журнал) это действие юзера
-    request.user.eventlog_set.create(event = my_uu.models.EVENT_VISIT_UCH)
-
     import json
 
     # Получаем счета и категории с указанием количества записей
@@ -208,7 +208,7 @@ def lk_set(request):
 
 # Страница Анализ личного кабиета
 @uu_login_required
-@uuTrackEvent(my_uu.models.EVENT_VISIT_ANA)
+@uuTrackEventDecor(my_uu.models.Event.VISIT_ANA)
 def lk_ana(request):
 
     # Уникальный список категорий
@@ -227,7 +227,7 @@ def lk_ana(request):
         for (i, item) in enumerate(categoryList):
 
             # Получаем суммы по дням (только для расходов)
-            sumForDays = request.user.uchet_set.filter(category = item, utype = my_uu.models.UTYPE_RASHOD)
+            sumForDays = request.user.uchet_set.filter(category = item, utype = my_uu.models.UType.RASHOD)
             sumForDays = sumForDays.values('date').distinct()
             sumForDays = sumForDays.annotate(sum = Sum('sum'))
 
@@ -261,14 +261,14 @@ def lk_ana(request):
 
 # Страница импорта
 @uu_login_required
-@uuTrackEvent(my_uu.models.EVENT_VISIT_IMP)
+@uuTrackEventDecor(my_uu.models.Event.VISIT_IMP)
 def lk_imp(request):
     return render(request, 'lk_imp.html', { 'request': request })
 
 
 # Импорт данных через аякс
 @uu_login_required
-@uuTrackEvent(my_uu.models.EVENT_IMP)
+@uuTrackEventDecor(my_uu.models.Event.IMP)
 def lk_imp_ajax(request):
     importedData = json.loads(request.body)
 
@@ -336,11 +336,11 @@ def lk_save_uchet_ajax(request):
         # Получаем id строки на сервере если есть и удаляем лишние поля (чтоб не вылазило ошибки при update)
         serverRowId = None
         if 'serverRowId' in r:
-            request.user.eventlog_set.create(event=my_uu.models.EVENT_EDT_UCH)
+            uuTrackEventDynamic(request, my_uu.models.Event.EDT_UCH)
             serverRowId = rowDbData['serverRowId']
             del rowDbData['serverRowId']
         else:
-            request.user.eventlog_set.create(event=my_uu.models.EVENT_ADD_UCH)
+            uuTrackEventDynamic(request, my_uu.models.Event.ADD_UCH)
 
         del rowDbData['uid']
 
@@ -364,7 +364,7 @@ def lk_save_uchet_ajax(request):
 
 # Удалить строку учета (через Аякс вызывается)
 @uu_login_required
-@uuTrackEvent(my_uu.models.EVENT_DEL_UCH)
+@uuTrackEventDecor(my_uu.models.Event.DEL_UCH)
 def lk_delete_uchet_ajax(request):
     rowForDelete = json.loads(request.POST['rowForDelete'])
     rowId = rowForDelete['serverRowId']
@@ -406,10 +406,10 @@ def _lk_save_settings_ajax(request, userPropName, modelClass):
 
     # Создаем новый или изменяем существующий счет
     if 'id' in newAccountData:
-        request.user.eventlog_set.create(event=my_uu.models.EVENT_EDT_SET)
+        uuTrackEventDynamic(request, my_uu.models.Event.EDT_SET)
         a = getattr(request.user, userPropName).get(id = newAccountData['id'])
     else:
-        request.user.eventlog_set.create(event=my_uu.models.EVENT_ADD_SET)
+        uuTrackEventDynamic(request, my_uu.models.Event.ADD_SET)
         a = modelClass()
         a.user = request.user
 
@@ -436,7 +436,7 @@ def _lk_save_settings_ajax(request, userPropName, modelClass):
 
 
 @uu_login_required
-@uuTrackEvent(my_uu.models.EVENT_DEL_SET)
+@uuTrackEventDecor(my_uu.models.Event.DEL_SET)
 def _lk_delete_settings_ajax(request, userPropName):
     try:
 

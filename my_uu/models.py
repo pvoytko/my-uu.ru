@@ -24,9 +24,9 @@ class Category(models.Model):
 class UType(models.Model):
     name = models.CharField(max_length=255, unique=True)
 
-UTYPE_RASHOD = UType.objects.get(id=1)
-UTYPE_DOHOD = UType.objects.get(id=2)
-UTYPE_TRANSFER = UType.objects.get(id=3)
+    RASHOD = 1
+    DOHOD = 2
+    PEREVOD = 3
 
 
 class Uchet(models.Model):
@@ -48,19 +48,17 @@ class Event(models.Model):
 
     name = models.CharField(max_length=255, unique=True)
 
-
-# Константы-события (см. комментарии к ним в базе).
-EVENT_VISIT_UCH = Event.objects.get(id=1)
-EVENT_VISIT_ANA = Event.objects.get(id=2)
-EVENT_VISIT_SET = Event.objects.get(id=3)
-EVENT_VISIT_IMP = Event.objects.get(id=4)
-EVENT_ADD_UCH = Event.objects.get(id=5)
-EVENT_EDT_UCH = Event.objects.get(id=6)
-EVENT_DEL_UCH = Event.objects.get(id=7)
-EVENT_IMP = Event.objects.get(id=8)
-EVENT_ADD_SET = Event.objects.get(id=9)
-EVENT_EDT_SET = Event.objects.get(id=10)
-EVENT_DEL_SET = Event.objects.get(id=11)
+    VISIT_UCH = 1
+    VISIT_ANA = 2
+    VISIT_SET = 3
+    VISIT_IMP = 4
+    ADD_UCH = 5
+    EDT_UCH = 6
+    DEL_UCH = 7
+    IMP = 8
+    ADD_SET = 9
+    EDT_SET = 10
+    DEL_SET = 11
 
 
 # Журнал событий
