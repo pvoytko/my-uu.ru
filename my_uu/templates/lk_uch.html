@@ -505,7 +505,8 @@
                         this.createEditor = function(row, column, editor){
                             editor.jqxDropDownList({
                                 autoDropDownHeight: true,
-                                source: valuesList
+                                source: valuesList,
+                                dropDownWidth: 275
                             });
                             /* С помощью этого обработчика мы скрываем выпадающий список сразу после выбора */
                             $("#dropdownlisteditoruuGrid" + datafield).bind('close', function(event){
@@ -636,7 +637,7 @@
                             {
                                 text: 'Категория',
                                 datafield: 'category',
-                                width: 100,
+                                width: 150,
                                 cellclassname: editedRowsServerSync.getCellClassNameGridCallback,
                                 columntype: 'dropdownlist',
                                 createeditor: categoryInplaceDropDown.createEditor,

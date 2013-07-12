@@ -154,24 +154,28 @@
 
     </script>
 
-    <div style="padding-bottom: 7px;">
+    <h5 style="display: inline;">Анализ расходов по периодам</h5>
+    <div style="padding-bottom: 7px; display: inline-block; position: relative; top:-4px; padding-left: 12px;">
 
         <label class="radio inline">
           <input type="radio" name="period" value="option1" checked="true"> по неделям
         </label>
-        <label class="radio inline muted">
-          <input type="radio" name="period" value="option2" disabled="disabled"> по месяцам (скоро)
+        <label class="radio inline muted" style="margin-left: 40px;">
+          <span class="mutes">скоро:</span>
         </label>
         <label class="radio inline muted">
-          <input type="radio" name="period" value="option3" disabled="disabled"> по кварталам (скоро)
+          <input type="radio" name="period" value="option2" disabled="disabled"> по месяцам
         </label>
         <label class="radio inline muted">
-          <input type="radio" name="period" value="option3" disabled="disabled"> по годам (скоро)
+          <input type="radio" name="period" value="option3" disabled="disabled"> по кварталам
+        </label>
+        <label class="radio inline muted">
+          <input type="radio" name="period" value="option3" disabled="disabled"> по годам
         </label>
 
     </div>
 
-    <div style="padding-bottom: 200px;">
+    <div style="padding-bottom: 50px;">
         <div id='uuGrid' style="border: 0px;"></div>
     </div>
 

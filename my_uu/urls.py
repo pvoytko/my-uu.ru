@@ -27,6 +27,11 @@ urlpatterns = patterns('',
     url(r'^lk/delete_account_ajax/$', 'my_uu.views.lk_delete_account_ajax'),
     url(r'^lk/save_category_ajax/$', 'my_uu.views.lk_save_category_ajax'),
     url(r'^lk/delete_category_ajax/$', 'my_uu.views.lk_delete_category_ajax'),
+    url(r'^lk/imp/$', 'my_uu.views.lk_imp'),
+    url(r'^lk/imp_ajax/$', 'my_uu.views.lk_imp_ajax'),
+
+    # Административная часть
+    url(r'^adm/act/$', 'my_uu.views.adm_act'),
 )
 
 from django.contrib.staticfiles.urls import staticfiles_urlpatterns

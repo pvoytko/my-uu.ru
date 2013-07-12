@@ -3,7 +3,7 @@ from django.core.mail.message import EmailMessage
 from django.core.urlresolvers import reverse
 from django.http import HttpResponse
 from django.contrib.auth.forms import AuthenticationForm
-from django.http.response import HttpResponseRedirect
+from django.http.response import HttpResponseRedirect, Http404
 from django.shortcuts import render
 from django.contrib.auth.models import User
 from django.contrib.auth import login, authenticate
@@ -137,6 +137,25 @@ def uu_login_required(f):
     from django.contrib.auth.decorators import login_required
     return login_required(f, login_url='/begin/')
 
+# Требует администраторского логина. Иначе - выкидывает на 404 ошибку.
+def uuAdmLoginRequired(f):
+    def uuAdmLoginRequiredWrapper(request, *args, **kwargs):
+        if request.user.email == 'pvoytko@gmail.com':
+            return f(request, *args, **kwargs)
+        else:
+            raise Http404()
+    return uuAdmLoginRequiredWrapper
+
+# Декоратор до вызова view сохраняет в журнал событие
+def uuTrackEvent(eventConstant):
+    def uuTrackEventDecor(f):
+        def uuTrackEventWrapper(request, *args, **kwargs):
+            # Отслеживаем (сохраняем в журнал) это действие юзера
+            request.user.eventlog_set.create(event = eventConstant)
+            return f(request, *args, **kwargs)
+        return uuTrackEventWrapper
+    return uuTrackEventDecor
+
 
 def _getAccountBalanceList(request):
     accountBalanceList = my_uu.models.Account.objects.filter(user=request.user)
@@ -147,6 +166,7 @@ def _getAccountBalanceList(request):
 
 # Главная страница личного кабиета
 @uu_login_required
+@uuTrackEvent(my_uu.models.EVENT_VISIT_UCH)
 def lk_uch(request):
 
     return render(request, 'lk_uch.html', {
@@ -161,7 +181,12 @@ def lk_uch(request):
 
 # Страница Настройки личного кабиета
 @uu_login_required
+@uuTrackEvent(my_uu.models.EVENT_VISIT_SET)
 def lk_set(request):
+
+    # Отслеживаем (сохраняем в журнал) это действие юзера
+    request.user.eventlog_set.create(event = my_uu.models.EVENT_VISIT_UCH)
+
     import json
 
     # Получаем счета и категории с указанием количества записей
@@ -183,6 +208,7 @@ def lk_set(request):
 
 # Страница Анализ личного кабиета
 @uu_login_required
+@uuTrackEvent(my_uu.models.EVENT_VISIT_ANA)
 def lk_ana(request):
 
     # Уникальный список категорий
@@ -200,27 +226,68 @@ def lk_ana(request):
         # Для каждой категории
         for (i, item) in enumerate(categoryList):
 
-            # Получаем суммы по неделям
-            sumForWeeks = request.user.uchet_set.filter(category = item).values('date').annotate(sum = Sum('sum'))['sum']
-            sum = request.user.uchet_set.filter(category = item).aggregate(sum = Sum('sum'))['sum']
+            # Получаем суммы по дням (только для расходов)
+            sumForDays = request.user.uchet_set.filter(category = item, utype = my_uu.models.UTYPE_RASHOD)
+            sumForDays = sumForDays.values('date').distinct()
+            sumForDays = sumForDays.annotate(sum = Sum('sum'))
 
-            # Номера недель
-            minWeek = max(minMaxDate['min_date'], datetime.date(2013, 1, 1)).isocalendar()[1]
-            maxWeek = min(minMaxDate['max_date'], datetime.date(2013, 12, 31)).isocalendar()[1]
+            # Если ни одной суммы для этой категории, то такую категорию пропускаем
+            if sumForDays.count() > 0:
 
-            # Формируем словарь с суммами по неделям для категори и сохраняем его в список
-            # Если ни одной суммы для этой категории нет, то такую категорию не показываем.
-            if len(sumForWeeks) > 0:
+                # Номера недель
+                minWeek = max(minMaxDate['min_date'], datetime.date(2013, 1, 1)).isocalendar()[1]
+                maxWeek = min(minMaxDate['max_date'], datetime.date(2013, 12, 31)).isocalendar()[1]
+
+                # Формируем словарь с суммами по неделям для категорий (сначала заполняем его нулями)
+                # Чтобы для каждой недели стояло значение (этого ждет клиентский код).
                 d = dict()
                 d['category'] = item.name
                 for w in xrange(minWeek, maxWeek+1):
-                    d[str(w)] = sum
+                    d[str(w)] = 0
+
+                # Сейчас проходим по всем дням и суммам и плюсуем эти суммы к неделям
+                for sumForDay in sumForDays:
+                    weekNum = sumForDay['date'].isocalendar()[1]
+                    d[str(weekNum)] += sumForDay['sum']
+
+                # Сохраняем результат
                 l.append(d)
 
     return render(request, 'lk_ana.html', {
         'request': request,
         'anaDataJson': json.dumps(l, cls=DjangoJSONEncoder)
     } )
+
+
+# Страница импорта
+@uu_login_required
+@uuTrackEvent(my_uu.models.EVENT_VISIT_IMP)
+def lk_imp(request):
+    return render(request, 'lk_imp.html', { 'request': request })
+
+
+# Импорт данных через аякс
+@uu_login_required
+@uuTrackEvent(my_uu.models.EVENT_IMP)
+def lk_imp_ajax(request):
+    importedData = json.loads(request.body)
+
+    def getOrCreateAccount(accName):
+        return request.user.account_set.get_or_create(name = accName)[0]
+
+    def getOrCreateCategory(catName):
+        return request.user.category_set.get_or_create(name = catName)[0]
+
+    for uchet in importedData:
+        request.user.uchet_set.create(
+            date = datetime.datetime.strptime(uchet[0], '%d.%m.%Y'),
+            utype = my_uu.models.UType.objects.get(name__iexact = uchet[1]),
+            sum = uchet[2],
+            account = getOrCreateAccount(uchet[3]),
+            category = getOrCreateCategory(uchet[4]),
+            comment = uchet[5],
+        )
+    return JsonResponseWithStatusOk(importedCount = len(importedData))
 
 
 class JsonResponseWithStatusError(HttpResponse):
@@ -269,8 +336,12 @@ def lk_save_uchet_ajax(request):
         # Получаем id строки на сервере если есть и удаляем лишние поля (чтоб не вылазило ошибки при update)
         serverRowId = None
         if 'serverRowId' in r:
+            request.user.eventlog_set.create(event=my_uu.models.EVENT_EDT_UCH)
             serverRowId = rowDbData['serverRowId']
             del rowDbData['serverRowId']
+        else:
+            request.user.eventlog_set.create(event=my_uu.models.EVENT_ADD_UCH)
+
         del rowDbData['uid']
 
         # Обновление, если есть serverRowId
@@ -293,6 +364,7 @@ def lk_save_uchet_ajax(request):
 
 # Удалить строку учета (через Аякс вызывается)
 @uu_login_required
+@uuTrackEvent(my_uu.models.EVENT_DEL_UCH)
 def lk_delete_uchet_ajax(request):
     rowForDelete = json.loads(request.POST['rowForDelete'])
     rowId = rowForDelete['serverRowId']
@@ -334,8 +406,10 @@ def _lk_save_settings_ajax(request, userPropName, modelClass):
 
     # Создаем новый или изменяем существующий счет
     if 'id' in newAccountData:
+        request.user.eventlog_set.create(event=my_uu.models.EVENT_EDT_SET)
         a = getattr(request.user, userPropName).get(id = newAccountData['id'])
     else:
+        request.user.eventlog_set.create(event=my_uu.models.EVENT_ADD_SET)
         a = modelClass()
         a.user = request.user
 
@@ -362,6 +436,7 @@ def _lk_save_settings_ajax(request, userPropName, modelClass):
 
 
 @uu_login_required
+@uuTrackEvent(my_uu.models.EVENT_DEL_SET)
 def _lk_delete_settings_ajax(request, userPropName):
     try:
 
@@ -403,3 +478,12 @@ def lk_save_category_ajax(request):
 @uu_login_required
 def lk_delete_category_ajax(request):
     return _lk_delete_settings_ajax(request, 'category_set')
+
+
+# Страница Анализ личного кабиета
+@uuAdmLoginRequired
+def adm_act(request):
+    return render(request, 'adm_act.html', {
+        'request': request,
+        'eventLog': reversed(my_uu.models.EventLog.objects.all().order_by('-datetime')[:1000])
+    } )

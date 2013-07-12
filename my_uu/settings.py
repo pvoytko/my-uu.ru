@@ -42,7 +42,7 @@ ALLOWED_HOSTS = []
 # http://en.wikipedia.org/wiki/List_of_tz_zones_by_name
 # although not all choices may be available on all operating systems.
 # In a Windows environment this must be set to your system time zone.
-TIME_ZONE = 'America/Chicago'
+TIME_ZONE = 'Europe/Moscow'
 
 # Language code for this installation. All choices can be found here:
 # http://www.i18nguy.com/unicode/language-identifiers.html
@@ -58,8 +58,10 @@ USE_I18N = True
 # calendars according to the current locale.
 USE_L10N = True
 
-# If you set this to False, Django will not use timezone-aware datetimes.
-USE_TZ = True
+# Эту настройку я выставил в False
+# Если оставить ее True, то в БД хранится время минус 4 часа от текущего у меня на часх.
+# Видимо Джанга нормализует к UTC время. Мне это нахрен не надо.
+USE_TZ = False
 
 # Absolute filesystem path to the directory that will hold user-uploaded files.
 # Example: "/var/www/example.com/media/"

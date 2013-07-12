@@ -1,0 +1,194 @@
+{% extends 'lk_base.html' %}
+
+{% block add_to_head %}
+    <script src="http://code.jquery.com/jquery-1.9.1.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.1.1/angular.min.js"></script>
+{% endblock %}
+
+{% block lk_content %}
+
+    <script>
+        function ImportCtrl($scope, $http){
+
+            $scope.errorText = "";
+            $scope.inputText = "";
+            $scope.isShowError = false;
+            $scope.isShowSending = false;
+            $scope.isShowSuccess = false;
+
+            // Импортирвоать данные из поля ввода
+            $scope.importData = function(){
+
+                // Класс исключения. И функция проверки условия.
+                // Проверяет условие и если ложно, то кидает исключение с переданым текстом
+                function EnsureFailedException(msg){
+                    this.msg = msg;
+                }
+                function ensure(expression, errText, line, changeFormat, errorFieldValue){
+                    if (!expression){
+                        var m = ""
+                        if (line != undefined){
+                            m += "Ошибочная строка под номером " + line + ". ";
+                        }
+                        m += errText;
+                        if (errorFieldValue != undefined) {
+                            m = m + " Ошибочное значение: '" + errorFieldValue + "'."
+                        }
+                        if (changeFormat == true) {
+                            m = m + " Скорректируйте формат входных данных и повторите попытку."
+                        }
+                        throw new EnsureFailedException(m);
+                    }
+                }
+
+                try {
+
+                    // Проверка на пустоту всего поля
+                    var inp = $scope.inputText;
+                    ensure($.trim(inp).length > 0, "Данные для импорта пусты. Вставьте данные и повторите попытку.");
+
+                    // Удаляем полностью пустые строки сначала и с конца.
+                    lines = $scope.inputText.split('\n');
+                    while(lines.length > 0 && $.trim(lines[0]).length == 0){
+                        lines.splice(0, 1);
+                    }
+                    while(lines.length > 0 && $.trim(lines[lines.length-1]).length == 0){
+                        lines.splice(lines.length-1, 1);
+                    }
+
+
+                    // Проверка на числое полей в заполненных строках.
+                    for (var i=0; i<lines.length; ++i){
+                        fields = lines[i].split('\t');
+                        var msg = "Количество полей должно быть 6. А их " + fields.length + ".";
+                        ensure(fields.length == 6, msg, i+1, true);
+                    }
+
+                    var dataForImport = [];
+
+                    // Проверка полей
+                    for (var i=0; i<lines.length; ++i){
+                        fields = lines[i].split('\t');
+
+                        // Проверка поля дата
+                        var fieldDate = $.trim(fields[0]);
+                        var cond = fieldDate.match(/(\d\d).(\d\d).(\d\d\d\d)/) != undefined;
+                        var msg = "Значение поля 1 (дата) не соответствует требуемому формату 'ДД.ММ.ГГГГ'.";
+                        ensure(cond, msg, i+1, true, fields[0]);
+
+                        // Проверка поля тип
+                        var fieldType = $.trim(fields[1]).toLowerCase();
+                        var cond = fieldType == 'расход' || fieldType == 'доход' || fieldType == 'перевод';
+                        var msg = "Значение поля 2 (тип) должно быть 'расход', 'доход' или 'перевод'.";
+                        ensure(cond, msg, i+1, true, fields[1]);
+
+                        // Проверка поля сумма
+                        var fieldSum = $.trim(fields[2]).replace(/[^0-9\,\.+-]/g, '').replace(',', '.');
+                        var cond = fieldSum.length > 0 && (typeof parseFloat(fieldSum) == "number") && (fieldSum.match(/\d/) != undefined);
+                        var msg = "Значение поля 3 (сумма) должно быть числом. Разрешаются знаки '+-,.'. Не удалось преобразовать значение к числу.";
+                        ensure(cond, msg, i+1, true, fields[2]);
+
+                        // Проверка поля счет
+                        var fieldAccount = fields[3];
+                        var cond = fieldAccount.length > 0;
+                        var msg = "Значение поля 4 (счет) не должно быть пустым.";
+                        ensure(cond, msg, i+1, true, fields[3]);
+
+                        // Проверка поля категория
+                        var fieldCategory = fields[4];
+                        var cond = fieldCategory.length > 0;
+                        var msg = "Значение поля 5 (категория) не должно быть пустым. Можете использовать значение 'Не указана'.";
+                        ensure(cond, msg, i+1, true, fields[4]);
+
+                        // Для комментов никакой проверки
+                        var fieldComment = fields[5];
+
+                        dataForImport.push([
+                            fieldDate, fieldType, fieldSum, fieldAccount, fieldCategory, fieldComment
+                        ]);
+                    }
+
+                    // Проверка завершилась успешно и начинаем отправку
+                    $scope._startImport(dataForImport);
+
+
+                // Обраотка исключений ошибка проверки условия
+                } catch(e) {
+                    if (e instanceof EnsureFailedException){
+                        $scope._showError(e.msg);
+                        return;
+                    }
+                    throw e;
+                }
+
+            }
+
+            // Показать текст ошибки
+            $scope._showError = function(errText){
+                $scope.errorText = errText;
+                $scope.isShowError = true;
+                $scope.isShowSuccess = false;
+                $scope.isShowSending = false;
+            }
+
+            // Сообщение что пошла отправка и отправляем
+            $scope._startImport = function(dataForImport){
+                $scope.isShowSuccess = false;
+                $scope.isShowError = false;
+                $scope.isShowSending = true;
+                httpObj = $http({
+                    method: 'POST',
+                    url: "{% url 'my_uu.views.lk_imp_ajax' %}",
+                    data: JSON.stringify(dataForImport),
+                    cache: false,
+                    timeout: 15000
+                }).success(function(data, status){
+                    $scope.isShowSending = false;
+                    $scope.importedCount = data.importedCount;
+                    $scope.isShowSuccess = true;
+                }).error(function(data, status){
+                    $scope._showError("Ошибка связи с сервером. Код " + status);
+                });
+
+            }
+        }
+    </script>
+
+    <div ng-app ng-controller="ImportCtrl">
+         <ng-include src="'/static/ang/import.html'" />
+    </div>
+
+    <div>
+        <h5 class="text-warning">Зачем</h5>
+        <p>
+            Функция импорта предназначена для того, чтобы из другого источника, в котором вы вели учет прежде, накопленные вами данные учета перенести в сервис «Мой удобный учет». Сделать это можно за несколько кликов.
+        </p>
+        <h5 class="text-warning">Как выполнить импорт, пошаговый алгоритм</h5>
+        <ol style="width: 700px;">
+            <li><b>Экспортируйте</b> ваши данные учета из другого источника в таблицу Ексель. Таблица Ексель используется как промежуточный формат.</li>
+            <li><b>Скопируйте и вставьте несколько строк</b> учета из таблицы Ексель через буфер обмена в поле ввода для вставки данных.</li>
+            <li><b>Нажмите кнопку «Импортировать»</b>. Увидите ошибки, если формат входных данных не соответствует ожидаемому.</li>
+            <li><b>Исправьте формат входных данных</b> в книге Ексель и повторите импорт нескольких строк. Корректируя формат входных данных добейтесь безошибочного импорта сначала нескольких строк.</li>
+            <li><b>Импортируйте все ваши данные</b> после того как отладите импорт на нескольких строках.</li>
+        </ol>
+        <h5 class="text-warning">Требования к формату входных данных</h5>
+        <ul>
+            <li>Данные по каждой новой операции учета должны идти с новой строки.</li>
+            <li>Поля должны быть разделены символом табуляции.</li>
+            <li>Поля должны идти строго в перечисленном далее порядке.</li>
+            <li>Поля должны иметь строго указанный далее формат. </li>
+            <li>Количество полей в каждой строке должно быть ровно 6.</li>
+            <li>Поле 1 «Дата»: формат значения ДД.ММ.ГГГГ.</li>
+            <li>Поле 2 «Тип»: должно быть: «расход», «доход», «перевод». Регистр не важен.</li>
+            <li>Поле 3 «Сумма»: число, кроме цифр могут быть знаки «+ – . ,». Не цифры игнорируются.</li>
+            <li>Поле 4 «Счет»: строка. Если еще нет в системе, предварительно будет создан.</li>
+            <li>Поле 5 «Категория»: строка. Если еще нет в системе, предварительно будет создана.</li>
+            <li>Поле 6 «Комментарий»: строка, может быть пустой.</li>
+        </ul>
+        <h5 class="text-warning">Образец данных для импорта</h5>
+
+        <div style="height: 60px;" />
+
+    </div>
+
+{% endblock %}
