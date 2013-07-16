@@ -3,8 +3,9 @@
 
 import os
 
+IS_DEVELOPER_COMP = os.path.dirname(os.path.abspath(__file__)) == "D:\\HgRepos\\my-uu.ru\\my_uu"
 
-DEBUG = True
+DEBUG = IS_DEVELOPER_COMP
 TEMPLATE_DEBUG = DEBUG
 
 ADMINS = (

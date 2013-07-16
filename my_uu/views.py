@@ -323,8 +323,8 @@ def lk_save_uchet_ajax(request):
         rowDbData = copy.copy(r)
 
         # Шаг №1 - заменить названия счетов и категорий на их id в БД
-        rowDbData['account'] = my_uu.models.Account.objects.get(name=r['account'])
-        rowDbData['category'] = my_uu.models.Category.objects.get(name=r['category'])
+        rowDbData['account'] = my_uu.models.Account.objects.get(name=r['account'], user=request.user)
+        rowDbData['category'] = my_uu.models.Category.objects.get(name=r['category'], user=request.user)
         rowDbData['utype'] = my_uu.models.UType.objects.get(name=r['utype'])
         rowDbData['date'] = datetime.datetime.strptime(r['date'], '%d.%m.%Y')
         rowDbData['user'] = request.user
@@ -333,8 +333,9 @@ def lk_save_uchet_ajax(request):
         rowDbData['sum'] = r['sum'].replace(',', '.')
 
         # Если коммент очистить через del в jqxGrid, то на сервер приходят null. Преобразуем в пустые строки.
-        # Иначе в БД эксепшен получим.
-        rowDbData['comment'] = u'' if r['comment'] is None else r['comment']
+        # Иначе в БД эксепшен получим. Если зарегиться и добавить строку от нового юзера то коммент вообще
+        # такое поле отсутствует в прищедших данных.
+        rowDbData['comment'] = u'' if (('comment' not in r) or (r['comment'] is None)) else r['comment']
 
         # Получаем id строки на сервере если есть и удаляем лишние поля (чтоб не вылазило ошибки при update)
         serverRowId = None
