@@ -73,7 +73,7 @@ def register_user_ajax(request):
         u = User.objects.create_user(data['email'], data['email'], data['password'])
         u.save()
     except django.db.utils.IntegrityError as e:
-        if 'Duplicate entry' in str(e):
+        if u'Duplicate entry' in unicode(e):
             return HttpResponse('register_exists')
         raise
 
