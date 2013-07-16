@@ -5,16 +5,14 @@ from django.core.validators import MinLengthValidator
 
 class Account(models.Model):
     user = models.ForeignKey(django.contrib.auth.models.User)
-    name = models.CharField(max_length=255, unique=True, error_messages={
-        'unique': u'Такое название счета уже есть в системе.',
+    name = models.CharField(max_length=255, error_messages={
         'blank': u'Название счета не должно быть пустым.',
         'max_length': u'Название счета не должно быть более 255 символов длинной.'
     })
 
 class Category(models.Model):
     user = models.ForeignKey(django.contrib.auth.models.User)
-    name = models.CharField(max_length=255, unique=True, error_messages={
-        'unique': u'Такое название категории уже есть в системе.',
+    name = models.CharField(max_length=255, error_messages={
         'blank': u'Название категории не должно быть пустым.',
         'max_length': u'Название категории не должно быть более 255 символов длинной.'
     })
