@@ -26,12 +26,9 @@ def main(request):
     if request.user.id is not None:
         return HttpResponseRedirect(reverse('my_uu.views.lk_uch'))
 
-    if request.method == 'POST' and 'auth_button' in request.POST:
-        # return HttpResponse("Auth check")
-        pass
-
-    af = AuthenticationForm(data=request.POST)
-    return render(request, 'main.html', {'auth_form': af} )
+    # Эта страница используется вместо главной пока
+    return HttpResponseRedirect('http://rq2.land-page-service.ru/uu/')
+    # return render(request, 'main.html')
 
 
 # Отправка письма
