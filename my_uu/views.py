@@ -81,7 +81,7 @@ def register_user_ajax(request):
         raise
 
     # Для нового юзера надо создать счет и категорию
-    my_uu.models.Category.objects.create(name = 'Остальное', user = u).save()
+    my_uu.models.Category.objects.create(name = 'Не указана категория', user = u).save()
     my_uu.models.Category.objects.create(name = 'Жилье', user = u).save()
     my_uu.models.Category.objects.create(name = 'Питание', user = u).save()
     my_uu.models.Account.objects.create(name = 'Кошелек', user = u).save()
@@ -165,6 +165,8 @@ def _getAccountBalanceList(request):
     accountBalanceList = my_uu.models.Account.objects.filter(user=request.user)
     accountBalanceList = accountBalanceList.annotate(balance = Sum('uchet__sum'))
     accountBalanceList = accountBalanceList.order_by('id')
+    if len(accountBalanceList) > 14:
+        assert False, 'Слишком большое количество счетов, интерфейс пока не рассчитан на такое количество.'
     return list(accountBalanceList.values('id', 'name', 'balance'))
 
 
@@ -332,6 +334,10 @@ def lk_save_uchet_ajax(request):
 
         # С клиента приходят в формате с ",", меняем на "."
         rowDbData['sum'] = r['sum'].replace(',', '.')
+
+        # Если коммент очистить через del в jqxGrid, то на сервер приходят null. Преобразуем в пустые строки.
+        # Иначе в БД эксепшен получим.
+        rowDbData['comment'] = u'' if r['comment'] is None else r['comment']
 
         # Получаем id строки на сервере если есть и удаляем лишние поля (чтоб не вылазило ошибки при update)
         serverRowId = None

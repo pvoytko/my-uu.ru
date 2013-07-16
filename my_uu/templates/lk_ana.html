@@ -44,14 +44,6 @@
             cursor: default;
         }
 
-        /*
-            По умолчанию у заголовков таблицы z-index 494 почему-то в jqxGrid установлен
-            Тут мы его сбрасываем чтобы при проекруте заголовок был невидим (был под нашими fixed шапкой).
-        */
-        .jqx-grid-column-header {
-            z-index: 1 !important;
-        }
-
         /* Высоту заголовка меняем чтобы там номера недель и даты показывать */
         .jqx-grid-header
         {
@@ -109,7 +101,8 @@
             gridColumns.push({
                 text: '<br />Категория',
                 datafield: 'category',
-                width: 175
+                width: 175,
+                pinned: true
             });
             var gridFullWidth = gridColumns[gridColumns.length-1].width;
             if (data.length == 0) {
@@ -139,14 +132,26 @@
                 theme: 'darkblue',
                 width: Math.min(860, gridFullWidth),
                 selectionmode: 'multiplecellsextended',
-                autoheight: true,
                 editable: false,
+                height: calGridHeight(),
                 showaggregates: true,
                 showstatusbar: true,
                 statusbarheight: 25,
                 columns: gridColumns,
                 source: dataAdapter
             });
+
+            // Ресайз грида под высоту окна (20 пикс. запас снизу для статус-строки в хроме).
+            function calGridHeight(){
+                return Math.max(150, $(window).height() - $("#uuGrid").offset().top - 20);
+            };
+            function adjustGridHeightToWindowHeight(){
+                $("#uuGrid").jqxGrid({
+                    height: Math.max(150, calGridHeight())
+                });
+            };
+            adjustGridHeightToWindowHeight();
+            $(window).on('resize', adjustGridHeightToWindowHeight);
 
             // Установка русской строки для пустого грида (вместо дефолтовой No data to display)
             uuLocalizeJqxGrid("uuGrid");
@@ -155,6 +160,8 @@
     </script>
 
     <h5 style="display: inline;">Анализ расходов по периодам</h5>
+
+    <!-- Выбор группировки -->
     <div style="padding-bottom: 7px; display: inline-block; position: relative; top:-4px; padding-left: 12px;">
 
         <label class="radio inline">
@@ -175,8 +182,6 @@
 
     </div>
 
-    <div style="padding-bottom: 50px;">
-        <div id='uuGrid' style="border: 0px;"></div>
-    </div>
+    <div id='uuGrid' style="border: 0px;"></div>
 
 {% endblock %}

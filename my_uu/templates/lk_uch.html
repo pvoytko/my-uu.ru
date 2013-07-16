@@ -32,20 +32,42 @@
     <script src="{{ STATIC_URL }}js/uu_utils.js"></script>
 
     <style>
-        .balance {
+        .balance__cell {
             width: 100px;
-            border: 1px solid #449bca;
+            Verdana, Arial, sans-serif;
         }
-        .balance div {
-            width: 100px;
-            padding: 3px;
-            font-size: 13px;
-            color: #003451;
+        .balance__cell div {
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
         }
-        .balance-total{
+        .balance__account_block {
+            border-left: 1px solid #449bca;
+            border-right: 1px solid #449bca;
+            border-bottom: 1px solid #449bca;
+            border-top: 1px solid #449bca;
+            float: left;
+            width: 100px;
+            margin-left: -1px;
+            margin-top: -1px;
+            font-family: Verdana, Arial, sans-serif;
+            font-size: 13px;
+            color: rgb(0, 74, 115);
+        }
+        .balance__account_name {
+            padding-top: 4px;
+            padding-right: 3px;
+            padding-left: 3px;
+            font-weight: bold;
+            color: rgb(39, 100, 133);
+            font-size: 12px;
+        }
+        .balance__account_sum {
+            padding-bottom: 4px;
+            padding-right: 3px;
+            padding-left: 3px;
+        }
+        .balance__total{
             font-weight: bold;
         }
 
@@ -503,10 +525,13 @@
                         this.editedTypeRowInndex = -1;
                         this.nowInCloseHandler = false;
                         this.createEditor = function(row, column, editor){
+
                             editor.jqxDropDownList({
-                                autoDropDownHeight: true,
+                                autoDropDownHeight: (valuesList.length > 12) ? false: true,
+                                dropDownHeight: 300,
                                 source: valuesList,
-                                dropDownWidth: 275
+                                dropDownWidth: 275,
+                                enableBrowserBoundsDetection: true
                             });
                             /* С помощью этого обработчика мы скрываем выпадающий список сразу после выбора */
                             $("#dropdownlisteditoruuGrid" + datafield).bind('close', function(event){
@@ -579,7 +604,6 @@
                         height: calcGridHeightToNewRowsCount(data.length),
                         selectionmode: 'multiplecellsextended',
                         editable: true,
-                        editmode: 'dblclick',
                         columns: [
                             {
                                 text: '',
@@ -668,52 +692,55 @@
                     $('#uuGrid').jqxGrid({ enablebrowserselection: false});
 
                     // При клике на "-" (к примеру при вводе расхода -5 рублей) грид не включает режим редактирования
-                    // для ячейки суммы почему-то. Исправляем это поведение.
-                    $('#uuGrid').jqxGrid({ handlekeyboardnavigation: function(event) {
+                    // для ячейки суммы почему-то. Исправляем это поведение. Дя этого нам надо знать в каком режиме
+                    // грид. И если не в режиме редактирования еще, то выполнить доп. код.
+                    $('#uuGrid').jqxGrid({
 
-                        // Тестируем если нажат -
-                        var key = event.charCode ? event.charCode : event.keyCode ? event.keyCode : 0;
-                        if (key == 189) {
+                        handlekeyboardnavigation: function(event) {
 
-                            // Включаем режим редктирования для выделенной ячейки
-                            var cell = $('#uuGrid').jqxGrid('getselectedcell');
-                            $("#uuGrid").jqxGrid('begincelledit', cell.rowindex, cell.datafield);
+                            // Тестируем если нажат "-" и мы не в режиме редактирования
+                            // При этом не нажаты Ctrl и Alt ("Ctrl -" например отвечает за уменьшене массштаба
+                            // в браузере)
+                            var key = event.charCode ? event.charCode : event.keyCode ? event.keyCode : 0;
+                            var minusPressed = key == 189 && !event.altKey && !event.ctrlKey;
+                            var isNowInEditMode = $('.jqx-input').length != 0;
+                            if (isNowInEditMode == false && minusPressed) {
 
-                            // Конструкция ниже помещает в очередь интерпретатора JS задание вставить минус
-                            // в поле ввода и переместить курсор в конец в этом поле ввода. Если убрать setTimeout,
-                            // то в поле ввода тоже вставится минус но этот минус будет выделен, то есть при нажатии
-                            // любой клавишы юзером этот минус сотрется. Видимо так происходит потому что begincelledit
-                            // помещает событие focus в очередь, поэтому код снизу и работает, так как помещает
-                            // изменение текста после focus а не до.
-                            setTimeout(function(){
-                                $('.jqx-input').val('');
-                                $('.jqx-input').val('-');
-                            }, 10);
+                                // Включаем режим редктирования для выделенной ячейки
+                                var cell = $('#uuGrid').jqxGrid('getselectedcell');
+                                $("#uuGrid").jqxGrid('begincelledit', cell.rowindex, cell.datafield);
 
-                            // true сообщает в jqxGrid что использовать дефолтов обработчик НЕ надо мы обработали.
-                            return true;
-                        };
+                                // Конструкция ниже помещает в очередь интерпретатора JS задание вставить минус
+                                // в поле ввода и переместить курсор в конец в этом поле ввода. Если убрать setTimeout,
+                                // то в поле ввода тоже вставится минус но этот минус будет выделен, то есть при нажатии
+                                // любой клавишы юзером этот минус сотрется. Видимо так происходит потому что begincelledit
+                                // помещает событие focus в очередь, поэтому код снизу и работает, так как помещает
+                                // изменение текста после focus а не до.
+                                $('.jqx-input').one('focus', function(event){
+                                    setTimeout(function(){
+                                        $('.jqx-input').val('');
+                                        $('.jqx-input').val('-');
+                                    }, 0);
+                                });
 
-                        // false сообщает в jqxGrid что использовать дефолтов обработчик
-                        return false;
-                    }});
+                                // true сообщает в jqxGrid что использовать дефолтов обработчик НЕ надо мы обработали.
+                                return true;
+                            };
 
-                });
+                            // false сообщает в jqxGrid что использовать дефолтов обработчик
+                            return false;
+                        }
+                    });
 
-
-
-                // Делат шапку jqxGrid fixed (копируя слой поверх)
-                $(document).ready(function () {
+                    // Делат шапку jqxGrid fixed (копируя слой поверх)
                     var $elem = $('.jqx-grid-header'); // Original element with attached data
                     var $elem2 = $elem.clone().appendTo($elem.parent())
                     $elem2.css('position', 'fixed' );
                     $elem2.css('top', '111px' );
                     $elem2.css('z-index', '100');
                     $elem2.attr('uu-visible-header', '1')
-                });
 
-                // Устанавливаем обработчик на смену выделения чтобы выделенная ячейка была видима
-                $(document).ready(function () {
+                    // Устанавливаем обработчик на смену выделения чтобы выделенная ячейка была видима
                     $("#uuGrid").on('cellselect', function (event) {
 
                         // Скроллинг если ячейка выходит за рамки видимости сверху
@@ -734,10 +761,8 @@
                             $(window).scrollTop($(window).scrollTop() + (elemBottomRelToWin - footerTop) + 1);
                         };
                     });
-                });
 
-                // Устанавливаем обработчик на клик удаления строки
-                $(document).ready(function () {
+                    // Устанавливаем обработчик на клик удаления строки
                     $("#uuGrid").on('click', '[class = "deleteIcon"]', function (event) {
 
                         // На время пока запрос идет к серверу и ждем ответ выставляется атрибут disabled
@@ -792,7 +817,9 @@
                         }
 
                     })
+
                 });
+
             }
 
         </script>
@@ -801,72 +828,38 @@
             <div id='uuGrid' style="border: 0px solid grey; margin-top: -3px;"></div>
         </div>
 
-        <button id="btnAdd" class="btn btn-info" style='position: fixed; bottom: 65px; z-index: 101;'>Добавить</button>
-
-        <!-- Добалвение новой строки учета -->
-        <script>
-
-            $('#btnAdd').on('click', function(){
-
-                // Добавляем строку, перед этим увеличив высоту грида (чтобы избежать его собственного скроллинга)
-                var newHeight = adjustGridHeightToNewRowsCount($('#uuGrid').jqxGrid('getrows').length + 1);
-                $('#uuGrid').jqxGrid('addrow', null, {
-                    'date': moment().format('DD.MM.YYYY'),
-                    'utype': uTypeList[0],
-                    'sum': '0,00',
-                    'account': accountList[0],
-                    'category': categoryList[0]
-                });
-
-                // Снимаем выделение (ранее имевшееся) и выделяем первый столбец у добавленной строки
-                $("#uuGrid").jqxGrid('clearselection');
-                $("#uuGrid").jqxGrid('selectcell', $("#uuGrid").jqxGrid("getrows").length-1, 'sum');
-
-                // Эта пара вызовов делает grid активным (клавишы влево вправо вверх вниз начинают
-                // работать на нем). Если убрать эти вызовы то клавишы не работают пока не кликнем в грид.
-                $("#contentuuGrid").attr('tabindex', 2);
-                $("#contentuuGrid").focus();
-
-                // Скроллинг к последнему пикселю
-                $(window).scrollTop(1000 + newHeight);
-
-            });
-        </script>
-
         <div style="padding-bottom: 120px;"></div>
 
-        <div id="uuFooterFixed" style="position: fixed; height: 100px; background-color: white; z-index: 99; bottom: 0px; width: 860px; border-top: 10px solid #449bca;">
+        <script>
 
-            <script>
+            function BalanceCtrl($scope, balanceService){
 
-                function BalanceCtrl($scope, balanceService){
+                $scope.accountBalanceList = balanceService.accountBalanceList;
+                $scope.fixedAreaHeight = ($scope.accountBalanceList.length <= 7) ? 100 : 150;
 
-                    $scope.formatBalance = function(v){
-                        return window.uuFormatCurrency(v);
-                    }
-
-                    $scope.$on('balanceChanged', function() {
-                        $scope.$apply(function(){
-                            $scope.accountBalanceList = balanceService.accountBalanceList;
-                        });
-                    });
-
-
-                    $scope.accountBalanceList = balanceService.accountBalanceList;
-
-                    $scope.getTotalBalance = function(){
-                        tot = 0.00;
-                        for(var i=0; i<$scope.accountBalanceList.length; ++i){
-                            tot += $scope.accountBalanceList[i].balance;
-                        }
-                        return window.uuFormatCurrency(tot);
-                    }
+                $scope.formatBalance = function(v){
+                    return window.uuFormatCurrency(v);
                 }
-            </script>
-            <div style="margin-left: 200px; margin-top: 5px;">
-                <ng-include src="'/static/ang/balance.html'" />
-            </div>
 
+                $scope.$on('balanceChanged', function() {
+                    $scope.$apply(function(){
+                        $scope.accountBalanceList = balanceService.accountBalanceList;
+                    });
+                });
+
+
+                $scope.getTotalBalance = function(){
+                    tot = 0.00;
+                    for(var i=0; i<$scope.accountBalanceList.length; ++i){
+                        tot += $scope.accountBalanceList[i].balance;
+                    }
+                    return window.uuFormatCurrency(tot);
+                }
+            }
+        </script>
+
+        <div ng-controller="BalanceCtrl">
+            <ng-include src="'/static/ang/balance.html'" />
         </div>
 
     </div>

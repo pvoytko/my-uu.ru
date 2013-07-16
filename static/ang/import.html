@@ -11,6 +11,6 @@
     <div class="alert alert-success" ng-show="isShowSuccess" style="width: 600px;">
         <strong>Данные успешно сохранены.</strong> Импортировано {{ importedCount }} строк.
     </div>
-    <textarea rows="6" class='span11' ng-model="inputText" ng-trim='false'></textarea>
+    <textarea rows="6" class='span11' ng-model="inputText" ng-trim='false' wrap="off"></textarea>
     <button class="btn btn-large" ng-click="importData()">Импортировать</button>
 </div>
