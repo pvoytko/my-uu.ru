@@ -78,11 +78,11 @@ def register_user_ajax(request):
         raise
 
     # Для нового юзера надо создать счет и категорию
-    my_uu.models.Category.objects.create(name = 'Не указана категория', user = u).save()
-    my_uu.models.Category.objects.create(name = 'Жилье', user = u).save()
-    my_uu.models.Category.objects.create(name = 'Питание', user = u).save()
-    my_uu.models.Account.objects.create(name = 'Кошелек', user = u).save()
-    my_uu.models.Account.objects.create(name = 'Карта', user = u).save()
+    my_uu.models.Category.objects.create(name = u'Не указана категория', user = u).save()
+    my_uu.models.Category.objects.create(name = u'Жилье', user = u).save()
+    my_uu.models.Category.objects.create(name = u'Питание', user = u).save()
+    my_uu.models.Account.objects.create(name = u'Кошелек', user = u).save()
+    my_uu.models.Account.objects.create(name = u'Карта', user = u).save()
 
     # Регистрация прошла успешно - высылаем email
     sendEmailRegistrationPerformed(data['email'], data['email'], data['password'])
