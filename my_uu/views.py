@@ -27,8 +27,7 @@ def main(request):
         return HttpResponseRedirect(reverse('my_uu.views.lk_uch'))
 
     # Эта страница используется вместо главной пока
-    return HttpResponseRedirect('http://rq2.land-page-service.ru/uu/')
-    # return render(request, 'main.html')
+    return render(request, 'lpgen_main.html')
 
 
 # Отправка письма
