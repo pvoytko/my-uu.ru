@@ -501,9 +501,13 @@ def adm_act(request):
 @uuAdmLoginRequired
 def adm_exp(request):
 
-    userStat = User.objects.all().annotate(min_dt = Min("uchet__date"), max_dt = Max("uchet__date")).order_by('id').values()
+    # Подсчитываем мин макс дату учета и число дней с журналами операций
+    userStat = User.objects.all().annotate(min_dt = Min("eventlog__datetime"), max_dt = Max("eventlog__datetime"))
+    userStat = userStat.order_by('id').values()
     for u in userStat:
-        u['count_dt'] = (my_uu.models.Uchet.objects.filter(user = u['id']).values_list('date', flat=True).distinct()).count()
+        eventLogObjects = my_uu.models.EventLog.objects.filter(user = u['id']).extra(select = {'date': 'DATE(datetime)'})
+        u['count_dt'] = len(eventLogObjects.values_list('date', flat=True).distinct())
+
 
     return render(request, 'adm_exp.html', {
         'request': request,
