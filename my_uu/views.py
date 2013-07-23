@@ -136,7 +136,7 @@ def uu_login_required(f):
 # Требует администраторского логина. Иначе - выкидывает на 404 ошибку.
 def uuAdmLoginRequired(f):
     def uuAdmLoginRequiredWrapper(request, *args, **kwargs):
-        if request.user.email == 'pvoytko@gmail.com':
+        if request.user.is_authenticated() and request.user.email == 'pvoytko@gmail.com':
             return f(request, *args, **kwargs)
         else:
             raise Http404()
@@ -486,7 +486,26 @@ def lk_delete_category_ajax(request):
 # Страница Анализ личного кабиета
 @uuAdmLoginRequired
 def adm_act(request):
+
+    date10DaysAgo = datetime.datetime.now() - datetime.timedelta(10)
+    eventLogObjects = my_uu.models.EventLog.objects.filter(datetime__gt = date10DaysAgo)
+    eventLogObjects = eventLogObjects.order_by('datetime')
+
     return render(request, 'adm_act.html', {
         'request': request,
-        'eventLog': reversed(my_uu.models.EventLog.objects.all().order_by('-datetime')[:1000])
+        'eventLog': eventLogObjects
+    } )
+
+
+# Страница Анализ личного кабиета
+@uuAdmLoginRequired
+def adm_exp(request):
+
+    userStat = User.objects.all().annotate(min_dt = Min("uchet__date"), max_dt = Max("uchet__date")).order_by('id').values()
+    for u in userStat:
+        u['count_dt'] = (my_uu.models.Uchet.objects.filter(user = u['id']).values_list('date', flat=True).distinct()).count()
+
+    return render(request, 'adm_exp.html', {
+        'request': request,
+        'userStat': userStat
     } )

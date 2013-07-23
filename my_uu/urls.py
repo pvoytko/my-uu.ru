@@ -32,6 +32,7 @@ urlpatterns = patterns('',
 
     # Административная часть
     url(r'^adm/act/$', 'my_uu.views.adm_act'),
+    url(r'^adm/exp/$', 'my_uu.views.adm_exp'),
 )
 
 from django.contrib.staticfiles.urls import staticfiles_urlpatterns
