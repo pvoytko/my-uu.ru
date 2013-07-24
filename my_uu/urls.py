@@ -30,9 +30,13 @@ urlpatterns = patterns('',
     url(r'^lk/imp/$', 'my_uu.views.lk_imp'),
     url(r'^lk/imp_ajax/$', 'my_uu.views.lk_imp_ajax'),
 
-    # Административная часть
+    # Административная часть (Павел Войтко)
     url(r'^adm/act/$', 'my_uu.views.adm_act'),
     url(r'^adm/exp/$', 'my_uu.views.adm_exp'),
+
+    # Отписаться юзеру
+    url(r'^unsubscr/(?P<obfuscatedUserId>\d+)/$', 'my_uu.views.unsubscr_view'),
+    url(r'^unsubscr/(?P<obfuscatedUserId>\d+)/do/$', 'my_uu.views.unsubscr_do'),
 )
 
 from django.contrib.staticfiles.urls import staticfiles_urlpatterns

@@ -57,6 +57,8 @@ class Event(models.Model):
     ADD_SET = 9
     EDT_SET = 10
     DEL_SET = 11
+    UNSUBSCR = 12
+    SUBSCR = 13
 
 
 # Журнал событий
@@ -64,3 +66,15 @@ class EventLog(models.Model):
     user = models.ForeignKey(django.contrib.auth.models.User)
     datetime = models.DateTimeField(auto_now_add=True)
     event = models.ForeignKey(Event)
+
+
+# Заполняется если юзер отписался
+class Unsubscribe(models.Model):
+    user = models.OneToOneField(django.contrib.auth.models.User)
+    datetime = models.DateTimeField(auto_now_add=True)
+
+
+# Заполняется в момент когда юзеру направлено первое письмо-запрос на обратную связь (больше высылать не надо).
+class FeedbackRequested(models.Model):
+    user = models.OneToOneField(django.contrib.auth.models.User)
+    datetime = models.DateTimeField(auto_now_add=True)

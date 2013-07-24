@@ -2,15 +2,17 @@
 from django.core.mail.message import EmailMessage
 from django.core.urlresolvers import reverse
 from django.http import HttpResponse
-from django.contrib.auth.forms import AuthenticationForm
+from django.template import RequestContext
 from django.http.response import HttpResponseRedirect, Http404
 from django.shortcuts import render
+from django.shortcuts import render_to_response
 from django.contrib.auth.models import User
 from django.contrib.auth import login, authenticate
 from django.db.models import Count, Sum, Min, Max
 from django.core.serializers.json import DjangoJSONEncoder
 import django.core.exceptions
 import django.db.utils
+
 
 import json
 import datetime
@@ -153,8 +155,8 @@ def uuTrackEventDecor(eventConstant):
     return uuTrackEventDecorImpl
 
 # Сохраняет запись о событии
-def uuTrackEventDynamic(request, eventConstant):
-    request.user.eventlog_set.create(event = my_uu.models.Event.objects.get(id = eventConstant))
+def uuTrackEventDynamic(user, eventConstant):
+    user.eventlog_set.create(event = my_uu.models.Event.objects.get(id = eventConstant))
 
 
 def _getAccountBalanceList(request):
@@ -339,11 +341,11 @@ def lk_save_uchet_ajax(request):
         # Получаем id строки на сервере если есть и удаляем лишние поля (чтоб не вылазило ошибки при update)
         serverRowId = None
         if 'serverRowId' in r:
-            uuTrackEventDynamic(request, my_uu.models.Event.EDT_UCH)
+            uuTrackEventDynamic(request.user, my_uu.models.Event.EDT_UCH)
             serverRowId = rowDbData['serverRowId']
             del rowDbData['serverRowId']
         else:
-            uuTrackEventDynamic(request, my_uu.models.Event.ADD_UCH)
+            uuTrackEventDynamic(request.user, my_uu.models.Event.ADD_UCH)
 
         del rowDbData['uid']
 
@@ -409,10 +411,10 @@ def _lk_save_settings_ajax(request, userPropName, modelClass):
 
     # Создаем новый или изменяем существующий счет
     if 'id' in newAccountData:
-        uuTrackEventDynamic(request, my_uu.models.Event.EDT_SET)
+        uuTrackEventDynamic(request.user, my_uu.models.Event.EDT_SET)
         a = getattr(request.user, userPropName).get(id = newAccountData['id'])
     else:
-        uuTrackEventDynamic(request, my_uu.models.Event.ADD_SET)
+        uuTrackEventDynamic(request.user, my_uu.models.Event.ADD_SET)
         a = modelClass()
         a.user = request.user
 
@@ -483,22 +485,36 @@ def lk_delete_category_ajax(request):
     return _lk_delete_settings_ajax(request, 'category_set')
 
 
+# http://djangosnippets.org/snippets/1022/
+def uuRenderWith(template):
+    def render_with_decorator(view_func):
+        def wrapper(*args, **kwargs):
+            request = args[0]
+            context = view_func(*args, **kwargs)
+            return render_to_response(
+                template,
+                context,
+                context_instance=RequestContext(request),
+            )
+        return wrapper
+    return render_with_decorator
+
+
 # Страница Анализ личного кабиета
 @uuAdmLoginRequired
+@uuRenderWith('adm_act.html')
 def adm_act(request):
 
     date10DaysAgo = datetime.datetime.now() - datetime.timedelta(10)
     eventLogObjects = my_uu.models.EventLog.objects.filter(datetime__gt = date10DaysAgo)
     eventLogObjects = eventLogObjects.order_by('datetime')
 
-    return render(request, 'adm_act.html', {
-        'request': request,
-        'eventLog': eventLogObjects
-    } )
+    return locals()
 
 
 # Страница Анализ личного кабиета
 @uuAdmLoginRequired
+@uuRenderWith('adm_exp.html')
 def adm_exp(request):
 
     # Подсчитываем мин макс дату учета и число дней с журналами операций
@@ -508,8 +524,41 @@ def adm_exp(request):
         eventLogObjects = my_uu.models.EventLog.objects.filter(user = u['id']).extra(select = {'date': 'DATE(datetime)'})
         u['count_dt'] = len(eventLogObjects.values_list('date', flat=True).distinct())
 
+    return locals()
 
-    return render(request, 'adm_exp.html', {
-        'request': request,
-        'userStat': userStat
-    } )
+
+
+# 10 = 27652776 (pvoytko@gmail.com)
+def obfuscateId(id):
+    return ((id << 5) ^ 3456789) << 3
+def restoreId(id):
+    return (((id >> 3) ^ 3456789) >> 5)
+
+
+# Отписка юзера - показывает состояние
+# Важно - доступ без авторизации на эту страницу.
+@uuRenderWith('unsubscr.html')
+def unsubscr_view(request, obfuscatedUserId):
+    user = User.objects.get(id = restoreId(int(obfuscatedUserId)))
+    isUnsubscribed = my_uu.models.Unsubscribe.objects.filter(user=user).count() == 1
+    return locals()
+
+
+# Выполняет либо отписку либо подписку ничего не пказывает редиректит обратно.
+def unsubscr_do(request, obfuscatedUserId):
+
+    # Юзера важно брать не из request, а из ID из УРЛа.
+    # Так как вход на эту страницу должен быть без авторизации (чтоб из емейла работали ссылки).
+    user = User.objects.get(id = restoreId(int(obfuscatedUserId)))
+
+    # Отписка
+    if 'uns' in request.POST:
+        my_uu.models.Unsubscribe.objects.get_or_create(user=user)
+        uuTrackEventDynamic(user, my_uu.models.Event.UNSUBSCR)
+
+    # Подписка
+    if 'sub' in request.POST:
+        my_uu.models.Unsubscribe.objects.get(user=user).delete()
+        uuTrackEventDynamic(user, my_uu.models.Event.SUBSCR)
+
+    return HttpResponseRedirect(reverse(unsubscr_view, kwargs={'obfuscatedUserId': obfuscatedUserId}))
