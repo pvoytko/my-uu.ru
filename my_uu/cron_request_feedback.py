@@ -1,4 +1,9 @@
 # -*- coding: utf-8 -*-
+
+import os, sys
+sys.path.insert(0, '../')
+os.environ['DJANGO_SETTINGS_MODULE'] = 'my_uu.settings'
+
 import my_uu.models
 import django.contrib.auth.models
 
