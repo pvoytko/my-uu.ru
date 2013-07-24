@@ -6,7 +6,7 @@
 
 # Подключение Джанги
 import os, sys
-sys.path.insert(0, '../')
+sys.path.insert(0, os.path.join(os.path.expanduser('~'), 'domains/my-uu.ru'))
 os.environ['DJANGO_SETTINGS_MODULE'] = 'my_uu.settings'
 
 # Сам скрипт
@@ -16,7 +16,7 @@ from django.conf import settings
 
 import datetime
 
-import my_uu.emails
+import my_uu.utils
 
 
 # Защита от рассылки спама юзерам с локальной машины
@@ -36,5 +36,5 @@ for u in users:
 
         # То высылаем и сохраняем в БД что выслали
         print u.id, u.email
-        my_uu.emails.sendFeedbackRequest(u)
+        my_uu.utils.sendFeedbackRequest(u)
         my_uu.models.FeedbackRequested.objects.create(user = u)
