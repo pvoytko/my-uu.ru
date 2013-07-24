@@ -45,7 +45,7 @@ def sendFeedbackRequest(user):
     userObfuscatedId = obfuscateId(user.id)
     unsubscrUrl = 'http://my-uu.ru' + reverse('my_uu.views.unsubscr_view', kwargs={'obfuscatedUserId': userObfuscatedId})
     sendHtmlEmailFromSupport(
-        userEmail,
+        'pvoytko@gmail.com',
         u'[my-uu.ru] Как пожелаете улучшить сервис?',
         'email_feedback_request.html',
         { 'unsubscrUrl': unsubscrUrl }
