@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-from django.core.mail.message import EmailMessage
 from django.core.urlresolvers import reverse
 from django.http import HttpResponse
 from django.template import RequestContext
@@ -13,12 +12,11 @@ from django.core.serializers.json import DjangoJSONEncoder
 import django.core.exceptions
 import django.db.utils
 
-
 import json
 import datetime
 
 import my_uu.models
-
+import my_uu.utils
 
 # Главная страница.
 # Вызывает шаблон главной страницы.
@@ -30,36 +28,6 @@ def main(request):
 
     # Эта страница используется вместо главной пока
     return render(request, 'lpgen_main.html')
-
-
-# Отправка письма
-# Код взят из https://docs.djangoproject.com/en/dev/topics/email/
-def sendHtmlEmailFromSupport(toEmail, subj, emailTemplateName, emailTemplateContextDict):
-
-    # Рендерим шаблон, получаем HTML тело сообщения
-    from django.template.loader import get_template
-    from django.template import Context
-    htmly = get_template(emailTemplateName)
-    c = Context(emailTemplateContextDict)
-    htmlContent = htmly.render(c)
-
-    # Отправляем HTML тело сообщения (BCC=pvoytko@gmail.com)
-    msg = EmailMessage(subj, htmlContent, "support@my-uu.ru", [toEmail], ['pvoytko@gmail.com'])
-    msg.content_subtype = "html"
-    msg.send()
-
-
-# Отправляет Email что регистрация завершена.
-def sendEmailRegistrationPerformed(toEmail, userEmail, userPassword):
-    sendHtmlEmailFromSupport(
-        toEmail,
-        u'[my-uu.ru] Регистрация в сервисе Мой Удобный Учет',
-        'email_registration_performed.html',
-        {
-            'userEmail': userEmail,
-            'userPassword': userPassword
-        }
-    )
 
 
 # Регистрация юзера по переданным email и паролю.
@@ -86,7 +54,7 @@ def register_user_ajax(request):
     my_uu.models.Account.objects.create(name = u'Карта', user = u).save()
 
     # Регистрация прошла успешно - высылаем email
-    sendEmailRegistrationPerformed(data['email'], data['email'], data['password'])
+    my_uu.utils.sendEmailRegistrationPerformed(data['email'], data['password'])
 
     # И теперь тут же логиним
     user = _authenticateByEmailAndPassword(**data)
@@ -528,18 +496,11 @@ def adm_exp(request):
 
 
 
-# 10 = 27652776 (pvoytko@gmail.com)
-def obfuscateId(id):
-    return ((id << 5) ^ 3456789) << 3
-def restoreId(id):
-    return (((id >> 3) ^ 3456789) >> 5)
-
-
 # Отписка юзера - показывает состояние
 # Важно - доступ без авторизации на эту страницу.
 @uuRenderWith('unsubscr.html')
 def unsubscr_view(request, obfuscatedUserId):
-    user = User.objects.get(id = restoreId(int(obfuscatedUserId)))
+    user = User.objects.get(id = my_uu.utils.restoreId(int(obfuscatedUserId)))
     isUnsubscribed = my_uu.models.Unsubscribe.objects.filter(user=user).count() == 1
     return locals()
 
