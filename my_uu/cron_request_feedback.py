@@ -25,6 +25,10 @@ import my_uu.utils
 
 
 # Выборка юзеров кому еще не выслан емейл
+# Важно перед запросом сделать import models чтобы поле feedbackrequested для модели auth.User
+# добавилось Джангой. Если не импортить, то поле не добавится и будет не найдено (ошибка на боевом счервере
+# толкьо проявлялась почему-то)
+import models
 users = django.contrib.auth.models.User.objects.filter(feedbackrequested = None)
 
 # Перебираем
