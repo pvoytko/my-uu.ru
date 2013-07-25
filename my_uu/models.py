@@ -59,6 +59,10 @@ class Event(models.Model):
     DEL_SET = 11
     UNSUBSCR = 12
     SUBSCR = 13
+    # При добавлении сюда констант надо:
+    # 1 добавить примечание в БД с этим ID
+    # 2 создать python manage.py dumpdata --indent=4 my_uu.Event > my_uu/fixtures/event_initial.json
+    # 3 загрузить ее manage.py loaddata event_initial.json на боевом
 
 
 # Журнал событий
