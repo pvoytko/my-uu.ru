@@ -18,17 +18,11 @@ sys.path.insert(0, PROJECT_DIR)
 os.environ['DJANGO_SETTINGS_MODULE'] = 'my_uu.settings'
 import django.contrib.auth.models
 from django.db.models import Max
-from django.conf import settings
 
 import datetime
 
 import my_uu.utils
 
-
-# Защита от рассылки спама юзерам с локальной машины
-# Если убрать эту проверку то надо отправку писем заблокировать.
-# Иначе случайно запустив локально и если реальная база - можно разослать письма напрасно.
-assert settings.IS_DEVELOPER_COMP == False, u'Ошибка, скрипт должен запускаться только на боевом сервере.'
 
 # Выборка юзеров кому еще не выслан емейл
 users = django.contrib.auth.models.User.objects.filter(feedbackrequested = None)
@@ -42,6 +36,7 @@ for u in users:
     if (maxDateTime is not None) and ((datetime.datetime.now()-maxDateTime) > datetime.timedelta(0, 15 * 60)):
 
         # То высылаем и сохраняем в БД что выслали
+        # Печатаем чтобы когда отладочный запуск из консоли - было видно кому из юзеров отправляется.
         print u.id, u.email
         my_uu.utils.sendFeedbackRequest(u)
         my_uu.models.FeedbackRequested.objects.create(user = u)

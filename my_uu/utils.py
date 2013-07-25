@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
-from django.core.mail.message import EmailMessage
+from django.core.mail import EmailMessage
 from django.core.urlresolvers import reverse
+from django.conf import settings
 
 
 
@@ -23,6 +24,12 @@ def sendHtmlEmailFromSupport(toEmail, subj, emailTemplateName, emailTemplateCont
     # Отправляем HTML тело сообщения (BCC=pvoytko@gmail.com)
     msg = EmailMessage(subj, htmlContent, "support@my-uu.ru", [toEmail], ['pvoytko@gmail.com'])
     msg.content_subtype = "html"
+
+    # Защита от рассылки спама юзерам с локальной машины
+    # Если убрать эту проверку то надо отправку писем заблокировать.
+    # Иначе случайно запустив локально и если реальная база - можно разослать письма напрасно.
+    assert settings.IS_DEVELOPER_COMP == False, u'Ошибка, скрипт должен запускаться только на боевом сервере.'
+
     msg.send()
 
 
