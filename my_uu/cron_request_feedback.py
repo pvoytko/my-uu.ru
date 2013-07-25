@@ -4,23 +4,17 @@
 # Задача скрипта - выслать емейл всем юзерам кому еще не выслан и кто только что завершил знакомиться с сервисом.
 # критерий - последнее событие по нему было более 15 минут назад.
 
-# Активация энвайронмента (чтобы находилась джанга и другие модули на боевом сервере)
+# Флаги
 import os, sys
 IS_REAL_COMP = os.path.dirname(os.path.abspath(__file__)) == "/home/users2/p/pvoytko/domains/my-uu.ru/my_uu"
 PROJECT_DIR = os.path.join(os.path.dirname(unicode(__file__)), "..")
-if IS_REAL_COMP:
-    virtual_env = os.path.expanduser('~/virtualenv/MyEnv')
-    activate_this = os.path.join(virtual_env, 'bin/activate_this.py')
-    execfile(activate_this, dict(__file__=activate_this))
 
 # Сам скрипт
 sys.path.insert(0, PROJECT_DIR)
 os.environ['DJANGO_SETTINGS_MODULE'] = 'my_uu.settings'
 import django.contrib.auth.models
 from django.db.models import Max
-
 import datetime
-
 import my_uu.utils
 
 
