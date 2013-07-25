@@ -510,7 +510,7 @@ def unsubscr_do(request, obfuscatedUserId):
 
     # Юзера важно брать не из request, а из ID из УРЛа.
     # Так как вход на эту страницу должен быть без авторизации (чтоб из емейла работали ссылки).
-    user = User.objects.get(id = restoreId(int(obfuscatedUserId)))
+    user = User.objects.get(id = my_uu.utils.restoreId(int(obfuscatedUserId)))
 
     # Отписка
     if 'uns' in request.POST:

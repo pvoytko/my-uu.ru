@@ -5,13 +5,13 @@
         <h5>Подписка на получение эл. сообщений сервиса</h5>
 
         {% if isUnsubscribed %}
-            <p class="alert alert-info">Адрес <b>{{ user.email }}</b> отписан от сообщений.</p>
+            <p class="alert alert-info">Адрес <b>{{ user.email }}</b> сейчас отписан от сообщений.</p>
             <form action="do/" method="POST">
                 <input class="btn" type="submit" value="Отписать" name="uns" disabled="disabled"/>
                 <input class="btn btn-info" type="submit" value="Подписать снова" name="sub" />
             </form>
         {% else %}
-            <p class="alert alert-success">Адрес <b>{{ user.email }}</b> подписан на сообщения.</p>
+            <p class="alert alert-success">Адрес <b>{{ user.email }}</b> сейчас подписан на сообщения.</p>
             <form action="do/" method="POST">
                 <input class="btn btn-info" type="submit" value="Отписать" name="uns" />
                 <input class="btn" type="submit" value="Подписать снова" name="sub" disabled="disabled"/>
