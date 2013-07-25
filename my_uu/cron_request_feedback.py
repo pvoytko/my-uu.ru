@@ -28,7 +28,7 @@ import my_uu.utils
 # Важно перед запросом сделать import models чтобы поле feedbackrequested для модели auth.User
 # добавилось Джангой. Если не импортить, то поле не добавится и будет не найдено (ошибка на боевом счервере
 # толкьо проявлялась почему-то)
-import models
+import my_uu.models
 users = django.contrib.auth.models.User.objects.filter(feedbackrequested = None)
 
 # Перебираем
