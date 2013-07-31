@@ -13,6 +13,9 @@ urlpatterns = patterns('',
     url(r'^logout_user/$', 'my_uu.views.logout_user' ),
     url(r'^begin/$', 'my_uu.views.begin'),
 
+    # Личный кабинет отправка "улучшить" с любой страницы
+    url(r'^lk/improove_ajax/$', 'my_uu.views.lk_improove_ajax'),
+
     # Личный кабинет учет
     url(r'^lk/$', 'my_uu.views.lk_uch'),
     url(r'^lk/save_uchet_ajax/$', 'my_uu.views.lk_save_uchet_ajax'),

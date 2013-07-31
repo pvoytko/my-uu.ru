@@ -453,6 +453,12 @@ def lk_delete_category_ajax(request):
     return _lk_delete_settings_ajax(request, 'category_set')
 
 
+@uu_login_required
+def lk_improove_ajax(request):
+    my_uu.utils.sendImprooveEmail(request.user.id, request.user.email, json.loads(request.body)['improoveText'])
+    return JsonResponseWithStatusOk()
+
+
 # http://djangosnippets.org/snippets/1022/
 def uuRenderWith(template):
     def render_with_decorator(view_func):

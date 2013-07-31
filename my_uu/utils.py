@@ -57,3 +57,17 @@ def sendFeedbackRequest(user):
         'email_feedback_request.html',
         { 'unsubscrUrl': unsubscrUrl }
     )
+
+
+# Отправляет запрос на улучшение
+def sendImprooveEmail(userId, userEmailFrom, improoveText):
+    sendHtmlEmailFromSupport(
+        'pvoytko@gmail.com',
+        u'[my-uu.ru] Запрос на улучшение сервиса',
+        'email_improove.html',
+        {
+            'userId': userId,
+            'userEmail': userEmailFrom,
+            'improoveText': improoveText
+        }
+    )
