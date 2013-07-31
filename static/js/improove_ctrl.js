@@ -22,11 +22,11 @@
             timeout: 15000
         });
         httpObj.success(function(data, status) {
-            if (data == 'ok') {
+            if (data.status != undefined && data.status == 'ok') {
                 $scope.isSendToServerNow = false;
                 $scope.isSendToServerSuccess = true;
             } else {
-                $scope.errorText = 'Сервер вернул неуспешный ответ. ' +  data;
+                $scope.errorText = 'Сервер вернул неуспешный ответ. ' +  JSON.stringify(data);
                 $scope.isSendToServerNow = false;
                 $scope.isSendToServerSuccess = false;
                 $scope.isSendToServerError = true;
