@@ -1,5 +1,5 @@
 <!doctype html>
-<html ng-app>
+<html ng-app="project">
 
 <head>
     <title>Мой Удобный Учет: Личный Кабинет</title>
@@ -46,6 +46,10 @@
         </ul>
 
         <div style="background-color: white; height: 112px; z-index: 100; position: fixed; width: 860px; top: 0px;"></div>
+
+        <script>
+            projectModule = angular.module('project',[]);
+        </script>
 
         {% block lk_content %}
 
