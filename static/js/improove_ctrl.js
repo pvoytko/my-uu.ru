@@ -38,15 +38,6 @@
             $scope.isSendToServerSuccess = false;
             $scope.isSendToServerError = true;
         });
-        /*
-        setTimeout(function(){
-            $scope.$apply(function(){
-                $scope.isSendToServerNow = false;
-                $scope.isSendToServerSuccess = false;
-                $scope.isSendToServerError = true;
-            });
-        }, 7000);
-        */
     }
 
 }
