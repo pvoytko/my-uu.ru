@@ -174,6 +174,65 @@ def lk_set(request):
     } )
 
 
+# Итератор от самой ранней недели до самой поздней.
+# Для построения отчета анализа.
+# Получает на вход мин. дату и макс. дату записей учета.
+# Итерирует по всем неделям в рамках этих дат (берутся лишь последние 5).
+# Возвращает имя недели для даты (чтобы просуммировать суммы для всех дат по неделям).
+# Заменяя недельный итератор месячным, квартальным и пр., можно построить любой
+# отчет по одному алгоритму.
+class AnaWeekIterator(object):
+
+    def __init__(self, minDate, maxDate):
+        # Ограничиваем 2013 годом на случай если записи будут за большой диапазон.
+        self.maxWeek = min(maxDate, datetime.date(2013, 12, 31)).isocalendar()[1]
+        self.minWeek = max(max(minDate, maxDate - datetime.timedelta(days=7*4)), datetime.date(2013, 1, 1)).isocalendar()[1]
+        self.curWeek = self.minWeek
+
+    def __iter__(self):
+        return self
+
+    def getRangeNameForDate(self, date):
+        w = date.isocalendar()[1]
+        if w in xrange(self.minWeek, self.maxWeek+1):
+            return str(w)
+        else:
+            return None
+
+    def next(self):
+        if self.curWeek > self.maxWeek:
+            raise StopIteration()
+        else:
+            self.curWeek += 1
+            return str(self.curWeek - 1)
+
+
+class AnaChndkIterator(object):
+
+    def __init__(self, minDate, maxDate):
+        # Ограничиваем 2013 годом на случай если записи будут за большой диапазон.
+        self.maxChndk = min(maxDate, datetime.date(2013, 12, 31)).isocalendar()[1] / 4 + 1
+        self.minChndk = max(max(minDate, maxDate - datetime.timedelta(days=7*4*4)), datetime.date(2013, 1, 1)).isocalendar()[1] / 4 + 1
+        self.curChndk = self.minChndk
+
+    def __iter__(self):
+        return self
+
+    def getRangeNameForDate(self, date):
+        w = date.isocalendar()[1] / 4 + 1
+        if w in xrange(self.minChndk, self.maxChndk+1):
+            return str(w)
+        else:
+            return None
+
+    def next(self):
+        if self.curChndk > self.maxChndk:
+            raise StopIteration()
+        else:
+            self.curChndk += 1
+            return str(self.curChndk - 1)
+
+
 # Страница Анализ личного кабиета
 @uu_login_required
 @uuTrackEventDecor(my_uu.models.Event.VISIT_ANA)
@@ -185,6 +244,7 @@ def lk_ana(request):
     # Максимальные и минимальные номера недель которые есть в учете для этого юзера
     minMaxDate = request.user.uchet_set.aggregate(min_date = Min('date'), max_date = Max('date'))
 
+    # Результат
     l = []
 
     # Если есть хотя бы одна запись учета, то формируем содержание списка на выдачу
@@ -202,24 +262,29 @@ def lk_ana(request):
             # Если ни одной суммы для этой категории, то такую категорию пропускаем
             if sumForDays.count() > 0:
 
-                # Номера недель
-                minWeek = max(minMaxDate['min_date'], datetime.date(2013, 1, 1)).isocalendar()[1]
-                maxWeek = min(minMaxDate['max_date'], datetime.date(2013, 12, 31)).isocalendar()[1]
+                # Номера недель (или ЧНДК)
+                rangeIter = AnaWeekIterator(minMaxDate['min_date'], minMaxDate['max_date'])
+                if 'chndk' in request.GET:
+                    rangeIter = AnaChndkIterator(minMaxDate['min_date'], minMaxDate['max_date'])
 
                 # Формируем словарь с суммами по неделям для категорий (сначала заполняем его нулями)
                 # Чтобы для каждой недели стояло значение (этого ждет клиентский код).
                 d = dict()
                 d['category'] = item.name
-                for w in xrange(minWeek, maxWeek+1):
-                    d[str(w)] = 0
+                for w in rangeIter:
+                    d[w] = 0
 
                 # Сейчас проходим по всем дням и суммам и плюсуем эти суммы к неделям
+                skipCategory = True
                 for sumForDay in sumForDays:
-                    weekNum = sumForDay['date'].isocalendar()[1]
-                    d[str(weekNum)] += sumForDay['sum']
+                    rangeName = rangeIter.getRangeNameForDate(sumForDay['date'])
+                    if rangeName is not None:
+                        d[rangeName] += sumForDay['sum']
+                        skipCategory = False
 
                 # Сохраняем результат
-                l.append(d)
+                if not skipCategory:
+                    l.append(d)
 
     return render(request, 'lk_ana.html', {
         'request': request,
