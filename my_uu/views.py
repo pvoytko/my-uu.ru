@@ -211,8 +211,8 @@ class AnaChndkIterator(object):
 
     def __init__(self, minDate, maxDate):
         # Ограничиваем 2013 годом на случай если записи будут за большой диапазон.
-        self.maxChndk = min(maxDate, datetime.date(2013, 12, 31)).isocalendar()[1] / 4 + 1
-        self.minChndk = max(max(minDate, maxDate - datetime.timedelta(days=7*4*4)), datetime.date(2013, 1, 1)).isocalendar()[1] / 4 + 1
+        self.maxChndk = (min(maxDate, datetime.date(2013, 12, 31)).isocalendar()[1] - 1) / 4 + 1
+        self.minChndk = (max(max(minDate, maxDate - datetime.timedelta(days=7*4*4)), datetime.date(2013, 1, 1)).isocalendar()[1] - 1) / 4 + 1
         self.curChndk = self.minChndk
 
     def __iter__(self):
