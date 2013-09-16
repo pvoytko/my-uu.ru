@@ -41,13 +41,13 @@
     }
 </style>
 <div ng-repeat="listData in namedList">
-    <h5>{{ listData.hdr }}</h5>
+    <h5>{$ listData.hdr $}</h5>
     <div ng-repeat="a in listData.list" style="position: relative;">
-        <button id="{{ listData.id }}_butdel{{ a.clientId }}" class="close account_list__delete_icon" title="Удалить" ng-click="deleteAccount(listData, a)">&times;</button>
-        <input id="{{ listData.id }}_inp{{ a.clientId }}" ng-model="a.name" ng-change="onChangeAccountName(listData, a)" type="text" />
-        <span class="muted" style="width: 110px; display: inline-block;">{{ getLabelText(a.count) }}</span>
-        <button id="{{ listData.id }}_butapp{{ a.clientId }}" class="btn account_list__button" ng-click="saveAccountNameToServer(listData, a)">Применить</button>
-        <button id="{{ listData.id }}_butcan{{ a.clientId }}" class="btn account_list__button" ng-click="cancelAccountNameChanging(listData, a)">Отменить</button>
+        <button id="{$ listData.id $}_butdel{$ a.clientId $}" class="close account_list__delete_icon" title="Удалить" ng-click="deleteAccount(listData, a)">&times;</button>
+        <input id="{$ listData.id $}_inp{$ a.clientId $}" ng-model="a.name" ng-change="onChangeAccountName(listData, a)" type="text" />
+        <span class="muted" style="width: 110px; display: inline-block;">{$ getLabelText(a.count) $}</span>
+        <button id="{$ listData.id $}_butapp{$ a.clientId $}" class="btn account_list__button" ng-click="saveAccountNameToServer(listData, a)">Применить</button>
+        <button id="{$ listData.id $}_butcan{$ a.clientId $}" class="btn account_list__button" ng-click="cancelAccountNameChanging(listData, a)">Отменить</button>
         <div class="account_list__msg1 alert alert-success" ng-show="a.accountSTSDC.is_s">
             <button type="button" class="close" ng-click="a.accountSTSDC.clear()">&times;</button>
             <span>Изменения сохранены.</span>
@@ -57,7 +57,7 @@
         </div>
         <div class="account_list__msg1 alert alert-error" ng-show="a.accountSTSDC.is_e">
             <button type="button" class="close" ng-click="a.accountSTSDC.clear()">&times;</button>
-            <span>{{ a.accountSTSDC.errorText }}</span>
+            <span>{$ a.accountSTSDC.errorText $}</span>
         </div>
     </div>
     <button class="btn" ng-click="addNewAccount(listData)" style="margin-left: 16px;">Добавить</button>

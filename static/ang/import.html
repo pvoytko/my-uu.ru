@@ -3,13 +3,13 @@
     <h5 class="text-warning">Вставьте данные для импорта</h5>
     <div class="alert" ng-show="isShowError" style="width: 600px;">
         <button type="button" class="close" ng-click="isShowError = false">&times;</button>
-        <strong>Ошибка!</strong> {{ errorText }}
+        <strong>Ошибка!</strong> {$ errorText $}
     </div>
     <div class="alert alert-info" ng-show="isShowSending" style="width: 600px;">
         <strong>Подождите, сейчас идет сохранение на сервер...</strong>
     </div>
     <div class="alert alert-success" ng-show="isShowSuccess" style="width: 600px;">
-        <strong>Данные успешно сохранены.</strong> Импортировано {{ importedCount }} строк.
+        <strong>Данные успешно сохранены.</strong> Импортировано {$ importedCount $} строк.
     </div>
     <textarea rows="6" class='span11' ng-model="inputText" ng-trim='false' wrap="off"></textarea>
     <button class="btn btn-large" ng-click="importData()">Импортировать</button>

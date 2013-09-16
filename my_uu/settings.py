@@ -3,6 +3,7 @@
 
 import os
 
+# Разработческая машина (не боевая)
 IS_DEVELOPER_COMP = os.path.dirname(os.path.abspath(__file__)) == "D:\\HgRepos\\my-uu.ru\\my_uu"
 
 DEBUG = IS_DEVELOPER_COMP

@@ -11,6 +11,8 @@ from django.db.models import Count, Sum, Min, Max
 from django.core.serializers.json import DjangoJSONEncoder
 import django.core.exceptions
 import django.db.utils
+from django.conf import settings
+
 
 import json
 import datetime
@@ -75,7 +77,16 @@ def _authenticateByEmailAndPassword(**kwargs):
 #     auth_email_password_incorrect - email и пароль не определены
 def login_user_ajax(request):
     data = json.loads(request.body)
-    user = _authenticateByEmailAndPassword(**data)
+
+    # На разработческой машине можно войти под любым юзером без пароля
+    if settings.IS_DEVELOPER_COMP:
+        user = django.contrib.auth.models.User.objects.get(email = data['email'])
+
+        # Если не выставить бекэнд то потом ошибка при получении юзера.
+        user.backend = "django.contrib.auth.backends.ModelBackend"
+    else:
+        user = _authenticateByEmailAndPassword(**data)
+
     if user is not None:
         login(request, user)
         return HttpResponse('ok')
@@ -136,6 +147,12 @@ def _getAccountBalanceList(request):
     return list(accountBalanceList.values('id', 'name', 'balance'))
 
 
+def _getCategoryList(request):
+    categoryList = my_uu.models.Category.objects.filter(user=request.user)
+    categoryList = categoryList.order_by('id')
+    return list(categoryList.values('id', 'name'))
+
+
 # Главная страница личного кабиета
 @uu_login_required
 @uuTrackEventDecor(my_uu.models.Event.VISIT_UCH)
@@ -148,6 +165,7 @@ def lk_uch(request):
         'accountList': my_uu.models.Account.objects.filter(user=request.user).order_by('id'),
         'categoryList': my_uu.models.Category.objects.filter(user=request.user).order_by('id'),
         'accountBalanceListJson': json.dumps(_getAccountBalanceList(request), cls=DjangoJSONEncoder),
+        'categoryListJson': json.dumps(_getCategoryList(request), cls=DjangoJSONEncoder),
     })
 
 
@@ -562,6 +580,10 @@ def adm_exp(request):
     for u in userStat:
         eventLogObjects = my_uu.models.EventLog.objects.filter(user = u['id']).extra(select = {'date': 'DATE(datetime)'})
         u['count_dt'] = len(eventLogObjects.values_list('date', flat=True).distinct())
+
+        uchetRecords = my_uu.models.Uchet.objects.filter(user = u['id'])
+        u['count_dt_op'] = uchetRecords.values_list('date', flat=True).distinct().count()
+        u['count_op'] = uchetRecords.count()
 
     return locals()
 

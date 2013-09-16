@@ -42,3 +42,26 @@ function uuFormatWeekNumberToDates(weekNumber) {
     var endDate = m2.format('D MMM');
     return startDate + "–" + endDate;
 }
+
+
+// Проверяет строковое значение суммы, если ошибка ввода, вернет ее текст.
+// === true если корректно
+function uuValidateSum(floatStr) {
+    floatVal = parseFloat(String(floatStr).replace(',', '.'));
+    if (isNaN(floatVal)){
+        return "Сумма должна иметь формат (+-NNN или +-NNN.,NN)";
+    }
+    return true;
+}
+
+
+// Проверяет строковое значение даты, если ошибка ввода, вернет ее текст.
+// === true если корректно
+function uuValidateDate(dateStr) {
+    if (!moment(dateStr, 'DD.MM.YYYY').isValid()) {
+        return "Дата должна иметь формат ДД.ММ.ГГГГ";
+    }
+    return true;
+}
+
+

@@ -8,8 +8,14 @@
     <script src="http://code.jquery.com/ui/1.10.3/jquery-ui.min.js"></script>
     <link rel="stylesheet" href="http://code.jquery.com/ui/1.10.3/themes/redmond/jquery-ui.css" />
 
+    <!-- Bootstrap 2 -->
     <link href="{{ STATIC_URL }}libs/bootstrap/css/bootstrap.min.css" rel="stylesheet" media="screen">
     <script src="{{ STATIC_URL }}libs/bootstrap/js/bootstrap.min.js"></script>
+<!-- Bootstrap 3
+    <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap.min.css">
+    <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap-theme.min.css">
+    <script src="//netdna.bootstrapcdn.com/bootstrap/3.0.0/js/bootstrap.min.js"></script>
+-->
 
     <!-- Angular для остатков по счетам для кнопки "Улучшить" и для страницы "Настройки" -->
     <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.0.7/angular.min.js"></script>
@@ -19,6 +25,9 @@
     <link rel="shortcut icon" type="image/png" href="{{ STATIC_URL }}img/favicon.png"/>
 
     <script src="{{ STATIC_URL }}js/improove_ctrl.js"></script>
+
+    <!-- Настройка приложения Ангулар -->
+    <script src="{{ STATIC_URL }}js/angular_project.js"></script>
 
     {% block add_to_head %}
 
@@ -46,10 +55,6 @@
         </ul>
 
         <div style="background-color: white; height: 112px; z-index: 100; position: fixed; width: 860px; top: 0px;"></div>
-
-        <script>
-            projectModule = angular.module('project',[]);
-        </script>
 
         {% block lk_content %}
 

@@ -28,10 +28,21 @@
     <!-- Вспомогательные разные функции -->
     <script src="{{ STATIC_URL }}js/uu_utils.js"></script>
 
+    <!-- Ангулар-директива Баланс счетов -->
+    <script src="{{ STATIC_URL }}js/directive_balance.js"></script>
+
+
     <style>
+        .clearfix:after {
+           content: " "; /* Older browser do not support empty content */
+           visibility: hidden;
+           display: block;
+           height: 0;
+           clear: both;
+        }
         .balance__cell {
             width: 100px;
-            Verdana, Arial, sans-serif;
+            font-family: Verdana, Arial, sans-serif;
         }
         .balance__cell div {
             white-space: nowrap;
@@ -117,6 +128,175 @@
 
 {% block lk_content %}
 
+    <script>
+        function AddRecordCtrl($scope, $element){
+
+            // Список счетов и категорий
+            $scope.accounts = {{ accountBalanceListJson|safe }};
+            $scope.categories = {{ categoryListJson|safe }};
+
+            $scope.showError = function(errText){
+                $scope.error = errText;
+            };
+
+            // Что делать при клике на кнопку OK
+            $scope.closeDlg = function() {
+                if ($scope.onModelSuccessCallback($scope, $scope.showError) !== false){
+                    $($element).modal('hide');
+                };
+            }
+
+            $scope.testDlg = function() {
+                console.log($scope);
+            }
+
+            // Функция вызывается извне для открытия модального окна
+            // onModelSuccessCallback - коллбек с одним аргументом (скоуп с данными)
+            // который вызывается при закрытии модального окна по кнопке ОК.
+            $scope.openModal = function(onModelSuccessCallback){
+
+                // Инициализируем данные бизнес-логики
+                $scope.type = 0;
+                $scope.date = moment().format('DD.MM.YYYY');
+                $scope.sum = '0.00';
+                $scope.comment = '';
+                $scope.account = $scope.accounts[0].name;
+                $scope.account_to = $scope.accounts[0].name;
+                $scope.category = $scope.categories[0].name;
+
+                // Текст ошибки (неверная сумма или дата)
+                $scope.error = null;
+
+                // Обновляем представление (диалог)
+                $scope.$apply();
+
+                // Показываем
+                $($element).modal('show');
+
+                $('#sumFocused').focus();
+                $('#sumFocused').select();
+
+                // Обработчик успешного закрытия вызываем при клике на кнопку ВНЕСТИ
+                $scope.onModelSuccessCallback = onModelSuccessCallback;
+            }
+        };
+
+
+        projectModule.directive('ngEnter', function () {
+            return function (scope, element, attrs) {
+                element.bind("keydown keypress", function (event) {
+                    if(event.which === 13) {
+                        scope.$apply(function (){
+                            scope.$eval(attrs.ngEnter);
+                        });
+
+                        event.preventDefault();
+                    }
+                });
+            };
+        });
+    </script>
+
+    <!-- Диалог добавления операции учета -->
+    <div id="addRecordDialog" class="modal hide" data-keyboard="true" ng-controller="AddRecordCtrl" tabindex="-1">
+        <div class="modal-dialog">
+        <div class="modal-content">
+        <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+            <h4>Внесение операции учета</h4>
+        </div>
+        <div class="modal-body">
+
+            <form class="form-horizontal" ng-enter="closeDlg()">
+                <div class="control-group">
+                    <label class="control-label">Операция</label>
+                    <div class="controls" class="btn-group" data-toggle="buttons-radio">
+                      <button type="button" class="btn" ng-class="{active: type==0}" ng-click="type=0">Расход</button>
+                      <button type="button" class="btn" ng-class="{active: type==1}" ng-click="type=1">Доход</button>
+                      <button type="button" class="btn" ng-class="{active: type==2}" ng-click="type=2">Перевод</button>
+                    </div>
+                </div>
+                <div class="control-group">
+                    <label class="control-label">Дата</label>
+                    <div class="controls">
+                        <input type="text" placeholder="Дата" ng-model="date">
+                    </div>
+                </div>
+                <div ng-switch="type">
+                    <div ng-switch-when="0" class="control-group">
+                        <label class="control-label">Сумма расхода</label>
+                        <div class="controls">
+                            <span style="position: absolute; left: 5px; margin-left: 197px; margin-top: 5px;">–</span>
+                            <input id='sumFocused' type="text" ng-model="$parent.sum" style="padding-left: 15px; width: 96px;">
+                        </div>
+                    </div>
+                    <div ng-switch-when="1" class="control-group">
+                        <label class="control-label">Сумма дохода</label>
+                        <div class="controls">
+                            <input id='sumFocused' type="text" ng-model="$parent.sum" style="width: 106px;">
+                        </div>
+                    </div>
+                    <div ng-switch-when="2" class="control-group">
+                        <label class="control-label">Сумма перевода</label>
+                        <div class="controls">
+                            <input id='sumFocused' type="text" ng-model="$parent.sum" style="width: 106px;">
+                        </div>
+                    </div>
+                </div>
+                <div ng-switch="type" >
+                    <div ng-switch-default>
+                        <div class="control-group">
+                            <label class="control-label">Счет</label>
+                            <div class="controls">
+                                <select ng-model="$parent.account" ng-options="a.name as a.name for a in $parent.accounts">
+                                </select>
+                            </div>
+                        </div>
+                        <div class="control-group">
+                            <label class="control-label">Категория</label>
+                            <div class="controls">
+                                <select ng-model="$parent.category" ng-options="c.name as c.name for c in $parent.categories">
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div ng-switch-when="2">
+                        <div class="control-group">
+                            <label class="control-label">Счет откуда</label>
+                            <div class="controls">
+                                <select ng-model="$parent.account" ng-options="a.name as a.name for a in $parent.accounts">
+                                </select>
+                            </div>
+                        </div>
+                        <div class="control-group">
+                            <label class="control-label">Счет куда</label>
+                            <div class="controls">
+                                <select ng-model="$parent.account_to" ng-options="a.name as a.name for a in $parent.accounts">
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="control-group">
+                    <label class="control-label">Комментарий</label>
+                    <div class="controls">
+                        <input type="text" placeholder="Комментарий" ng-model="comment">
+                    </div>
+                </div>
+            </form>
+
+            <div class="alert alert-error" ng-show="error">
+                {$ error $}
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button ng-click="closeDlg()" class="btn btn-large btn-info pull-left">Внести (Enter)</button>
+            <button href="#" class="btn pull-right" style="margin-top: 5px;" data-dismiss="modal">Отмена (Esc)</button>
+        </div>
+    </div>
+    </div>
+    </div>
+
     <div >
 
         <script>
@@ -137,12 +317,6 @@
                 return arr;
             }
 
-            projectModule.factory('balanceService', function() {
-                return {
-                    accountBalanceList: adjustServerBalance(JSON.parse('{{ accountBalanceListJson|escapejs }}'))
-                };
-            });
-
         </script>
 
         <!-- Блок с ошибкой показывается если не удалось сохраниться на сервер -->
@@ -160,9 +334,9 @@
         <script type="text/javascript">
 
 
-            // Оборачиваем весь код в angular-контроллер чтобы иметь
-            // доступ к balanceService (помещать в него ответ текущий баланс от сервера).
-            function GridCtrl($scope, $rootScope, balanceService){
+            function GridCtrl($scope){
+
+                $scope.accountBalanceList2 = adjustServerBalance(JSON.parse('{{ accountBalanceListJson|escapejs }}'));
 
                 // Считает высоту грида для числа строк. Подробности см. функцию adjustGridHeightToNewRowsCount
                 window.calcGridHeightToNewRowsCount = function(newRowsCount){
@@ -287,10 +461,9 @@
                                     $('#uuGrid').find(rowGridInHtmlId).find('[role="gridcell"]').removeClass('editedRow');
                                 }
 
-                                // Сообщаем что баланс поменялся во вью с балансом по счетам.
-                                var abl = adjustServerBalance(JSON.parse(httpSuccessData).accountBalanceList);
-                                balanceService.accountBalanceList = abl;
-                                $rootScope.$broadcast('balanceChanged');
+                                // Сохраняем новый баланс (и таблица счетов авто-обновится)
+                                var abl = adjustServerBalance(JSON.parse(httpSuccessData).accountBalanceList)
+                                $scope.accountBalanceList2 = abl;
 
                             } else {
 
@@ -614,8 +787,9 @@
                                 cellclassname: editedRowsServerSync.getCellClassNameGridCallback,
                                 cellsrenderer: dateCellsRenderer,
                                 validation: function (cell, value) {
-                                    if (!moment(value, 'DD.MM.YYYY').isValid()) {
-                                        return { result: false, message: "Дата должна иметь формат ДД.ММ.ГГГГ" };
+                                    var valRes = uuValidateDate(value);
+                                    if (valRes !== true) {
+                                        return { result: false, message: valRes };
                                     }
                                     return true;
                                 }
@@ -637,9 +811,10 @@
                                 cellsrenderer: sumCellsRenderer,
                                 cellsalign: 'right',
                                 validation: function (cell, value) {
-                                    floatVal = parseFloat(value)
-                                    if (isNaN(floatVal)){
-                                        return { result: false, message: "Значение должно быть числом (+-NNN или +-NNN.,NN)" };
+                                    var valRes = uuValidateSum(value);
+                                    console.log(valRes);
+                                    if (valRes !== true) {
+                                        return { result: false, message: valRes };
                                     }
                                     return true;
                                 }
@@ -660,7 +835,13 @@
                                 cellclassname: editedRowsServerSync.getCellClassNameGridCallback,
                                 columntype: 'dropdownlist',
                                 createeditor: categoryInplaceDropDown.createEditor,
-                                initeditor: categoryInplaceDropDown.initEditor
+                                initeditor: categoryInplaceDropDown.initEditor/*,
+                                cellbeginedit: function(row){
+                                    if (row == 5){
+                                        return false;
+                                    };
+                                    return true;
+                                }*/
                             },
                             {
                                 text: 'Комментарий',
@@ -796,9 +977,7 @@
 
                                 // Обновляем баланс на счетах согласно полученному от сервера.
                                 var abl = adjustServerBalance(JSON.parse(data).accountBalanceList);
-                                balanceService.accountBalanceList = abl;
-                                $rootScope.$broadcast('balanceChanged');
-
+                                $scope.accountBalanceList2 = abl;
 
                             }).fail(function(jqXHR, textStatus, errorThrown){
 
@@ -820,41 +999,125 @@
         </script>
 
         <div ng-controller="GridCtrl">
-            <div id='uuGrid' style="border: 0px solid grey; margin-top: -3px;"></div>
-        </div>
 
-        <div style="padding-bottom: 120px;"></div>
+            <div>
+                <div id='uuGrid' style="border: 0px solid grey; margin-top: -3px;"></div>
+            </div>
 
-        <script>
+            <div style="padding-bottom: 120px;"></div>
 
-            function BalanceCtrl($scope, balanceService){
+            <div>
 
-                $scope.accountBalanceList = balanceService.accountBalanceList;
-                $scope.fixedAreaHeight = ($scope.accountBalanceList.length <= 7) ? 100 : 150;
+                <div id="uuFooterFixed" style="position: fixed; background-color: white; z-index: 99; bottom: 0px; width: 860px; border-top: 10px solid #449bca;">
 
-                $scope.formatBalance = function(v){
-                    return window.uuFormatCurrency(v);
-                }
+                    <button id="btnAdd" class="btn btn-info" style='position: absolute; top: 5px; z-index: 101;'>Внести (Ins)</button>
 
-                $scope.$on('balanceChanged', function() {
-                    $scope.$apply(function(){
-                        $scope.accountBalanceList = balanceService.accountBalanceList;
-                    });
-                });
+                    <!-- Добалвение новой строки учета -->
+                    <script>
+
+                        function addUchetRecord(){
+                            // Показываем диалог внесения модальный
+                            $('#addRecordDialog').scope().openModal(function(dlgScope, errorHandler){
+
+                                // Валидируем данные
+                                dateValRes = uuValidateDate(dlgScope.date);
+                                if (dateValRes !== true){
+                                    errorHandler(dateValRes);
+                                    return false;
+                                }
+                                sumValRes = uuValidateSum(dlgScope.sum);
+                                if (sumValRes !== true){
+                                    errorHandler(sumValRes);
+                                    return false;
+                                }
+
+                                // parseFloat вернет число даже для случая 55ss тогда как при передаче
+                                // на сервер этого значения сервер сообщит об ошибке. Поэтому тут мы корректируем.
+                                // кроме того грид ждет что число бует строкой потому форматируем как строку.
+                                // Решаем сразу неск. задач.
+                                // 1. Преобразуем в строку (хотя исходная итак строка)
+                                // 2. Точки меняем на запятые (чтобы результат всегда был с запятыми)
+                                // 3. Делаем только 2 знака после запятой.
+                                // 4. Удаляем лишние символы кроме того что скушала parseFloat
+                                // 5. Если тип операции - расход, то введенную сумму берем со знаком минус.
+                                var origStrVal = dlgScope.sum;
+                                var strValWithPt = String(origStrVal).replace(',', '.');
+                                var floatVal = parseFloat(strValWithPt);
+                                var strValCleanedPlus = String(floatVal.toFixed(2));
+                                var strValCleanedMinus = String((-floatVal).toFixed(2));
+                                var strValWithComma = String(strValCleanedPlus).replace('.', ',');
+                                var strValWithCommaMinus = String(strValCleanedMinus).replace('.', ',');
 
 
-                $scope.getTotalBalance = function(){
-                    tot = 0.00;
-                    for(var i=0; i<$scope.accountBalanceList.length; ++i){
-                        tot += $scope.accountBalanceList[i].balance;
-                    }
-                    return window.uuFormatCurrency(tot);
-                }
-            }
-        </script>
+                                // Добавляем строку, перед этим увеличив высоту грида (чтобы избежать его собственного скроллинга)
+                                // Либо 2 если это операция перевода.
+                                if (dlgScope.type == '2'){
+                                    var newHeight = adjustGridHeightToNewRowsCount($('#uuGrid').jqxGrid('getrows').length + 2);
+                                    $('#uuGrid').jqxGrid('addrow', null, {
+                                        'date': dlgScope.date,
+                                        'utype': uTypeList[dlgScope.type],
+                                        'sum': strValWithCommaMinus,
+                                        'account': dlgScope.account,
+                                        'category': dlgScope.category,
+                                        'comment': dlgScope.comment
+                                    });
+                                    $('#uuGrid').jqxGrid('addrow', null, {
+                                        'date': dlgScope.date,
+                                        'utype': uTypeList[dlgScope.type],
+                                        'sum': strValWithComma,
+                                        'account': dlgScope.account_to,
+                                        'category': dlgScope.category,
+                                        'comment': dlgScope.comment
+                                    });
+                                }else{
+                                    var newHeight = adjustGridHeightToNewRowsCount($('#uuGrid').jqxGrid('getrows').length + 1);
+                                    $('#uuGrid').jqxGrid('addrow', null, {
+                                        'date': dlgScope.date,
+                                        'utype': uTypeList[dlgScope.type],
+                                        'sum': (dlgScope.type == '0') ? strValWithCommaMinus : strValWithComma,
+                                        'account': dlgScope.account,
+                                        'category': dlgScope.category,
+                                        'comment': dlgScope.comment
+                                    });
+                                }
 
-        <div ng-controller="BalanceCtrl">
-            <ng-include src="'/static/ang/balance.html'" />
+                                // Снимаем выделение (ранее имевшееся) и выделяем первый столбец у добавленной строки
+                                $("#uuGrid").jqxGrid('clearselection');
+                                $("#uuGrid").jqxGrid('selectcell', $("#uuGrid").jqxGrid("getrows").length-1, 'sum');
+
+                                // Эта пара вызовов делает grid активным (клавишы влево вправо вверх вниз начинают
+                                // работать на нем). Если убрать эти вызовы то клавишы не работают пока не кликнем в грид.
+                                $("#contentuuGrid").attr('tabindex', 2);
+                                $("#contentuuGrid").focus();
+
+                                // Скроллинг к последнему пикселю.
+                                $(window).scrollTop(1000 + newHeight);
+                            });
+                        }
+
+                        $(document).on('keydown', function(event){
+                            if (event.which == 45){
+                                addUchetRecord();
+                            };
+                        });
+
+                        $('#btnAdd').on('click', function(){
+                            addUchetRecord();
+                        });
+                    </script>
+
+                    <div style="margin-left: 150px; margin-top: 5px;">
+
+                        <!-- Таблица со списком счетов -->
+                        <uu-balance account-list="accountBalanceList2">
+                        </uu-balance>
+
+                    </div>
+
+                </div>
+
+            </div>
+
         </div>
 
     </div>

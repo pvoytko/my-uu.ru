@@ -22,13 +22,23 @@
             <h5>Опыт юзеров</h5>
         </div>
 
-        <table>
+        <table class="table table-condensed table-striped">
+            <tr>
+                <th>ID и мыло</th>
+                <th>Раннее событие</th>
+                <th>Позднее события</th>
+                <th>Дней работы</th>
+                <th>Дней учета</th>
+                <th>Операций</th>
+            </tr>
             {% for record in userStat %}
                 <tr>
                     <td style="padding-right: 25px;">{{ record.id }} {{ record.email }}</td>
                     <td style="padding-right: 25px;">{{ record.min_dt }}</td>
                     <td style="padding-right: 25px;">{{ record.max_dt }}</td>
                     <td>{{ record.count_dt }}</td>
+                    <td>{{ record.count_dt_op }}</td>
+                    <td>{{ record.count_op }}</td>
                 </tr>
             {% endfor %}
         </table>
