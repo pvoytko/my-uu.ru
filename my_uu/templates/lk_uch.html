@@ -979,6 +979,7 @@
                                 // Обновляем баланс на счетах согласно полученному от сервера.
                                 var abl = adjustServerBalance(JSON.parse(data).accountBalanceList);
                                 $scope.accountBalanceList2 = abl;
+                                $scope.$apply();
 
                             }).fail(function(jqXHR, textStatus, errorThrown){
 
