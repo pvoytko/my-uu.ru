@@ -464,6 +464,7 @@
                                 // Сохраняем новый баланс (и таблица счетов авто-обновится)
                                 var abl = adjustServerBalance(JSON.parse(httpSuccessData).accountBalanceList)
                                 $scope.accountBalanceList2 = abl;
+                                $scope.$apply();
 
                             } else {
 

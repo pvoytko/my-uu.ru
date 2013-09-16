@@ -578,6 +578,9 @@ def adm_exp(request):
     userStat = User.objects.all().annotate(min_dt = Min("eventlog__datetime"), max_dt = Max("eventlog__datetime"))
     userStat = userStat.order_by('id').values()
     for u in userStat:
+        u['min_dt'] = u['min_dt'].date() if u['min_dt'] else None
+        u['max_dt'] = u['max_dt'].date() if u['max_dt'] else None
+
         eventLogObjects = my_uu.models.EventLog.objects.filter(user = u['id']).extra(select = {'date': 'DATE(datetime)'})
         u['count_dt'] = len(eventLogObjects.values_list('date', flat=True).distinct())
 
