@@ -9,6 +9,9 @@ def isNonVersioned(ll):
             return True
     return False
 
+def isForCommit(ll):
+    return len(ll.strip()) > 0
+
 def cs(ustr):
     return ustr.encode('cp866')
 
@@ -24,6 +27,9 @@ else:
     print cs(u'd>> Все файлы под управлением СКВ.')
 
 # Коммит
-a = raw_input(cs(u'd>> Введите сообщение для коммита: '))
-if a:
-    os.system("hg commit -m '{0}'".format(a))
+if isForCommit(res):
+    a = raw_input(cs(u'd>> Введите сообщение для коммита: '))
+    if a:
+        os.system("hg commit -m '{0}'".format(a))
+else:
+    print cs(u'd>> Комитить нечего.')
