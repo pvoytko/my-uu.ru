@@ -1,49 +1,14 @@
-<!doctype html>
-<html ng-app>
-<head>
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-    <title>Мой Удобный Учет</title>
-    <link rel="stylesheet" href="/static/css/common.css" />
-    <link rel="stylesheet" href="http://code.jquery.com/ui/1.10.3/themes/redmond/jquery-ui.css" />
-    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.0.7/angular.min.js"></script>
+{% extends 'base_begin.html' %}
 
-    <!-- jQuery -->
-    <script src="http://code.jquery.com/jquery-1.9.1.js"></script>
-    <script src="http://code.jquery.com/ui/1.10.3/jquery-ui.js"></script>
-
-    <!-- Бутстрап -->
-    <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap.min.css">
-    <script src="//netdna.bootstrapcdn.com/bootstrap/3.0.0/js/bootstrap.min.js"></script>
+{% block add_to_head %}
 
     <script src="{{ STATIC_URL }}js/auth_reg_form_ctrl.js"></script>
-    <link rel="shortcut icon" type="image/png" href="{{ STATIC_URL }}img/favicon.png"/>
     <script>
         $(function() {
             $( "#auth-reg-tabs" ).tabs();
         });
     </script>
     <style>
-
-        .logo__descr{
-            color: rgb(178, 34, 34);
-            font-size: 28px;
-            font-family: 'lucida sans unicode', 'lucida grande', sans-serif;;
-            font-weight: bold;
-            margin-left: 17px;
-        }
-        .logo__eleg{
-            color: rgb(178, 34, 34);
-            font-size: 24px;
-            font-family: 'lucida sans unicode', 'lucida grande', sans-serif;
-            margin-left: 350px;
-            margin-top: 10px;
-            background-color: rgb(233, 235, 132);
-            padding: 5px;
-            width: 320px;
-            color: rgb(51, 51, 153);
-        }
-
-
         .auth__button {
             font-size: 25px;
             color: darkblue;
@@ -91,156 +56,52 @@
             position: relative;
         }
     </style>
-</head>
 
-<body>
+{% endblock %}
 
-    <div class="page_content_container" style="position: relative;">
+{% block content %}
 
-        <a class="logo__text" style="margin-top: 26px; padding: 5px;" href="{% url 'my_uu.views.main' %} " >
-            «Мой Удобный Учет»
-        </a>
+    <h2>Скриншоты</h2>
 
-        <div class="logo__descr">
-            Онлайн-сервис для учета личных расходов и доходов
-        </div>
-        <div class="logo__eleg" style="width: 330px;">
-            элегантный и простой! ;-)
-        </div>
+    <div style="padding: 10px; background-color: lightblue; width: 800px; margin: 30px;">
+        <img src="{{ STATIC_URL }}img/screenshot1.png" width="100%" style="opacity: 0.95;" />
+    </div>
+    <div style="padding: 10px; background-color: lightblue; width: 800px; margin: 30px;">
+        <img src="{{ STATIC_URL }}img/screenshot2.png" width="100%" style="opacity: 0.95;" />
+    </div>
+    <div style="padding: 10px; background-color: lightblue; width: 800px; margin: 30px;">
+        <img src="{{ STATIC_URL }}img/screenshot3.png" width="100%" style="opacity: 0.95;" />
+    </div>
 
-        <script>
-            function toggleLoginPopup(){
-                if ($('.dropdown-menu').parent().hasClass('open')) {
-                    $('.dropdown-menu').parent().removeClass('open');
-                } else {
-                    $('.dropdown-menu').dropdown('toggle');
-                    function closeOnEvent(ev){
-                        $('.dropdown-menu').parent().removeClass('open');
-                        $(document).off('click', closeOnEvent);
-                    }
-                    setTimeout(function(){
-                        $(document).on('click', closeOnEvent);
-                    }, 0);
-                }
-            };
-        </script>
-        <div id="login-group" class="btn-group" style="position: absolute; right: 30px; top: 20px;">
-            <button class="btn btn-success btn-sm dropdown-toggle" style="width: 80px;" type="button" onclick="toggleLoginPopup()">
-                Вход <span class="caret"></span>
-            </button>
-            <ul class="dropdown-menu pull-right" style="padding: 15px; width: 250px;">
-                <p>Войти в сервис</p>
-                <form role="form">
-                    <div class="form-group">
-                        <input name="email" type="email" class="form-control" placeholder="Введите эл. почту">
-                    </div>
-                    <div class="form-group">
-                        <input name="text" type="text" class="form-control" placeholder="Введите пароль">
-                    </div>
-                    <button type="submit" class="btn btn-primary">Войти</button>
-                </form>
-            </ul>
+    <h2>Регистрируйтесь и попробуйте</h2>
+
+    <div id="auth-reg-tabs" style="width: 400px; margin: 30px auto; height: 300px;" ng-controller="AuthRegFormCtrl" style="position: relative;">
+        <ul>
+            <li><a href="#tab-reg">Регистрация</a></li>
+        </ul>
+        <div id="tab-reg">
+
+            <div class="auth__label">Введите свою эл. почту:</div>
+            <div class="auth__input"><input type="text" ng-model="email"></div>
+
+            <div class="auth__label">Введите пароль:</div>
+            <div class="auth__input"><input type="text" ng-model="password"></div>
+
+            <div class="auth__nonfield_error" ng-show="errorText"><span ng:bind="errorText"></span></div>
+            <br />
+            <button class="auth__button" ng-click="register()" name="reg_button">Зарегистрироваться</button>
+
         </div>
 
-        <h2>Скриншоты</h2>
-
-        <div style="padding: 10px; background-color: lightblue; width: 800px; margin: 30px;">
-            <img src="{{ STATIC_URL }}img/screenshot1.png" width="100%" style="opacity: 0.95;" />
-        </div>
-        <div style="padding: 10px; background-color: lightblue; width: 800px; margin: 30px;">
-            <img src="{{ STATIC_URL }}img/screenshot2.png" width="100%" style="opacity: 0.95;" />
-        </div>
-        <div style="padding: 10px; background-color: lightblue; width: 800px; margin: 30px;">
-            <img src="{{ STATIC_URL }}img/screenshot3.png" width="100%" style="opacity: 0.95;" />
-        </div>
-
-        <h2>Регистрируйтесь и попробуйте</h2>
-
-        <div id="auth-reg-tabs" style="width: 400px; margin: 30px auto; height: 300px;" ng-controller="AuthRegFormCtrl" style="position: relative;">
-            <ul>
-                <li><a href="#tab-reg">Регистрация</a></li>
-                <li><a href="#tab-auth">Вход</a></li>
-            </ul>
-            <div id="tab-reg">
-
-                <div class="auth__label">Введите свою эл. почту:</div>
-                <div class="auth__field_error" ng-show="form_errors.email.required">Эл. почта обязательна для заполнения.</div>
-                <div class="auth__input"><input type="text" ng-model="email" ng-change="hideEmailErrors()"></div>
-
-                <div class="auth__label">Придумайте пароль:</div>
-                <div class="auth__field_error" ng-show="form_errors.password.required">Пароль обязателен для заполнения.</div>
-                <div class="auth__input"><input type="text" ng-model="password" ng-change="hidePasswordErrors()"></div>
-
-                <div class="auth__nonfield_error" ng-show="errorText"><span ng:bind="errorText"></span></div>
-                <button class="auth__button" ng-click="register()" name="reg_button">Зарегистрироваться</button>
-
-            </div>
-
-            <div id="tab-auth">
-
-                <div class="auth__label">Введите свою эл. почту:</div>
-                <div class="auth__field_error" ng-show="form_errors.email.required">Эл. почта обязательна для заполнения.</div>
-                <div class="auth__input"><input type="text" ng-model="email" ng-change="hideEmailErrors()"></div>
-
-                <div class="auth__label">Введите пароль:</div>
-                <div class="auth__field_error" ng-show="form_errors.password.required">Пароль обязателен для заполнения.</div>
-                <div class="auth__input"><input type="text" ng-model="password" ng-change="hidePasswordErrors()"></div>
-
-                <div class="auth__nonfield_error" ng-show="errorText"><span ng:bind="errorText"></span></div>
-                <button class="auth__button" ng-click="login()" name="reg_button">Войти</button>
-
-            </div>
-
-            <!-- Блок отображается во время запроса к серверу -->
-            <div ng-show="loading || redirecting" style="position: absolute; top: 0px; left: 0px; width: 100%; height: 100%; opacity: 0.5; background-color: green; opacity: 0.7; color: white; font-weight: bold; font-size: 1.3em; text-align: center; ">
-                <div style="position: absolute; top: 50%; width: 100%;">
-                    <div style="position: relative; top: -50%; text-align: center; width: 100%;">
-                        Загрузка...
-                    </div>
+        <!-- Блок отображается во время запроса к серверу -->
+        <div ng-show="loading" style="position: absolute; top: 0px; left: 0px; width: 100%; height: 100%; opacity: 0.5; background-color: green; opacity: 0.7; color: white; font-weight: bold; font-size: 1.3em; text-align: center; ">
+            <div style="position: absolute; top: 50%; width: 100%;">
+                <div style="position: relative; top: -50%; text-align: center; width: 100%;">
+                    Загрузка...
                 </div>
             </div>
         </div>
-
-
-        <div style="padding: 12px; background-color: #cccccc; display: block; line-height: 10px; font-family: Arial, Helvetica, sans-serif; font-size: 12px; border-radius: 14px; margin-top: 50px;">
-            <p><strong>Об авторе</strong></p>
-            <p>Войтко Павел, веб-программист. Создал этот сервис в 2013 году.</p>
-            <p>Более 5 лет веду учет личных расходов и доходов и делал сервис таким, каким хочу пользоваться сам.</p>
-            <p>Постарался сделать максимально удобным и простым. Надеюсь, Вам понравится. :-)</p>
-            <p>Вы можете со мной связаться: <a href="http://pvoytko@gmail.com">pvoytko@gmail.com</a></p>
-        </div>
-
     </div>
 
+{% endblock %}
 
-    <!-- Yandex.Metrika counter -->
-    <script type="text/javascript">
-    (function (d, w, c) {
-        (w[c] = w[c] || []).push(function() {
-            try {
-                w.yaCounter21799327 = new Ya.Metrika({id:21799327,
-                        webvisor:true,
-                        clickmap:true,
-                        trackLinks:true,
-                        accurateTrackBounce:true,
-                        trackHash:true});
-            } catch(e) { }
-        });
-
-        var n = d.getElementsByTagName("script")[0],
-            s = d.createElement("script"),
-            f = function () { n.parentNode.insertBefore(s, n); };
-        s.type = "text/javascript";
-        s.async = true;
-        s.src = (d.location.protocol == "https:" ? "https:" : "http:") + "//mc.yandex.ru/metrika/watch.js";
-
-        if (w.opera == "[object Opera]") {
-            d.addEventListener("DOMContentLoaded", f, false);
-        } else { f(); }
-    })(document, window, "yandex_metrika_callbacks");
-    </script>
-    <noscript><div><img src="//mc.yandex.ru/watch/21799327" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
-    <!-- /Yandex.Metrika counter -->
-
-</body>
-</html>

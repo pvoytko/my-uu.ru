@@ -6,6 +6,13 @@ import os
 # Разработческая машина (не боевая)
 IS_DEVELOPER_COMP = os.path.dirname(os.path.abspath(__file__)) == "D:\\HgRepos\\my-uu.ru\\my_uu"
 
+# Тут хранится корневая папка проекта как юникод-строка. Важно юникод. Чтоб не было проблем с русскими буквами.
+PROJECT_DIR = os.path.join(os.path.dirname(unicode(__file__)), "..")
+
+# Блок настроек в зависимости от инстанса сайта включаем те или иные его части
+UU_EMAIL_BACKEND_TYPE = 'filebased' if IS_DEVELOPER_COMP else 'jino'
+
+
 DEBUG = IS_DEVELOPER_COMP
 TEMPLATE_DEBUG = DEBUG
 
@@ -13,14 +20,18 @@ ADMINS = (
     ('Павел Войтко', 'pvoytko@gmail.com'),
 )
 
-
-# Для отправки сообщений
-# Код взят из https://docs.djangoproject.com/en/dev/topics/email/
-EMAIL_HOST = 'smtp.jino.ru'
-EMAIL_PORT = 587
-EMAIL_HOST_USER = 'support@my-uu.ru'
-EMAIL_HOST_PASSWORD = 'JqhGC9I2'
-
+# Отправка емейлов
+if UU_EMAIL_BACKEND_TYPE == 'filebased':
+    EMAIL_BACKEND = 'django.core.mail.backends.filebased.EmailBackend'
+    EMAIL_FILE_PATH = os.path.join(PROJECT_DIR, 'emails')
+elif UU_EMAIL_BACKEND_TYPE == 'jino':
+    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+    EMAIL_HOST = 'smtp.jino.ru'
+    EMAIL_PORT = 587
+    EMAIL_HOST_USER = 'support@my-uu.ru'
+    EMAIL_HOST_PASSWORD = 'JqhGC9I2'
+else:
+    raise RuntimeError(u'Неподдерживаемое значыение UU_EMAIL_BACKEND_TYPE "{0}".'.format(UU_EMAIL_BACKEND_TYPE))
 
 MANAGERS = ADMINS
 

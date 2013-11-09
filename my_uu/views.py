@@ -12,6 +12,7 @@ from django.core.serializers.json import DjangoJSONEncoder
 import django.core.exceptions
 import django.db.utils
 from django.conf import settings
+from django import forms
 
 
 import json
@@ -20,16 +21,52 @@ import datetime
 import my_uu.models
 import my_uu.utils
 
-# Главная страница.
-# Вызывает шаблон главной страницы.
-def main(request):
+def _main_imp(request, templateName):
 
     # Если юзер уже прошел аутентификацию посылаем его в ЛК
     if request.user.id is not None:
         return HttpResponseRedirect(reverse('my_uu.views.lk_uch'))
 
     # Эта страница используется вместо главной пока
-    return render(request, 'lpgen_main.html')
+    return render(request, templateName)
+
+
+# Главная страница.
+def main(request):
+    return _main_imp(request, 'lpgen_main.html')
+
+# Главная страница 2.
+def main_v(request):
+    return _main_imp(request, 'lpgen_main_v.html')
+
+
+class MyUUAuthForm(forms.Form):
+    email = forms.EmailField()
+    password = forms.CharField()
+
+
+# Класс инкапсулирует в себе знание о том какой
+# формат взаимодействия между сервером и клиентом (JS).
+# А именно пока он такой:
+# ответ содержит 2 поля - status_ok (булевый, True если операция выполнена и False если что-то случилось)
+# и response который содержит доп. данные в обоих случаях или может быть пустой.
+class JsonResponseBuilder():
+
+    def __init__(self):
+        self._responseObject = {
+            'status_ok': True
+        }
+
+    def setError(self, errorResponseObject):
+        self._responseObject['status_ok'] = False
+        self._responseObject['response'] = errorResponseObject
+
+    def setSuccess(self, successResponseObject):
+        self._responseObject['status_ok'] = True
+        self._responseObject['response'] = successResponseObject
+
+    def buildHttpJsonResponse(self):
+        return HttpResponse(json.dumps(self._responseObject), content_type="application/json")
 
 
 # Регистрация юзера по переданным email и паролю.
@@ -37,7 +74,22 @@ def main(request):
 #     ok - зареген успешно
 #     exists - уже существует
 def register_user_ajax(request):
+    resp = JsonResponseBuilder()
     data = json.loads(request.body)
+    frm = MyUUAuthForm(data)
+    if not frm.is_valid():
+        # Тут такой финт с проверкой текста чтобы избежать случая когда
+        # оба поля не заполнены и юзеру покажется 2 раа текст "Обязательное поле".
+        txt = u''
+        req = u''
+        for i in frm.errors.items():
+            for s in i[1]:
+                if s == u"Обязательное поле.":
+                    req = u"Оба поля обязательны для заполнения. "
+                else:
+                    txt += s + u" "
+        resp.setError(req + txt)
+        return resp.buildHttpJsonResponse()
 
     # Создаем юзера. Если эксепшен так как уже существует, то возвращаем код.
     try:
@@ -45,8 +97,8 @@ def register_user_ajax(request):
         u.save()
     except django.db.utils.IntegrityError as e:
         if u'Duplicate entry' in unicode(e):
-            return HttpResponse('register_exists')
-        raise
+            resp.setError(u'Пользователь с таким адресом эл. почты уже зарегистрирован в сервисе. ')
+            return resp.buildHttpJsonResponse()
 
     # Для нового юзера надо создать счет и категорию
     my_uu.models.Category.objects.create(name = u'Не указана категория', user = u).save()
@@ -62,7 +114,7 @@ def register_user_ajax(request):
     user = _authenticateByEmailAndPassword(**data)
     login(request, user)
 
-    return HttpResponse('ok')
+    return resp.buildHttpJsonResponse()
 
 
 # Отличие от стандартной django authenticate в том что принимает пароль и емейл (а в джанге - username и пароль).
@@ -77,22 +129,39 @@ def _authenticateByEmailAndPassword(**kwargs):
 #     auth_email_password_incorrect - email и пароль не определены
 def login_user_ajax(request):
     data = json.loads(request.body)
+    resp = JsonResponseBuilder()
 
-    # На разработческой машине можно войти под любым юзером без пароля
-    if settings.IS_DEVELOPER_COMP:
-        user = django.contrib.auth.models.User.objects.get(email = data['email'])
+    frm = MyUUAuthForm(data)
+    if frm.is_valid():
 
-        # Если не выставить бекэнд то потом ошибка при получении юзера.
-        user.backend = "django.contrib.auth.backends.ModelBackend"
-    else:
+        # На разработческой машине можно войти под любым юзером без пароля
+        # if settings.IS_DEVELOPER_COMP:
+        #    user = django.contrib.auth.models.User.objects.get(email = data['email'])
+
+            # Если не выставить бекэнд то потом ошибка при получении юзера.
+        #   user.backend = "django.contrib.auth.backends.ModelBackend"
+        # else:
         user = _authenticateByEmailAndPassword(**data)
 
-    if user is not None:
-        login(request, user)
-        return HttpResponse('ok')
+        if user is not None:
+            login(request, user)
+            resp.setSuccess(None)
+        else:
+            resp.setError(u'Пользователь с таким паролем и адресом эл. почты не найден.')
     else:
-        return HttpResponse('auth_email_password_incorrect')
-    
+        # Тут такой финт с проверкой текста чтобы избежать случая когда
+        # оба поля не заполнены и юзеру покажется 2 раа текст "Обязательное поле".
+        txt = u''
+        req = u''
+        for i in frm.errors.items():
+            for s in i[1]:
+                if s == u"Обязательное поле.":
+                    req = u"Оба поля обязательны для заполнения. "
+                else:
+                    txt += s + u" "
+        resp.setError(req + txt)
+
+    return resp.buildHttpJsonResponse()
     
 # ВЫход
 def logout_user(request):

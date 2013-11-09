@@ -25,10 +25,7 @@ def sendHtmlEmailFromSupport(toEmail, subj, emailTemplateName, emailTemplateCont
     msg = EmailMessage(subj, htmlContent, "support@my-uu.ru", [toEmail], ['pvoytko@gmail.com'])
     msg.content_subtype = "html"
 
-    # Защита от рассылки спама юзерам с локальной машины
-    # Если убрать эту проверку то надо отправку писем заблокировать.
-    # Иначе случайно запустив локально и если реальная база - можно разослать письма напрасно.
-    assert settings.IS_DEVELOPER_COMP == False, u'Ошибка, скрипт должен запускаться только на боевом сервере.'
+    # На отладческой машине в качестве емейл бекенда установлена запись в файл.
 
     msg.send()
 

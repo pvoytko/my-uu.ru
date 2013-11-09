@@ -6,6 +6,7 @@ urlpatterns = patterns('',
 
     # Главная сервиса
     url(r'^$', 'my_uu.views.main'),
+    url(r'^v/$', 'my_uu.views.main_v'),
 
     # Регистрация логин и выход
     url(r'^register_user/$', 'my_uu.views.register_user_ajax'),
@@ -40,6 +41,7 @@ urlpatterns = patterns('',
     # Отписаться юзеру
     url(r'^unsubscr/(?P<obfuscatedUserId>\d+)/$', 'my_uu.views.unsubscr_view'),
     url(r'^unsubscr/(?P<obfuscatedUserId>\d+)/do/$', 'my_uu.views.unsubscr_do'),
+    url(r'^unsubscr/test/$', 'my_uu.views.unsubscr_view'),
 )
 
 from django.contrib.staticfiles.urls import staticfiles_urlpatterns
