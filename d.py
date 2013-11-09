@@ -10,15 +10,16 @@ def isNonVersioned(ll):
     return False
 
 def isForCommit(ll):
-    return len(ll.strip()) > 0
+    return len(ll) > 0
 
 def cs(ustr):
     return (u'd>> {0}'.format(ustr)).encode('cp866')
 
 # Добавление если надо
-res = Popen("hg status", stdout=PIPE, shell=True).stdout.read()
+res = Popen("hg status", stdout=PIPE, shell=True).stdout.read().strip()
 print 'd>> hg status'
-print res.strip()
+if res:
+    print res
 if isNonVersioned(res):
     a = raw_input(cs(u'Добавить в репозиторий (y/N)?'))
     if a == 'y':
