@@ -13,23 +13,25 @@ def isForCommit(ll):
     return len(ll.strip()) > 0
 
 def cs(ustr):
-    return ustr.encode('cp866')
+    return (u'd>> {0}'.format(ustr)).encode('cp866')
 
 # Добавление если надо
 res = Popen("hg status", stdout=PIPE, shell=True).stdout.read()
 print 'd>> hg status'
 print res.strip()
 if isNonVersioned(res):
-    a = raw_input(cs(u'd>> Добавить в репозиторий (y/N)?'))
+    a = raw_input(cs(u'Добавить в репозиторий (y/N)?'))
     if a == 'y':
         os.system("hg add")
+        print cs(u'Добавление сделано.')
 else:
-    print cs(u'd>> Все файлы под управлением СКВ.')
+    print cs(u'Все файлы под управлением СКВ.')
 
 # Коммит
 if isForCommit(res):
-    a = raw_input(cs(u'd>> Введите сообщение для коммита: '))
+    a = raw_input(cs(u'Введите сообщение для коммита: '))
     if a:
         os.system("hg commit -m '{0}'".format(a))
+        print cs(u'Комит сделан.')
 else:
-    print cs(u'd>> Комитить нечего.')
+    print cs(u'Комитить нечего.')
