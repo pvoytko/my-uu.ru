@@ -1,0 +1,154 @@
+<!doctype html>
+<html ng-app>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>Мой Удобный Учет</title>
+    <link rel="stylesheet" href="/static/css/common.css" />
+    <link rel="stylesheet" href="http://code.jquery.com/ui/1.10.3/themes/redmond/jquery-ui.css" />
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.0.7/angular.min.js"></script>
+
+    <!-- jQuery -->
+    <script src="http://code.jquery.com/jquery-1.9.1.js"></script>
+    <script src="http://code.jquery.com/ui/1.10.3/jquery-ui.js"></script>
+
+    <!-- Бутстрап -->
+    <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap.min.css">
+    <script src="//netdna.bootstrapcdn.com/bootstrap/3.0.0/js/bootstrap.min.js"></script>
+
+    <link rel="shortcut icon" type="image/png" href="{{ STATIC_URL }}img/favicon.png"/>
+    <style>
+
+        .logo__descr{
+            color: rgb(178, 34, 34);
+            font-size: 28px;
+            font-family: 'lucida sans unicode', 'lucida grande', sans-serif;
+            font-weight: bold;
+            margin-left: 17px;
+        }
+        .logo__eleg{
+            color: rgb(178, 34, 34);
+            font-size: 24px;
+            font-family: 'lucida sans unicode', 'lucida grande', sans-serif;
+            margin-left: 350px;
+            margin-top: 10px;
+            background-color: rgb(233, 235, 132);
+            width: 320px;
+            color: rgb(51, 51, 153);
+        }
+
+    </style>
+
+    {% block add_to_head %}
+    {% endblock %}
+
+</head>
+
+<body>
+
+    <div class="page_content_container" style="position: relative;">
+
+        <a class="logo__text" style="margin-top: 22px; padding: 0px;" href="{% url 'my_uu.views.main' %} " >
+            «Мой Удобный Учет»
+        </a>
+
+        <div class="logo__descr">
+            Онлайн-сервис для учета личных расходов и доходов
+        </div>
+        <div class="logo__eleg" style="width: 330px;">
+            элегантный и простой! ;-)
+        </div>
+
+        <script>
+            function toggleLoginPopup(){
+                if ($('.dropdown-menu').parent().hasClass('open')) {
+                    $('.dropdown-menu').parent().removeClass('open');
+                } else {
+                    $('.dropdown-menu').dropdown('toggle');
+                    function closeOnEvent(ev){
+                        $('.dropdown-menu').parent().removeClass('open');
+                        $(document).off('click', closeOnEvent);
+                    }
+                    setTimeout(function(){
+                        $(document).on('click', closeOnEvent);
+                    }, 0);
+                }
+            };
+
+            function LoginController($scope, $http) {
+                $scope.login = function(){
+                    $scope.loading = true;
+                    $scope.errorText = '';
+                    httpObj = $http({
+                        method: 'POST',
+                        url: '/login_user/',
+                        data: $scope._getDataDictFromScope(),
+                        cache: false,
+                        timeout: 25000
+                    });
+                    $scope._setupServerCallbacks(httpObj);
+                }
+                $scope._getDataDictFromScope = function(){
+                    return {
+                        'email': $scope.email,
+                        'password': $scope.password
+                    };
+                }
+                $scope._setupServerCallbacks = function(httpObj){
+                      httpObj.success(function(resp, status) {
+                          if (resp.status_ok){
+                              window.location = '/lk/';
+                          } else {
+                              $scope.errorText = resp.response;
+                              $scope.loading = false;
+                          }
+                      }).
+                      error(function(data, status) {
+                          // Статус 0 приходит если нет соединения с севером.
+                          if (status == 0){
+                              $scope.errorText = 'Отсутствует соединение с сервером.';
+                          }else{
+                              $scope.errorText = 'Ошибка на сервере. Пожалуйста, повторите попытку позднее или уточние состояние обратившись в службу поддержки.';
+                          }
+                          $scope.loading = false;
+                    });
+                }
+                $scope.loading = false;
+            }
+        </script>
+        <div id="login-group" class="btn-group" style="position: absolute; right: 30px; top: 20px;" ng-controller="LoginController">
+            <button class="btn btn-success btn-sm dropdown-toggle" style="width: 80px;" type="button" onclick="toggleLoginPopup()">
+                Вход <span class="caret"></span>
+            </button>
+            <ul class="dropdown-menu pull-right" style="padding: 15px; width: 250px;">
+                <div ng-show="loading" style="position: absolute; width: 100%; height: 100%; margin: -15px; background-color: white; opacity: 0.95; text-align: center; font-size: 19px; font-weight: bold; padding: 20px; padding-top: 60px;">
+                    Загрузка, подождите 30 секунд...
+                </div>
+                <p>Войти в сервис</p>
+                <form role="form">
+                    <div class="form-group">
+                        <input ng-model="email" type="text" class="form-control" placeholder="Введите эл. почту">
+                    </div>
+                    <div class="form-group">
+                        <input ng-model="password" type="text" class="form-control" placeholder="Введите пароль">
+                    </div>
+                    <div class="form-group" ng-show="errorText">
+                        <div class=" alert alert-danger" ng-bind="errorText">
+
+                        </div>
+                    </div>
+                    <button ng-click="login()" type="submit" class="btn btn-primary">Войти</button>
+                </form>
+            </ul>
+        </div>
+
+        {% block content %}
+        {% endblock %}
+
+
+    </div>
+
+    {% include 'include_yandex_metrika.html' %}
+    {% include 'include_google_analytics.html' %}
+
+</body>
+</html>
