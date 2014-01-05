@@ -25,14 +25,20 @@ urlpatterns = patterns('',
     # Личный кабинет анализ
     url(r'^lk/ana/$', 'my_uu.views.lk_ana'),
 
-    # Личный кабинет настройки
+    # Личный кабинет счета и категории
     url(r'^lk/set/$', 'my_uu.views.lk_set'),
     url(r'^lk/save_account_ajax/$', 'my_uu.views.lk_save_account_ajax'),
     url(r'^lk/delete_account_ajax/$', 'my_uu.views.lk_delete_account_ajax'),
     url(r'^lk/save_category_ajax/$', 'my_uu.views.lk_save_category_ajax'),
     url(r'^lk/delete_category_ajax/$', 'my_uu.views.lk_delete_category_ajax'),
+
+    # Личный кабинет импорт
     url(r'^lk/imp/$', 'my_uu.views.lk_imp'),
     url(r'^lk/imp_ajax/$', 'my_uu.views.lk_imp_ajax'),
+
+    # Личный кабинет экспорт
+    url(r'^lk/exp/$', 'my_uu.views.lk_exp'),
+    url(r'^lk/exp_csv/$', 'my_uu.views.lk_exp_csv'),
 
     # Административная часть (Павел Войтко)
     url(r'^adm/act/$', 'my_uu.views.adm_act'),

@@ -386,6 +386,12 @@ def lk_imp(request):
     return render(request, 'lk_imp.html', { 'request': request })
 
 
+# Страница экспорта
+@uu_login_required
+def lk_exp(request):
+    return render(request, 'lk_exp.html', { 'request': request })
+
+
 # Импорт данных через аякс
 @uu_login_required
 @uuTrackEventDecor(my_uu.models.Event.IMP)
@@ -408,6 +414,16 @@ def lk_imp_ajax(request):
             comment = uchet[5],
         )
     return JsonResponseWithStatusOk(importedCount = len(importedData))
+
+
+# Экспорт данных
+@uu_login_required
+def lk_exp_csv(request):
+    res = u""
+    for u in request.user.uchet_set.all():
+        res += u"{0};руб;{1};{2};{3};{4}\n".format(u.sum, u.category.name, u.account.name, u.date, u.comment)
+    httpResp = HttpResponse(res, content_type="text/plain; charset=utf-8")
+    return httpResp
 
 
 class JsonResponseWithStatusError(HttpResponse):
