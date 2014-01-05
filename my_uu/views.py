@@ -419,10 +419,46 @@ def lk_imp_ajax(request):
 # Экспорт данных
 @uu_login_required
 def lk_exp_csv(request):
+
     res = u""
-    for u in request.user.uchet_set.all():
-        res += u"{0};руб;{1};{2};{3};{4}\n".format(u.sum, u.category.name, u.account.name, u.date, u.comment)
-    httpResp = HttpResponse(res, content_type="text/plain; charset=utf-8")
+    plainTextContentType = "text/plain; charset=utf-8"
+
+    def uchetToPlainText(u, replaceCategoryName = None):
+        category = u.category.name
+        if replaceCategoryName:
+            category = replaceCategoryName
+        return u"{0};руб;{1};{2};{3};{4}\n".format(u.sum, category, u.account.name, u.date, u.comment)
+
+    # Проходим все операции
+    for u in request.user.uchet_set.order_by('date').all():
+
+        category = u.category.name
+
+        # Если операция перевода, то для нее создаем вместо категории - для расходной - КУДА, для доходной - ОТКУДА
+        if u.utype.id == my_uu.models.UType.PEREVOD:
+            if u.sum < 0:
+                corUchet = request.user.uchet_set.filter(date = u.date, utype = u.utype, sum = -u.sum, comment = u.comment)
+            if u.sum > 0:
+                corUchet = request.user.uchet_set.filter(date = u.date, utype = u.utype, sum = -u.sum, comment = u.comment)
+            if corUchet.count() == 0:
+                errMsg = u'Ошибка.\n'
+                errMsg += u'Для указаной ниже ошибочной операции перевода не найдена парная ей операция перевода.\n'
+                errMsg += u'Для каждой операции перевода должна быть ровно одна парная ей операция перевода: с той же суммой, только с противоположным знаком, от той же даты, с тем же комментарием.\n'
+                errMsg += u'Ошибочная операция перевода:\n'
+                errMsg += uchetToPlainText(u)
+                return HttpResponse(errMsg, content_type=plainTextContentType)
+            if corUchet.count() > 1:
+                errMsg = u'Ошибка.\n'
+                errMsg += u'Для указаной ниже ошибочной операции перевода найдено более одной парной ей операции перевода.\n'
+                errMsg += u'Для каждой операции перевода должна быть ровно одна парная ей операция перевода: с той же суммой, только с противоположным знаком, от той же даты, с тем же комментарием.\n'
+                errMsg += u'Ошибочная операция перевода:\n'
+                errMsg += uchetToPlainText(u)
+                return HttpResponse(errMsg, content_type=plainTextContentType)
+            category = corUchet[0].account.name
+
+        res += uchetToPlainText(u, category)
+
+    httpResp = HttpResponse(res, content_type=plainTextContentType)
     return httpResp
 
 
