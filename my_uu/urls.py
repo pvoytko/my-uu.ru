@@ -6,7 +6,6 @@ urlpatterns = patterns('',
 
     # Главная сервиса
     url(r'^$', 'my_uu.views.main'),
-    url(r'^v/$', 'my_uu.views.main_v'),
 
     # Регистрация логин и выход
     url(r'^register_user/$', 'my_uu.views.register_user_ajax'),

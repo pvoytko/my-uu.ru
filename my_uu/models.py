@@ -1,8 +1,18 @@
 # -*- coding: utf-8 -*-
 from django.db import models
 import django.contrib.auth.models
-from django.core.validators import MinLengthValidator
+from django.contrib.auth.models import User
 
+
+# ДОбавляем поле HTTP_REFERER в модель юзера
+class UserProfile(models.Model):
+    user = models.OneToOneField(User)
+
+    # Значение берется из куки и выставляется сюда (если не задано)
+    http_referer = models.CharField(max_length = 1024, blank = True, null = True)
+
+
+# Счет
 class Account(models.Model):
     user = models.ForeignKey(django.contrib.auth.models.User)
     name = models.CharField(max_length=255, error_messages={

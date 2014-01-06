@@ -12,7 +12,6 @@ PROJECT_DIR = os.path.join(os.path.dirname(unicode(__file__)), "..")
 # Блок настроек в зависимости от инстанса сайта включаем те или иные его части
 UU_EMAIL_BACKEND_TYPE = 'filebased' if IS_DEVELOPER_COMP else 'jino'
 
-
 DEBUG = IS_DEVELOPER_COMP
 TEMPLATE_DEBUG = DEBUG
 
@@ -155,6 +154,11 @@ INSTALLED_APPS = (
     'south',
     'my_uu'
 )
+
+
+# Добавляем поле к классу юзеров
+AUTH_PROFILE_MODULE = 'my_uu.UserProfile'
+
 
 # A sample logging configuration. The only tangible logging
 # performed by this configuration is to send an email to

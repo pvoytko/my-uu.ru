@@ -30,6 +30,7 @@
                 <th>Дней работы</th>
                 <th>Дней учета</th>
                 <th>Операций</th>
+                <th>Пришел с (ведется со 128 юзера)</th>
             </tr>
             {% for record in userStat %}
                 <tr>
@@ -39,6 +40,7 @@
                     <td>{{ record.count_dt }}</td>
                     <td>{{ record.count_dt_op }}</td>
                     <td>{{ record.count_op }}</td>
+                    <td>{{ record.http_referer }}</td>
                 </tr>
             {% endfor %}
         </table>

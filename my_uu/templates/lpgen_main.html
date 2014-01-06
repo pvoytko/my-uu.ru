@@ -8,8 +8,6 @@
 
 {% block add_to_head %}
 
-    {% include 'include_google_experiment_v.html' %}
-
     <link rel="stylesheet" href="/static/css/common.css" />
     <meta name="keywords" content="личные финансы, учет расходов, домашняя бухгалтерия"/>
     <meta name="description" content="Сервис для учета и анализа расходов и доходов"/>
@@ -82,6 +80,9 @@
     <div style="position: absolute; display: block;background-position: 0% 0%;background-repeat: no-repeat;border-width: 1px;position: absolute;ordering: 6px;top: 1631px;height: 162px;width: 100%;z-index: 1;anchor-id: #block-new25;left: 0;background-color: transparent;background-image: none;"
          class="outer-section"></div>
 
+    <div style="position: absolute; display: block;background-position: 0% 0%;background-repeat: no-repeat;border-width: 1px;position: absolute;ordering: 7px;top: 1793px;height: 149px;width: 100%;z-index: 1;anchor-id: #block-new26;left: 0;background-color: transparent;background-image: none;"
+         class="outer-section"></div>
+
     <div id="fb-root"></div>
     <div id="preview" class="page_container" style="margin: 0 auto; position: relative; left: -30px;">
 
@@ -134,7 +135,7 @@
     <div class="block block-text is-text" id="block-new5"
          style="display: block;background-position: 0% 0%;background-repeat: no-repeat;border-width: 1px;position: absolute;z-index: 103;top: 479px;height: 43px;width: 810px;anchor-id: #block-new5;left: 20px;background-color: transparent;background-image: none;">
         <p>
-            <span style="font-size: 16px;">Использование сервиса <strong>гарантированно поможет Вам решить эти
+            <span style="font-size: 16px;">Использование сервиса <strong>гарантированно поможет Вам<br />решить эти
                 проблемы</strong> раз и навсегда!</span></p>
 
     </div>
@@ -165,28 +166,89 @@
 
     </div>
 
-    <div class="block block-button is-button" id="block-new19"
-         style="display: block;background-position: 0% 0%;background-repeat: no-repeat;border-width: 1px;position: absolute;z-index: 105;border-radius: 0px;font-size: 26px;up-image: url({{ STATIC_URL }}lpgen_main/18_b.png#size_299x73);color: #ffffff;top: 1653px;raw-css: line-height: 35px;;height: 75px;width: 302px;anchor-id: #block-new19;font-weight: normal;left: 290px;background-color: transparent;background-image: none;; line-height: 35px;">
-        <a href="{% url 'my_uu.views.begin' %}" data-label="Начать использовать" target="" style="display: block;
-width: 302px;
-height: 75px;
-text-align: center;
-vertical-align: middle;
-line-height: 75px;
-text-decoration: none;
-border-radius: 0px;
-color: #ffffff;
-" id="render_new19">Начать использовать</a><img src="{{ STATIC_URL }}lpgen_main/18_b.png#size_299x73"
-                                                style="width: 0px; height: 0px;"/>
-        <style>a#render_new19 {
-            background: 0% 0% no-repeat url({{ STATIC_URL }}lpgen_main/18_b.png#size_299x73);
+
+    <script>
+
+        function RegCtrl($scope, $http){
+            $scope.errorText = null;
+            $scope.loading = false;
+            $scope.email = "";
+            $scope.password = "";
+
+            $scope.register = function(){
+                $scope.loading = true;
+                $scope.errorText = '';
+                httpObj = $http({
+                    method: 'POST',
+                    url: '/register_user/',
+                    data: $scope._getDataDictFromScope(),
+                    cache: false,
+                    timeout: 25000
+                });
+                $scope._setupServerCallbacks(httpObj);
+            }
+            $scope._getDataDictFromScope = function(){
+                return {
+                    email: $scope.email,
+                    password: $scope.password
+                };
+            }
+            $scope._setupServerCallbacks = function(httpObj){
+                  httpObj.success(function(resp, status) {
+                      if (resp.status_ok){
+
+                          // Регистрация события-цели
+                          ga('send', 'event', 'goal', 'GOAL_REGISTERED');
+                          yaCounter22867360.reachGoal('GOAL_REGISTERED');
+
+                          window.location = '/lk/';
+                      } else {
+                          $scope.errorText = resp.response;
+                          $scope.loading = false;
+                      }
+                  }).
+                  error(function(data, status) {
+                      // Статус 0 приходит если нет соединения с севером.
+                      if (status == 0){
+                          $scope.errorText = 'Отсутствует соединение с сервером.';
+                      }else{
+                          $scope.errorText = 'Ошибка на сервере. Пожалуйста, повторите попытку позднее или уточние состояние обратившись в службу поддержки.';
+                      }
+                      $scope.loading = false;
+                });
+            }
         }
 
-        a#render_new19:hover {
-            background: 0% 0% no-repeat url({{ STATIC_URL }}lpgen_main/18_b.png#size_299x73);
-        }
-        </style>
+    </script>
+
+    <div class="panel panel-warning" style="position: absolute; left: 560px; top: 250px; z-index: 3000; width: 300px;" ng-controller="RegCtrl">
+        <div ng-show="loading" style="position: absolute; width: 100%; top: 38px; bottom: 0px; background-color: white; opacity: 0.95; text-align: center; font-size: 19px; font-weight: bold; padding: 20px; padding-top: 60px;">
+            Загрузка, <br />подождите 30 секунд...
+        </div>
+        <div class="panel-heading" style="background-color: rgb(233, 235, 132);">
+            <h3 class="panel-title" style="color: rgb(51, 51, 153); font-weight: bold;">Начать использовать</h3>
+        </div>
+
+        <div class="panel-body">
+
+            <form role="form">
+                <div class="form-group">
+                    <input type="text" class="form-control" ng-model="email" placeholder="Введите эл. почту">
+                </div>
+                <div class="form-group">
+                    <input type="text" class="form-control" ng-model="password" placeholder="Введите пароль">
+                </div>
+                <div class="form-group" ng-show="errorText">
+                    <div class=" alert alert-danger" ng-bind="errorText">
+
+                    </div>
+                </div>
+            </form>
+
+            <button class="btn btn-success btn-block" style="border-radius: 20px; font-weight: bold; font-size: 16px;" ng-click="register()">Зарегистрироваться и <br />начать использовать</button>
+        </div>
     </div>
+
 
     <div class="block block-text is-text" id="block-new36"
          style="display: block;background-position: 0% 0%;background-repeat: no-repeat;border-width: 1px;position: absolute;z-index: 103;border-color: #47b320;top: 936px;height: 492px;width: 768px;anchor-id: #block-new36;left: 70px;background-color: transparent;background-image: none;">
@@ -249,7 +311,7 @@ color: #ffffff;
             <span style="font-size: 16px;">Образовались или иногда образовываются долги?</span></p>
 
         <p>
-            <font size="3">От всего этого возникает неприятный дискомфорт и переживания?</font></p>
+            <font size="3">От этого возникает неприятный дискомфорт и переживания?</font></p>
 
     </div>
 
@@ -268,36 +330,102 @@ color: #ffffff;
 
     </div>
 
-    <div class="block block-button is-button" id="block-new32"
-         style="display: block;background-position: 0% 0%;background-repeat: no-repeat;border-width: 1px;position: absolute;z-index: 105;border-radius: 0px;font-size: 26px;up-image: url({{ STATIC_URL }}lpgen_main/18_b.png#size_299x73);color: #ffffff;top: 303px;raw-css: line-height: 35px;;height: 75px;width: 302px;anchor-id: #block-new32;font-weight: normal;left: 560px;background-color: transparent;background-image: none;; line-height: 35px;">
-        <a href="{% url 'my_uu.views.begin' %}" data-label="Начать использовать" target="" style="display: block;
-width: 302px;
-height: 75px;
-text-align: center;
-vertical-align: middle;
-line-height: 75px;
-text-decoration: none;
-border-radius: 0px;
-color: #ffffff;
-" id="render_new32">Начать использовать</a><img src="{{ STATIC_URL }}lpgen_main/18_b.png#size_299x73"
-                                                style="width: 0px; height: 0px;"/>
-        <style>a#render_new32 {
-            background: 0% 0% no-repeat url({{ STATIC_URL }}lpgen_main/18_b.png#size_299x73);
+    <script>
+
+        function RegCtrl2($scope, $http){
+            $scope.errorText = null;
+            $scope.loading = false;
+            $scope.email = "";
+            $scope.password = "";
+
+            $scope.register = function(){
+                $scope.loading = true;
+                $scope.errorText = '';
+                httpObj = $http({
+                    method: 'POST',
+                    url: '/register_user/',
+                    data: $scope._getDataDictFromScope(),
+                    cache: false,
+                    timeout: 25000
+                });
+                $scope._setupServerCallbacks(httpObj);
+            }
+            $scope._getDataDictFromScope = function(){
+                return {
+                    email: $scope.email,
+                    password: $scope.password
+                };
+            }
+            $scope._setupServerCallbacks = function(httpObj){
+                  httpObj.success(function(resp, status) {
+                      if (resp.status_ok){
+
+                          // Регистрация события-цели
+                          ga('send', 'event', 'goal', 'GOAL_REGISTERED');
+                          yaCounter22867360.reachGoal('GOAL_REGISTERED');
+
+                          window.location = '/lk/';
+                      } else {
+                          $scope.errorText = resp.response;
+                          $scope.loading = false;
+                      }
+                  }).
+                  error(function(data, status) {
+                      // Статус 0 приходит если нет соединения с севером.
+                      if (status == 0){
+                          $scope.errorText = 'Отсутствует соединение с сервером.';
+                      }else{
+                          $scope.errorText = 'Ошибка на сервере. Пожалуйста, повторите попытку позднее или уточние состояние обратившись в службу поддержки.';
+                      }
+                      $scope.loading = false;
+                });
+            }
         }
 
-        a#render_new32:hover {
-            background: 0% 0% no-repeat url({{ STATIC_URL }}lpgen_main/18_b.png#size_299x73);
-        }
-        </style>
+    </script>
+
+    <div class="panel panel-warning" style="position: absolute; left: 560px; top: 1490px; z-index: 3000; width: 300px;" ng-controller="RegCtrl2">
+        <div ng-show="loading" style="position: absolute; width: 100%; top: 38px; bottom: 0px; background-color: white; opacity: 0.95; text-align: center; font-size: 19px; font-weight: bold; padding: 20px; padding-top: 60px;">
+            Загрузка, <br />подождите 30 секунд...
+        </div>
+        <div class="panel-heading" style="background-color: rgb(233, 235, 132);">
+            <h3 class="panel-title" style="color: rgb(51, 51, 153); font-weight: bold;">Начать использовать</h3>
+        </div>
+
+        <div class="panel-body">
+
+            <form role="form">
+                <div class="form-group">
+                    <input type="text" class="form-control" ng-model="email" placeholder="Введите эл. почту">
+                </div>
+                <div class="form-group">
+                    <input type="text" class="form-control" ng-model="password" placeholder="Введите пароль">
+                </div>
+                <div class="form-group" ng-show="errorText">
+                    <div class=" alert alert-danger" ng-bind="errorText">
+
+                    </div>
+                </div>
+            </form>
+
+            <button class="btn btn-success btn-block" style="border-radius: 20px; font-weight: bold; font-size: 16px;" ng-click="register()">Зарегистрироваться и <br />начать использовать</button>
+        </div>
     </div>
 
-    <div class="block block-text is-text" id="block-new33"
-         style="display: block;background-position: 0% 0%;background-repeat: no-repeat;border-width: 1px;position: absolute;z-index: 108;top: 377px;height: 42px;width: 300px;anchor-id: #block-new33;left: 557px;background-color: transparent;background-image: none;">
-        <p style="text-align: center;">
-            <span style="font-size:16px;">(займет не более 3х минут)</span></p>
+
+    <div class="block block-text is-text" id="block-new23"
+         style="display: block;background-position: 0% 0%;background-repeat: no-repeat;border-width: 1px;position: absolute;z-index: 102;top: 886px;height: 54px;width: 499px;anchor-id: #block-new23;left: 20px;background-color: transparent;background-image: none;">
+        <p>
+            <strong><span style="color: #333399;"><span
+                    style="font-family: 'lucida sans unicode', 'lucida grande', sans-serif; color: #333399;"><span
+                    style="font-size: 24px;">Воз</span></span></span></strong><strong><span
+                style="color: rgb(51, 51, 153);"><span
+                style="font-family: 'lucida sans unicode', 'lucida grande', sans-serif;"><span style="font-size: 24px;">м</span></span></span></strong><strong><span
+                style="color: #333399;"><span
+                style="font-family: 'lucida sans unicode', 'lucida grande', sans-serif;"><span style="font-size: 24px;">ожности сервиса</span></span></span></strong>
+        </p>
 
     </div>
-
 
     <div class="block block-text is-text" id="block-new24"
          style="display: block;background-position: 0% 0%;background-repeat: no-repeat;border-width: 1px;position: absolute;z-index: 102;top: 1446px;height: 54px;width: 499px;anchor-id: #block-new24;left: 20px;background-color: transparent;background-image: none;">
@@ -308,21 +436,14 @@ color: #ffffff;
 
     </div>
 
-    <div class="block block-text is-text" id="block-new29"
-         style="display: block;background-position: 0% 0%;background-repeat: no-repeat;border-width: 1px;position: absolute;z-index: 108;top: 1730px;height: 42px;width: 300px;anchor-id: #block-new29;left: 294px;background-color: transparent;background-image: none;">
-        <p style="text-align: center;">
-            <span style="font-size:16px;">(займет не более 3х минут)</span></p>
-
-    </div>
-
     <div class="block block-box is-box" id="block-new27"
-         style="display: block;background-position: 0% 0%;background-repeat: no-repeat;border-width: 1px;position: absolute;z-index: 107;border-radius: 18px;border-color: #cccccc;top: 1823px;height: 73px;width: 859px;anchor-id: #block-new27;border-style: solid;background-color: #cccccc;left: 0;background-image: none; margin-bottom: 30px; padding-top: 26px; padding-left: 15px;">
-        Мой Удобный Учет 2013
+         style="display: block;background-position: 0% 0%;background-repeat: no-repeat;border-width: 1px;position: absolute;z-index: 107;border-radius: 18px;border-color: #cccccc;top: 1853px;height: 73px;width: 859px;anchor-id: #block-new27;border-style: solid;background-color: #cccccc;left: 0;background-image: none; margin-bottom: 30px; padding-top: 26px; padding-left: 15px;">
+        Мой Удобный Учет 2014
         <div class="pull-right" style="padding-right: 15px;">Служба поддержки пользователей: <a href="mailto:support@my-uu.ru">support@my-uu.ru</a></div>
     </div>
 
     <!-- Задает высоту страницы-->
-    <div style="position: absolute; top: 1900px; left: 100px;">&nbsp;</div>
+    <div style="position: absolute; top: 1940px; left: 100px;">&nbsp;</div>
 
     <div class="block block-text is-text" id="block-new28"
          style="display: block;background-position: 0% 0%;background-repeat: no-repeat;border-width: 1px;position: absolute;z-index: 103;top: 1489px;height: 110px;width: 819px;anchor-id: #block-new28;left: 20px;background-color: transparent;background-image: none;">
@@ -825,6 +946,5 @@ color: #ffffff;
             jq_144(this).mask(jq_144(this).attr('data-mask'));
         });
     </script>
-
 
 {% endblock %}

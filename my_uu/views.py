@@ -31,13 +31,9 @@ def _main_imp(request, templateName):
     return render(request, templateName)
 
 
-# Главная страница.
+# Главная страница 2.
 def main(request):
     return _main_imp(request, 'lpgen_main.html')
-
-# Главная страница 2.
-def main_v(request):
-    return _main_imp(request, 'lpgen_main_v.html')
 
 
 class MyUUAuthForm(forms.Form):
@@ -99,6 +95,12 @@ def register_user_ajax(request):
         if u'Duplicate entry' in unicode(e):
             resp.setError(u'Пользователь с таким адресом эл. почты уже зарегистрирован в сервисе. ')
             return resp.buildHttpJsonResponse()
+
+    # Устанавливаем HTTP Referer для юзера
+    import urllib
+    if 'uu_ref' in request.COOKIES:
+        profile = my_uu.models.UserProfile.objects.get_or_create(user=u)
+        u.get_profile().http_referer = urllib.unquote(request.COOKIES['uu_ref']).decode('utf8')
 
     # Для нового юзера надо создать счет и категорию
     my_uu.models.Category.objects.create(name = u'Не указана категория', user = u).save()
@@ -696,7 +698,11 @@ def adm_act(request):
 def adm_exp(request):
 
     # Подсчитываем мин макс дату учета и число дней с журналами операций
-    userStat = User.objects.all().annotate(min_dt = Min("eventlog__datetime"), max_dt = Max("eventlog__datetime"))
+    userStat = User.objects.all().annotate(
+        min_dt = Min("eventlog__datetime"),
+        max_dt = Max("eventlog__datetime"),
+        http_referer = Max("userprofile__http_referer"),
+    )
     userStat = userStat.order_by('id').values()
     for u in userStat:
         u['min_dt'] = u['min_dt'].date() if u['min_dt'] else None
