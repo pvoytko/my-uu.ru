@@ -273,8 +273,8 @@ def lk_set(request):
 class AnaWeekIterator(object):
 
     def __init__(self, minDate, maxDate):
-        # Ограничиваем 2013 годом на случай если записи будут за большой диапазон.
-        self.maxWeek = min(maxDate, datetime.date(2013, 12, 31)).isocalendar()[1]
+        # Ограничиваем 13-14 годом на случай если записи будут за больший диапазон.
+        self.maxWeek = min(maxDate, datetime.date(2014, 12, 31)).isocalendar()[1]
         self.minWeek = max(max(minDate, maxDate - datetime.timedelta(days=7*4)), datetime.date(2013, 1, 1)).isocalendar()[1]
         self.curWeek = self.minWeek
 
@@ -330,7 +330,7 @@ def lk_ana(request):
     # Уникальный список категорий
     categoryList = request.user.category_set.all().distinct()
 
-    # Максимальные и минимальные номера недель которые есть в учете для этого юзера
+    # Максимальные и минимальные даты которые есть в учете для этого юзера
     minMaxDate = request.user.uchet_set.aggregate(min_date = Min('date'), max_date = Max('date'))
 
     # Результат
