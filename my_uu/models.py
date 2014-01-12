@@ -11,6 +11,9 @@ class UserProfile(models.Model):
     # Значение берется из куки и выставляется сюда (если не задано)
     http_referer = models.CharField(max_length = 1024, blank = True, null = True)
 
+    # Подтверждение емейла дата и время нажатия ссылки активации (шоб быть уверенным что юзер получает письма)
+    # email_confirmed = models.DateTimeField(default=None, null=True)
+
 
 # Счет
 class Account(models.Model):

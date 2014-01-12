@@ -746,3 +746,29 @@ def unsubscr_do(request, obfuscatedUserId):
         uuTrackEventDynamic(user, my_uu.models.Event.SUBSCR)
 
     return HttpResponseRedirect(reverse(unsubscr_view, kwargs={'obfuscatedUserId': obfuscatedUserId}))
+
+
+# Запрос ОС почему не стали пользоваться
+# Важно - доступ без авторизации на эту страницу.
+@uuRenderWith('feedback_request.html')
+def feedback_request(request, obfuscatedUserId):
+
+    # Передаем в шаблон из УРЛа
+    oUserId = obfuscatedUserId
+    return locals()
+
+
+# Этот УРЛ для получения ОС отказников (уже отпрвка)
+def feedback_request_ajax(request):
+
+    requestBody = json.loads(request.body)
+
+    # Юзера важно брать не из request, а из ID из УРЛа.
+    # Так как вход на эту страницу должен быть без авторизации (чтоб из емейла работали ссылки).
+    obfuscatedUserId = requestBody['oUserId']
+    user = User.objects.get(id = my_uu.utils.restoreId(int(obfuscatedUserId)))
+
+    # Посылаем письмо
+    my_uu.utils.sendFeedbackEmail(user.id, user.email, requestBody['text'])
+
+    return JsonResponseBuilder().buildHttpJsonResponse()

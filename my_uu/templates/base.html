@@ -1,20 +1,35 @@
 <!doctype html>
+<html ng-app>
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     <title>Мой Удобный Учет</title>
-    <link rel="stylesheet" href="/static/css/common.css" />
+
+    <!-- Ангулар -->
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.0.7/angular.min.js"></script>
+
+    <!-- jQuery -->
     <link rel="stylesheet" href="http://code.jquery.com/ui/1.10.3/themes/redmond/jquery-ui.css" />
     <script src="http://code.jquery.com/jquery-1.9.1.js"></script>
-    <link href="{{ STATIC_URL }}libs/bootstrap/css/bootstrap.min.css" rel="stylesheet" media="screen">
-    <script src="{{ STATIC_URL }}libs/bootstrap/js/bootstrap.min.js"></script>
+    <script src="http://code.jquery.com/ui/1.10.3/jquery-ui.js"></script>
+
+    <!-- Бутстрап -->
+    <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap.min.css">
+    <script src="//netdna.bootstrapcdn.com/bootstrap/3.0.0/js/bootstrap.min.js"></script>
+
+    <!-- Стили сайта и фавикон -->
+    <link rel="stylesheet" href="/static/css/common.css" />
     <link rel="shortcut icon" type="image/png" href="{{ STATIC_URL }}img/favicon.png"/>
+
+    {% block add_to_head %}
+    {% endblock %}
+
 </head>
 
 <body>
 
-    <div class="page_content_container">
+    <div class="page_content_container" style="position: relative;">
 
-        <a class="logo__text" href="{% url 'my_uu.views.main' %} " >
+        <a class="logo__text" style="margin-top: 22px; padding: 0px;" href="{% url 'my_uu.views.main' %} " >
             «Мой Удобный Учет»
         </a>
 
@@ -23,6 +38,8 @@
 
     </div>
 
+    {% include 'include_yandex_metrika.html' %}
+    {% include 'include_google_analytics.html' %}
 
 </body>
 </html>

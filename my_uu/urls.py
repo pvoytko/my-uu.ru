@@ -43,10 +43,14 @@ urlpatterns = patterns('',
     url(r'^adm/act/$', 'my_uu.views.adm_act'),
     url(r'^adm/exp/$', 'my_uu.views.adm_exp'),
 
-    # Отписаться юзеру
+    # Отписаться юзеру (без регистрации)
     url(r'^unsubscr/(?P<obfuscatedUserId>\d+)/$', 'my_uu.views.unsubscr_view'),
     url(r'^unsubscr/(?P<obfuscatedUserId>\d+)/do/$', 'my_uu.views.unsubscr_do'),
     url(r'^unsubscr/test/$', 'my_uu.views.unsubscr_view'),
+
+    # Страница для получения ОС почему не стали пользоваться
+    url(r'^feedback_request/(?P<obfuscatedUserId>\d+)/$', 'my_uu.views.feedback_request'),
+    url(r'^feedback_request_ajax/$', 'my_uu.views.feedback_request_ajax'),
 )
 
 from django.contrib.staticfiles.urls import staticfiles_urlpatterns

@@ -3,11 +3,12 @@
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     <title>Мой Удобный Учет</title>
-    <link rel="stylesheet" href="/static/css/common.css" />
-    <link rel="stylesheet" href="http://code.jquery.com/ui/1.10.3/themes/redmond/jquery-ui.css" />
+
+    <!-- Ангулар -->
     <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.0.7/angular.min.js"></script>
 
     <!-- jQuery -->
+    <link rel="stylesheet" href="http://code.jquery.com/ui/1.10.3/themes/redmond/jquery-ui.css" />
     <script src="http://code.jquery.com/jquery-1.9.1.js"></script>
     <script src="http://code.jquery.com/ui/1.10.3/jquery-ui.js"></script>
 
@@ -18,31 +19,12 @@
     <!-- jQuery cookie для сохранения referer -->
     <script src="//cdn.jsdelivr.net/jquery.cookie/1.4.0/jquery.cookie.min.js"></script>
 
-    <!-- Скрипты публичной части сайта -->
-    <script src="{{ STATIC_URL }}js/public.js"></script>
+    <!-- Установка куки http refefer -->
+    <script src="{{ STATIC_URL }}js/set_http_ref_cookie.js"></script>
 
+    <!-- Стили сайта и фавикон -->
+    <link rel="stylesheet" href="/static/css/common.css" />
     <link rel="shortcut icon" type="image/png" href="{{ STATIC_URL }}img/favicon.png"/>
-    <style>
-
-        .logo__descr{
-            color: rgb(178, 34, 34);
-            font-size: 28px;
-            font-family: 'lucida sans unicode', 'lucida grande', sans-serif;
-            font-weight: bold;
-            margin-left: 17px;
-        }
-        .logo__eleg{
-            color: rgb(178, 34, 34);
-            font-size: 24px;
-            font-family: 'lucida sans unicode', 'lucida grande', sans-serif;
-            margin-left: 350px;
-            margin-top: 10px;
-            background-color: rgb(233, 235, 132);
-            width: 320px;
-            color: rgb(51, 51, 153);
-        }
-
-    </style>
 
     {% block add_to_head %}
     {% endblock %}

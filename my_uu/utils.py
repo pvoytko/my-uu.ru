@@ -48,9 +48,10 @@ def sendFeedbackRequest(user):
     userEmail = user.email
     userObfuscatedId = obfuscateId(user.id)
     unsubscrUrl = 'http://my-uu.ru' + reverse('my_uu.views.unsubscr_view', kwargs={'obfuscatedUserId': userObfuscatedId})
+    feedbackRequestUrl = 'http://my-uu.ru' + reverse('my_uu.views.feedback_request', kwargs={'obfuscatedUserId': userObfuscatedId})
     sendHtmlEmailFromSupport(
         userEmail,
-        u'[my-uu.ru] Понравился ли Вам этот сервис?',
+        u'[my-uu.ru] Просьба сообщить Ваш отзыв о сервисе',
         'email_feedback_request.html',
         { 'unsubscrUrl': unsubscrUrl }
     )
@@ -66,5 +67,19 @@ def sendImprooveEmail(userId, userEmailFrom, improoveText):
             'userId': userId,
             'userEmail': userEmailFrom,
             'improoveText': improoveText
+        }
+    )
+
+
+# Отправляет запрос на улучшение
+def sendFeedbackEmail(userId, userEmailFrom, text):
+    sendHtmlEmailFromSupport(
+        'pvoytko@gmail.com',
+        u'[my-uu.ru] Что искали и не нашли',
+        'email_feedback.html',
+        {
+            'userId': userId,
+            'userEmail': userEmailFrom,
+            'text': text
         }
     )

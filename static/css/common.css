@@ -45,3 +45,23 @@
 .logout__email{
     color: grey;
 }
+
+
+/* Текст под названием сервиса на главной странице */
+.logo__descr{
+    color: rgb(178, 34, 34);
+    font-size: 28px;
+    font-family: 'lucida sans unicode', 'lucida grande', sans-serif;
+    font-weight: bold;
+    margin-left: 17px;
+}
+.logo__eleg{
+    color: rgb(178, 34, 34);
+    font-size: 24px;
+    font-family: 'lucida sans unicode', 'lucida grande', sans-serif;
+    margin-left: 350px;
+    margin-top: 10px;
+    background-color: rgb(233, 235, 132);
+    width: 320px;
+    color: rgb(51, 51, 153);
+}

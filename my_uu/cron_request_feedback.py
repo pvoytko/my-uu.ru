@@ -2,7 +2,7 @@
 
 # Скрипт вызывается по cron раз в 5 минут.
 # Задача скрипта - выслать емейл всем юзерам кому еще не выслан и кто только что завершил знакомиться с сервисом.
-# критерий - последнее событие по нему было более 15 минут назад.
+# критерий - последнее событие по нему было более 120 минут назад.
 
 # Флаги
 import os, sys
@@ -28,10 +28,14 @@ users = django.contrib.auth.models.User.objects.filter(feedbackrequested = None)
 # Перебираем
 for u in users:
 
-    # Если последнее событие более 15 мин назад
+    # Сценарий: юзер зашел 1 раз на 5-10 мин и ушел и больше не вернулся. В этом случае - узнать почему.
+    # Т.е. Если дата регистрации < 3 дней.
+    # Если последнее событие более 2 дней назад.
+    # То выслать вопрос.
     # Если ни одного события то тоже пропускаем ничего не делаем спрашивать у такого смысла нет.
     maxDateTime = u.eventlog_set.all().aggregate(max_datetime = Max('datetime'))['max_datetime']
-    if (maxDateTime is not None) and ((datetime.datetime.now()-maxDateTime) > datetime.timedelta(0, 15 * 60)):
+    minDateTime = u.eventlog_set.all().aggregate(min_datetime = Min('datetime'))['min_datetime']
+    if (maxDateTime is not None) and ((datetime.datetime.now()-maxDateTime) > datetime.timedelta(0, 2 * 24 * 60 * 60)) and ((datetime.datetime.now()-minDateTime) < datetime.timedelta(0, 3 * 24 * 60 * 60)) :
 
         # То высылаем и сохраняем в БД что выслали
         # Печатаем чтобы когда отладочный запуск из консоли - было видно кому из юзеров отправляется.
