@@ -272,54 +272,59 @@ def lk_set(request):
 # отчет по одному алгоритму.
 class AnaWeekIterator(object):
 
-    def __init__(self, minDate, maxDate):
-        # Ограничиваем 13-14 годом на случай если записи будут за больший диапазон.
-        self.maxWeek = min(maxDate, datetime.date(2014, 12, 31)).isocalendar()[1]
-        self.minWeek = max(max(minDate, maxDate - datetime.timedelta(days=7*4)), datetime.date(2013, 1, 1)).isocalendar()[1]
-        self.curWeek = self.minWeek
+    # Итератору передается минимальная и макимальная дата.
+    # А он делает итерацию от минимального номера недели к максимальному.
+    def __init__(self, maxDate):
+
+        # Макс номер недели - берем от макс. даты учета.
+        # Мин номер недели - берем эту и 4 предыдущих недель (если есть).
+        # На их основе формируем список недель для итерации.
+        curDate = maxDate - datetime.timedelta(days=7*4)
+        self.weekList = [self._getWeekNum(curDate)]
+        self.weekDatesList = [self._getWeekDates(curDate)]
+        while True:
+            curDate += datetime.timedelta(days=7)
+            if curDate > maxDate:
+                break
+            self.weekList.append(self._getWeekNum(curDate))
+            self.weekDatesList.append(self._getWeekDates(curDate))
+
 
     def __iter__(self):
-        return self
+        return self.weekList.__iter__()
 
-    def getRangeNameForDate(self, date):
-        w = date.isocalendar()[1]
-        if w in xrange(self.minWeek, self.maxWeek+1):
-            return str(w)
+    @staticmethod
+    def _getWeekNum(date):
+        return date.isocalendar()[1]
+
+    @staticmethod
+    def _getWeekDates(date):
+
+        # Дату начала и конца
+        startDate = date - datetime.timedelta(days=(date.isocalendar()[2]-1))
+        endDate = date + datetime.timedelta(days=(7-date.isocalendar()[2]))
+
+        def monthStr(date):
+            monthL = [u'янв', u'фев', u'мар', u'апр', u'май', u'июн', u'июл', u'авг', u'сен', u'окт', u'ноя', u'дек']
+            return monthL[date.month-1]
+
+        # Печатаем число
+        startDateStr = unicode(startDate.day)
+        if startDate.month != endDate.month:
+            startDateStr += u" " + monthStr(startDate)
+        endDateStr = unicode(endDate.day) + u" " + monthStr(endDate);
+        return startDateStr + u"–" + endDateStr;
+
+    # Возвращает даты от до для указанного номера недели который обязательно должен быть в списке weekList (иначе - ошибка)
+    def getDatesForWeek(self, weekNum):
+        return self.weekDatesList[self.weekList.index(weekNum)]
+
+    def getWeekIndexForDate(self, date):
+        w = self._getWeekNum(date)
+        if w in self.weekList:
+            return self.weekList.index(w)
         else:
             return None
-
-    def next(self):
-        if self.curWeek > self.maxWeek:
-            raise StopIteration()
-        else:
-            self.curWeek += 1
-            return str(self.curWeek - 1)
-
-
-class AnaChndkIterator(object):
-
-    def __init__(self, minDate, maxDate):
-        # Ограничиваем 2013 годом на случай если записи будут за большой диапазон.
-        self.maxChndk = (min(maxDate, datetime.date(2013, 12, 31)).isocalendar()[1] - 1) / 4 + 1
-        self.minChndk = (max(max(minDate, maxDate - datetime.timedelta(days=7*4*4)), datetime.date(2013, 1, 1)).isocalendar()[1] - 1) / 4 + 1
-        self.curChndk = self.minChndk
-
-    def __iter__(self):
-        return self
-
-    def getRangeNameForDate(self, date):
-        w = date.isocalendar()[1] / 4 + 1
-        if w in xrange(self.minChndk, self.maxChndk+1):
-            return str(w)
-        else:
-            return None
-
-    def next(self):
-        if self.curChndk > self.maxChndk:
-            raise StopIteration()
-        else:
-            self.curChndk += 1
-            return str(self.curChndk - 1)
 
 
 # Страница Анализ личного кабиета
@@ -334,10 +339,12 @@ def lk_ana(request):
     minMaxDate = request.user.uchet_set.aggregate(min_date = Min('date'), max_date = Max('date'))
 
     # Результат
+    periods = None
     l = []
 
     # Если есть хотя бы одна запись учета, то формируем содержание списка на выдачу
     if minMaxDate['min_date'] != None:
+
         assert minMaxDate['max_date'] != None, u'Если минимальня дата не None, то и максимальная должна быть не None.'
 
         # Для каждой категории
@@ -352,23 +359,26 @@ def lk_ana(request):
             if sumForDays.count() > 0:
 
                 # Номера недель (или ЧНДК)
-                rangeIter = AnaWeekIterator(minMaxDate['min_date'], minMaxDate['max_date'])
-                if 'chndk' in request.GET:
-                    rangeIter = AnaChndkIterator(minMaxDate['min_date'], minMaxDate['max_date'])
+                rangeIter = AnaWeekIterator(datetime.datetime.now())
 
-                # Формируем словарь с суммами по неделям для категорий (сначала заполняем его нулями)
-                # Чтобы для каждой недели стояло значение (этого ждет клиентский код).
-                d = dict()
-                d['category'] = item.name
+                # Заголовки столбцов
+                periods = []
                 for w in rangeIter:
-                    d[w] = 0
+                    periods.append((u'Неделя ' + str(w), rangeIter.getDatesForWeek(w)))
+
+                # Формируем список со значениями. Число элементов в списке = число заголовков.
+                from collections import OrderedDict
+                d = OrderedDict()
+                d['category'] = item.name
+                for c, w in enumerate(rangeIter):
+                    d[c] = 0
 
                 # Сейчас проходим по всем дням и суммам и плюсуем эти суммы к неделям
                 skipCategory = True
                 for sumForDay in sumForDays:
-                    rangeName = rangeIter.getRangeNameForDate(sumForDay['date'])
-                    if rangeName is not None:
-                        d[rangeName] += sumForDay['sum']
+                    weekIndex = rangeIter.getWeekIndexForDate(sumForDay['date'])
+                    if weekIndex is not None:
+                        d[weekIndex] += sumForDay['sum']
                         skipCategory = False
 
                 # Сохраняем результат
@@ -377,6 +387,7 @@ def lk_ana(request):
 
     return render(request, 'lk_ana.html', {
         'request': request,
+        'periods': json.dumps(periods, cls=DjangoJSONEncoder),
         'anaDataJson': json.dumps(l, cls=DjangoJSONEncoder)
     } )
 

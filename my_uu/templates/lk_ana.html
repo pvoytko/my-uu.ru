@@ -64,7 +64,8 @@
         $(document).ready(function () {
 
             // Получаем данные с сервера и форматируем столбцы с суммами
-            var data = JSON.parse('{{ anaDataJson|escapejs }}');
+            var data = {{ anaDataJson|safe }};
+            var periods = {{ periods|safe }};
             for(var i=0; i<data.length; ++i){
                 var row = data[i];
                 Object.keys(row).forEach(function(k, v){
@@ -113,18 +114,18 @@
                 });
                 gridFullWidth += gridColumns[gridColumns.length-1].width;
             } else {
-                Object.keys(data[0]).forEach(function(k, v){
-                    if (k != 'category') {
-                        gridColumns.push({
-                            // 'Неделя 28<br />8 - 14 июл'
-                            text: 'Неделя ' + k + "<br />" + uuFormatWeekNumberToDates(k),
-                            datafield: k,
-                            width: 100,
-                            cellsalign: 'right',
-                            aggregatesrenderer: getCurrencyAgregatesRenderer(k)
-                        });
-                        gridFullWidth += gridColumns[gridColumns.length-1].width;
-                    }
+                fldNum = 0
+                periods.forEach(function(k){
+                    gridColumns.push({
+                        // 'Неделя 28<br />8 - 14 июл'
+                        text: k[0] + "<br />" + k[1],
+                        datafield: fldNum,
+                        width: 100,
+                        cellsalign: 'right',
+                        aggregatesrenderer: getCurrencyAgregatesRenderer(fldNum)
+                    });
+                    gridFullWidth += gridColumns[gridColumns.length-1].width;
+                    fldNum += 1;
                 });
             }
 
