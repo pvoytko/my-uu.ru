@@ -100,7 +100,10 @@ def register_user_ajax(request):
     import urllib
     if 'uu_ref' in request.COOKIES:
         profile = my_uu.models.UserProfile.objects.get_or_create(user=u)
-        u.get_profile().http_referer = urllib.unquote(request.COOKIES['uu_ref']).decode('utf8')
+
+        # Эта сервия преобразований приводит к юникодной строке в которой русские буквы
+        inpHttpRef = urllib.unquote(request.COOKIES['uu_ref']).decode('utf8')
+        u.get_profile().http_referer = urllib.unquote(str(inpHttpRef)).decode('utf-8')
         u.get_profile().save()
 
     # Для нового юзера надо создать счет и категорию
