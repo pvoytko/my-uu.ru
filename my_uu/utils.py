@@ -83,3 +83,14 @@ def sendFeedbackEmail(userId, userEmailFrom, text):
             'text': text
         }
     )
+
+# Получая число возвращает строку
+def formatMoneyValue(mval):
+    def group(number):
+        s = '%d' % number
+        groups = []
+        while s and s[-1].isdigit():
+            groups.append(s[-3:])
+            s = s[:-3]
+        return s + ' '.join(reversed(groups))
+    return "{0} р.".format(group(round(mval, 0)))

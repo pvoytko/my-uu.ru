@@ -4,7 +4,7 @@
 import os
 
 # Разработческая машина (не боевая)
-IS_DEVELOPER_COMP = os.path.dirname(os.path.abspath(__file__)) == "D:\\HgRepos\\my-uu.ru\\my_uu"
+IS_DEVELOPER_COMP = os.path.dirname(os.path.abspath(__file__)) == "D:\\GitRepos\\my-uu.ru\\my_uu"
 
 # Тут хранится корневая папка проекта как юникод-строка. Важно юникод. Чтоб не было проблем с русскими буквами.
 PROJECT_DIR = os.path.join(os.path.dirname(unicode(__file__)), "..")
