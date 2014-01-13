@@ -185,4 +185,36 @@
 
     <div id='uuGrid' style="border: 0px;"></div>
 
+    <script>
+        function AnaController($scope){
+            $scope.categoryList = ['Одежа', 'Свиданки'];
+            $scope.dataList = [
+                ['Одежа', '1 000 руб.', '3 000 руб.'],
+                ['Свиданки', '1 000 руб.', '3 000 руб.'],
+            ];
+            $scope.periods = [
+                {'first': 'Неделя 51', 'second': 'Хуйнаны'},
+                {'first': 'Неделя 51', 'second': 'Хуйнаны'},
+            ];
+        }
+    </script>
+
+    <!-- Таблица с периодами, категориями, суммами
+    <table class="table table-striped table-hover table-condenced" ng-controller="AnaController">
+        <thead>
+            <tr>
+                <th>Категория</th>
+                <th ng-repeat="p in periods">
+                    {$ p.first $}<br />{$ p.second $}
+                </th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr ng-repeat="d in dataList">
+                <td ng-repeat="i in d">{$ i $}</td>
+            </tr>
+        </tbody>
+    </table>
+    -->
+
 {% endblock %}

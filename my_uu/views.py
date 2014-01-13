@@ -101,6 +101,7 @@ def register_user_ajax(request):
     if 'uu_ref' in request.COOKIES:
         profile = my_uu.models.UserProfile.objects.get_or_create(user=u)
         u.get_profile().http_referer = urllib.unquote(request.COOKIES['uu_ref']).decode('utf8')
+        u.get_profile().save()
 
     # Для нового юзера надо создать счет и категорию
     my_uu.models.Category.objects.create(name = u'Не указана категория', user = u).save()
