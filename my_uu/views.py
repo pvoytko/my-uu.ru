@@ -187,7 +187,7 @@ def begin(request):
 
 def uu_login_required(f):
     from django.contrib.auth.decorators import login_required
-    return login_required(f, login_url='/begin/')
+    return login_required(f, login_url='/')
 
 # Требует администраторского логина. Иначе - выкидывает на 404 ошибку.
 def uuAdmLoginRequired(f):
@@ -285,13 +285,11 @@ class AnaWeekIterator(object):
         # На их основе формируем список недель для итерации.
         curDate = maxDate - datetime.timedelta(days=7*5)
         self.weekList = [self._getWeekNum(curDate)]
-        self.weekDatesList = [self._getWeekDates(curDate)]
         while True:
             curDate += datetime.timedelta(days=7)
             if curDate > maxDate:
                 break
             self.weekList.append(self._getWeekNum(curDate))
-            self.weekDatesList.append(self._getWeekDates(curDate))
 
 
     def __iter__(self):
@@ -301,27 +299,6 @@ class AnaWeekIterator(object):
     def _getWeekNum(date):
         return date.isocalendar()[1]
 
-    @staticmethod
-    def _getWeekDates(date):
-
-        # Дату начала и конца
-        startDate = date - datetime.timedelta(days=(date.isocalendar()[2]-1))
-        endDate = date + datetime.timedelta(days=(7-date.isocalendar()[2]))
-
-        def monthStr(date):
-            monthL = [u'янв', u'фев', u'мар', u'апр', u'май', u'июн', u'июл', u'авг', u'сен', u'окт', u'ноя', u'дек']
-            return monthL[date.month-1]
-
-        # Печатаем число
-        startDateStr = unicode(startDate.day)
-        if startDate.month != endDate.month:
-            startDateStr += u" " + monthStr(startDate)
-        endDateStr = unicode(endDate.day) + u" " + monthStr(endDate);
-        return startDateStr + u"–" + endDateStr;
-
-    # Возвращает даты от до для указанного номера недели который обязательно должен быть в списке weekList (иначе - ошибка)
-    def getDatesForWeek(self, weekNum):
-        return self.weekDatesList[self.weekList.index(weekNum)]
 
     def getWeekIndexForDate(self, date):
         w = self._getWeekNum(date)
@@ -343,13 +320,47 @@ def lk_ana(request):
     def formatMoneyRow(moneyRow):
         return [my_uu.utils.formatMoneyValue(v) for v in moneyRow]
 
+    # Возвращает номера недель от текущей даты 6 назад по типу
+    # date текущей недели, date текущей недели - 1, date тн - 2, date тн - 3, date тн - 4, date тн - 5
+    def getWeekPeriodsList(fromDate):
+        periodCounter = 0
+        periodsList = []
+        while periodCounter < 6:
+            periodsList.insert(0, fromDate)
+            fromDate -= datetime.timedelta(days=7)
+            periodCounter += 1
+        return periodsList
+
+    # Возврщает строку дат для недели года
+    # Пример: 14-20 янв
+    def getDatesForWeek(dateOfWeek):
+
+        # Дату начала и конца
+        startDate = dateOfWeek - datetime.timedelta(days=(dateOfWeek.isocalendar()[2]-1))
+        endDate = dateOfWeek + datetime.timedelta(days=(7-dateOfWeek.isocalendar()[2]))
+
+        def monthStr(date):
+            monthL = [u'янв', u'фев', u'мар', u'апр', u'май', u'июн', u'июл', u'авг', u'сен', u'окт', u'ноя', u'дек']
+            return monthL[date.month-1]
+
+        # Печатаем число
+        startDateStr = unicode(startDate.day)
+        if startDate.month != endDate.month:
+            startDateStr += u" " + monthStr(startDate)
+        endDateStr = unicode(endDate.day) + u" " + monthStr(endDate);
+        return startDateStr + u"–" + endDateStr;
+
+
     def getWeekAnaData():
 
         # Максимальные и минимальные даты которые есть в учете для этого юзера
         minMaxDate = request.user.uchet_set.aggregate(min_date = Min('date'), max_date = Max('date'))
 
+        # Список периодов, заголовки столбцов
+        periodsList = getWeekPeriodsList(datetime.datetime.now())
+        periodsHeaders = [dict( first = u'Неделя ' + str(d.isocalendar()[1]), second = getDatesForWeek(d) ) for d in periodsList]
+
         # Результат
-        periods = None
         l = []
 
         # Если есть хотя бы одна запись учета, то формируем содержание списка на выдачу
@@ -371,11 +382,6 @@ def lk_ana(request):
                     # Номера недель (или ЧНДК)
                     rangeIter = AnaWeekIterator(datetime.datetime.now())
 
-                    # Заголовки столбцов
-                    periods = []
-                    for w in rangeIter:
-                        periods.append( dict( first = u'Неделя ' + str(w), second = rangeIter.getDatesForWeek(w) ) )
-
                     # Формируем список со значениями. Число элементов в списке = число заголовков.
                     from collections import OrderedDict
                     d = OrderedDict()
@@ -396,7 +402,7 @@ def lk_ana(request):
                         l.append(d)
 
         l2 = []
-        totalRow = [0] * len(periods)
+        totalRow = [0] * len(periodsList)
         for li in l:
             l2row = {}
             l2row['category'] = li['category']
@@ -416,7 +422,7 @@ def lk_ana(request):
 
         totalRow = formatMoneyRow(totalRow)
 
-        return periods, l2, totalRow
+        return periodsHeaders, l2, totalRow
 
     def getMonthAnaData():
 
@@ -438,7 +444,7 @@ def lk_ana(request):
         # (2014, 1), (2013, 12), (2013, 11), (2013, 10), (2013, 9), (2013, 8)
         # Создаем на основе этого списка заголовки таблицы анализа
         monthNames = [u'Январь', u'Февраль', u'Март', u'Апрель', u'Май', u'Июнь', u'Июль', u'Август', u'Сентябрь', u'Октябрь', u'Ноябрь', u'Декабрь']
-        p = [dict(first = monthNames[i[1]-1], second = i[0]) for i in periodsList]
+        periodsHeaders = [dict(first = monthNames[i[1]-1], second = i[0]) for i in periodsList]
 
         # Строка суммы
         t = [0] * len(periodsList)
@@ -465,7 +471,7 @@ def lk_ana(request):
                 d.append(dict(category = cat.name, data = formatMoneyRow(rowData)))
 
         t = formatMoneyRow(t)
-        return p, d, t
+        return periodsHeaders, d, t
 
     periodsW, dataRowListW, totalRowW = getWeekAnaData()
     periodsM, dataRowListM, totalRowM = getMonthAnaData()

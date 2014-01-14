@@ -52,12 +52,15 @@
                 </tr>
             </thead>
             <tbody>
+                <tr ng-show="getDataRowList().length == 0">
+                    <td colspan="7" style="text-align: center; padding: 50px;">Еще нет данных. Начните вести учет.</td>
+                </tr>
                 <tr ng-repeat="row in getDataRowList()">
                     <td style="background-color: #f0f0f0; "><div style="text-overflow: ellipsis; white-space: nowrap; overflow: hidden; width: 200px;">{$ row.category $}</div></td>
                     <td ng-repeat="i in row.data" style="text-align: right;">{$ i $}</td>
                 </tr>
                 <tr>
-                    <td style="background-color: #f0f0f0; font-weight: bold;">Сумма</td>
+                    <td style="background-color: #f0f0f0; font-weight: bold; text-align: right;">Расходы всего</td>
                     <td ng-repeat="i in getTotalRow()" style="background-color: #f0f0f0; text-align: right; font-weight: bold;">{$ i $}</td>
                 </tr>
             </tbody>
