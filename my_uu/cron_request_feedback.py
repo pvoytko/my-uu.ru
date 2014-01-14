@@ -13,7 +13,7 @@ PROJECT_DIR = os.path.join(os.path.dirname(unicode(__file__)), "..")
 sys.path.insert(0, PROJECT_DIR)
 os.environ['DJANGO_SETTINGS_MODULE'] = 'my_uu.settings'
 import django.contrib.auth.models
-from django.db.models import Max
+from django.db.models import Max, Min
 import datetime
 import my_uu.utils
 
