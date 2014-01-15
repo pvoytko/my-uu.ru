@@ -798,10 +798,7 @@ def adm_act(request):
     return locals()
 
 
-# Страница Анализ личного кабиета
-@uuAdmLoginRequired
-@uuRenderWith('adm_exp.html')
-def adm_exp(request):
+def _getAdmExpRecords():
 
     # Подсчитываем мин макс дату учета и число дней с журналами операций
     userStat = User.objects.all().annotate(
@@ -817,12 +814,32 @@ def adm_exp(request):
         eventLogObjects = my_uu.models.EventLog.objects.filter(user = u['id']).extra(select = {'date': 'DATE(datetime)'})
         u['count_dt'] = len(eventLogObjects.values_list('date', flat=True).distinct())
 
+        # Регулярность (дней работы за последне 6 дней, если 3 и более, то считаю его активным)
+        u['reg'] = eventLogObjects.filter(datetime__gte = datetime.datetime.now()-datetime.timedelta(days=6))
+        u['reg'] = len(u['reg'].values_list('date', flat=True).distinct())
+
         uchetRecords = my_uu.models.Uchet.objects.filter(user = u['id'])
         u['count_dt_op'] = uchetRecords.values_list('date', flat=True).distinct().count()
         u['count_op'] = uchetRecords.count()
 
+    return userStat
+
+# Страница Анализ личного кабиета
+@uuAdmLoginRequired
+@uuRenderWith('adm_exp.html')
+def adm_exp(request):
+
+    userStat = _getAdmExpRecords()
     return locals()
 
+
+# Аналогична adm_exp только выводит юзеров с регулярностью 3 и более (т.е. только действующих сейчас юзеров)
+@uuAdmLoginRequired
+@uuRenderWith('adm_exp.html')
+def adm_exp_reg(request):
+
+    userStat = filter(lambda i: i['reg'] >= 3, _getAdmExpRecords())
+    return locals()
 
 
 # Отписка юзера - показывает состояние

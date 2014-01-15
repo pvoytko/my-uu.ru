@@ -42,6 +42,7 @@ urlpatterns = patterns('',
     # Административная часть (Павел Войтко)
     url(r'^adm/act/$', 'my_uu.views.adm_act'),
     url(r'^adm/exp/$', 'my_uu.views.adm_exp'),
+    url(r'^adm/exp_reg/$', 'my_uu.views.adm_exp_reg'),
 
     # Отписаться юзеру (без регистрации)
     url(r'^unsubscr/(?P<obfuscatedUserId>\d+)/$', 'my_uu.views.unsubscr_view'),
