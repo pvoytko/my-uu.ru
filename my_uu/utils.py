@@ -53,7 +53,10 @@ def sendFeedbackRequest(user):
         userEmail,
         u'[my-uu.ru] Просьба сообщить Ваш отзыв о сервисе',
         'email_feedback_request.html',
-        { 'unsubscrUrl': unsubscrUrl }
+        {
+            'unsubscrUrl': unsubscrUrl,
+            'feedbackRequestUrl': feedbackRequestUrl
+        }
     )
 
 

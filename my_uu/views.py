@@ -875,6 +875,10 @@ def feedback_request_ajax(request):
     user = User.objects.get(id = my_uu.utils.restoreId(int(obfuscatedUserId)))
 
     # Посылаем письмо
-    my_uu.utils.sendFeedbackEmail(user.id, user.email, requestBody['text'])
+    my_uu.utils.sendFeedbackEmail(
+        user.id,
+        user.email,
+        requestBody['text']
+    )
 
     return JsonResponseBuilder().buildHttpJsonResponse()
