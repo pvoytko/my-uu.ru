@@ -34,8 +34,12 @@ class UserProfile(models.Model):
         if self.view_period_code in (UserProfile.VIEW_PERIOD_CODE_LAST3, UserProfile.VIEW_PERIOD_CODE_LAST30):
             lastIndex = 3 if self.view_period_code == UserProfile.VIEW_PERIOD_CODE_LAST3 else 30
             lastDates = list(uchetRecords.values_list('date', flat=True).distinct().order_by('-date')[0:lastIndex])
+
+            # Тут важно возвращать не пустой список а пустой квери сет, т.к. к нему применяются ордер бай потом и пр.
+            # а если пустой список будем возвращать то эксепшен там получим.
             if len(lastDates) == 0:
-                return []
+                return uchetRecords
+
             return uchetRecords.filter(date__gte = lastDates[-1])
 
         # Месяц
