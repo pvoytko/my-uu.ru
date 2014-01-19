@@ -39,8 +39,6 @@
 
         </div>
 
-        {$ periods $}
-
         <!-- Таблица с периодами, категориями, суммами -->
         <table class="table table-hover table-condensed table-bordered" style="width: auto;" ng-cloak>
             <thead>
@@ -57,11 +55,11 @@
                 </tr>
                 <tr ng-repeat="row in getDataRowList()">
                     <td style="background-color: #f0f0f0; "><div style="text-overflow: ellipsis; white-space: nowrap; overflow: hidden; width: 200px;">{$ row.category $}</div></td>
-                    <td ng-repeat="i in row.data" style="text-align: right;">{$ i $}</td>
+                    <td ng-repeat="i in row.data track by $index" style="text-align: right;">{$ i $}</td>
                 </tr>
                 <tr>
                     <td style="background-color: #f0f0f0; font-weight: bold; text-align: right;">Расходы всего</td>
-                    <td ng-repeat="i in getTotalRow()" style="background-color: #f0f0f0; text-align: right; font-weight: bold;">{$ i $}</td>
+                    <td ng-repeat="i in getTotalRow() track by $index" style="background-color: #f0f0f0; text-align: right; font-weight: bold;">{$ i $}</td>
                 </tr>
             </tbody>
         </table>

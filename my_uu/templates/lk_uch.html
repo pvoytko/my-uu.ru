@@ -334,7 +334,334 @@
         <script type="text/javascript">
 
 
-            function GridCtrl($scope){
+            // Функция получает на вход данные для строки. И номер строки.
+            // Если формат данных для полей "Сумма" или "Дата" не нормализован, то
+            // функция сохраняет в грид нормализованные данные и вернет true.
+            // Если нормализован, то вернет false.
+            function checkGridDataNormalizationAndNormalize(rowdata, rowIndex){
+                // Нормализация для столбца даты
+                var dateOriginalValue = rowdata['date'];
+                var dateNormalizedValue = dateOriginalValue;
+
+                if (dateOriginalValue.match(/^\s*\d{0,1}\d\.\d{0,1}\d.\d{0,1}\d\s*$/)){
+                    dateNormalizedValue = moment(dateOriginalValue, 'DD.MM.YY').format('DD.MM.YYYY');
+                }
+                else{
+                    dateNormalizedValue = moment(dateOriginalValue, 'DD.MM.YYYY').format('DD.MM.YYYY');
+                }
+
+                // Если значение изменилось после нормализации - сохраним его в грид.
+                // Если не делать эту проверку на изменение значения то будет рекурсия бесконечная
+                // так как при установке нового значения снова вызовется текущий обработчик.
+                if (dateNormalizedValue != dateOriginalValue) {
+                    $("#uuGrid").jqxGrid('setcellvalue', rowIndex, 'date', dateNormalizedValue);
+                    return true;
+                }
+
+                // Нормализация для столбца суммы
+                var sumOriginalValue = rowdata['sum'];
+                var sumNormalizedValue = sumOriginalValue;
+
+                // Сохраняем в грид с запятой, в виде строки.
+                // Хотя это не очень правильно (числа хранятся как строки и сортировка например будет
+                // неправильно работать), нам это сейчас походит, потому что
+                // при редактировании (когда отображается поле ввода) чтобы числа были с запятыми
+                // а сортировка пока нам не нужна.
+                sumNormalizedValue = parseFloat(String(sumOriginalValue).replace(',', '.')).toFixed(2);
+                sumNormalizedValue = String(sumNormalizedValue).replace('.', ',');
+
+                // Если значение изменилось после нормализации - сохраним его в грид.
+                // Если не делать эту проверку на изменение значения то будет рекурсия бесконечная
+                // так как при установке нового значения снова вызовется текущий обработчик.
+                if (sumOriginalValue != sumNormalizedValue) {
+                    $("#uuGrid").jqxGrid('setcellvalue', rowIndex, 'sum', sumNormalizedValue);
+                    return true;
+                }
+
+                return false;
+            }
+
+            // Класс отвечает за хранение id удаляемых строк (запрос ушел на сервер но ответ еще не пришел ждем).
+            function GridDeletedRowsServerSyncronization(){
+                // В списке храним id строк которые были удалены (отправляются на сервер)
+                var self = this;
+                this.deletedRows = new Array();
+
+                this.isRowDisabled = function(rowId){
+                    for(var i=0; i<this.deletedRows.length; ++i){
+                        if (rowId == this.deletedRows[i]){
+                            return true;
+                        };
+                    }
+                    return false;
+                };
+
+                this.markRowAsDisabled = function(rowId){
+                    this.deletedRows.push(rowId);
+                }
+
+                this.removeRowAsDisabled = function(rowId){
+                    var i = this.deletedRows.indexOf(rowId);
+                    this.deletedRows.splice(i, 1);
+                }
+
+            }
+
+            window.deletedRowsServerSync = new GridDeletedRowsServerSyncronization();
+
+            // Класс отвечает за синхронизацию с сервером отредактированных строк.
+            function GridEditedRowsServerSyncronization(){
+
+                var self = this;
+                self._isWaitForServerResponse = false;
+
+                // В списке храним id строк и данные для отправки на сервер.
+                this._editedRows = new Array();
+
+                // Тут храним индекс последней записи в editedRows перед отправкой запроса на сервер.
+                // Надо для очистки после синхронизации.
+                this._editedRowsCountBeforeSynchronization = 0;
+
+                // Функция возвращает true если строка rowGridId еще является несинхронизированной.
+                this._isRowWasEdited = function(rowGridId) {
+                    for (var i = 0; i < self._editedRows.length; i++) {
+                        if (self._editedRows[i].uid == rowGridId) {
+                            return "editedRow";
+                        }
+                    }
+                }
+
+                this._handleCounter = 0;
+
+                // Вызывается в момент получения от сервера ответа после отправки запроса для синхронизации
+                this._handleServerResponse = function(successStatus, httpErrorCode, httpSuccessData) {
+
+                    self._handleCounter++;
+
+                    // Синхронизация прошла успешно -
+                    if (successStatus){
+
+                        // Скрываем блок ошибки при сохранении на сервер
+                        $('#syncErrorMessageBlock').hide();
+
+                        // Обновляем источник данных - добавляем в него serverRowId (для инстертнутых в БД строк)
+                        var rowsFromServer = JSON.parse(httpSuccessData).rows_json;
+                        var boundrows = $('#uuGrid').jqxGrid('getboundrows');
+                        for(var ri=0; ri<rowsFromServer.length; ++ri) {
+                            var rid = rowsFromServer[ri].uid;
+                            var brix = $('#uuGrid').jqxGrid('getrowboundindexbyid', rid);
+                            boundrows[brix].serverRowId = rowsFromServer[ri].serverRowId;
+                        };
+
+                        // Стираем записи из массива которые в нем были на момент отправки запроса.
+                        // Стирать важно перед тем как затем удаляем класс с выделенных строк.
+                        // Потому что при удалении класса почему-то снова вызываетя рендер для строк
+                        // и если мы еще не удалили индекс строк то в результате синхронизированные строки
+                        // при удалении стиля снова на миг подсвечиваются и возникает мигание.
+                        // Этот эффект было заметно если изменить строку 1. До получения ответа - затем изменить
+                        // стркоу 2. И в момент полчения ответа по строке 1 она сначала поткухнет а потом снова
+                        // загорится а потом со строкой 2 потухнет.
+                        // Поэтому используем вспомогательный массив originalArray.
+                        originalArray = self._editedRows.slice(0);
+                        self._editedRows.splice(0, self._editedRowsCountBeforeSynchronization);
+
+                        // Код далее удаляет класс editedRows который проставляется в ячейки строки
+                        // а удаляем его чтобы снять выделние с ячеек которые синхронизировались с сервером.
+                        for (var i=0; i<self._editedRowsCountBeforeSynchronization; ++i){
+                            var rowGridId = originalArray[i].uid;
+                            var rowGridInHtmlId = '#row' + rowGridId + 'uuGrid';
+                            $('#uuGrid').find(rowGridInHtmlId).find('[role="gridcell"]').removeClass('editedRow');
+                        }
+
+                        // Сохраняем новый баланс (и таблица счетов авто-обновится)
+                        var abl = adjustServerBalance(JSON.parse(httpSuccessData).accountBalanceList)
+                        $scope = $('#mainScope').scope();
+                        $scope.accountBalanceList2 = abl;
+                        $scope.$apply();
+
+                    } else {
+
+                        // Показываем блок ошибки при сохранении на сервер
+                        $('#syncErrorMessageBlock').show();
+
+                    }
+
+                    // Сбрасываем флаг что ждали ответа.
+                    self._isWaitForServerResponse = false;
+
+                    // Если есть записи для отправки (появились пока ждали ответ от сервера)
+                    // то заного инициируем синхронизацию
+                    if (self._editedRows.length > 0) {
+
+                        // Если была ошибка, то следующий запрос надо послать не ранее
+                        // чем через 20 секунд. Иначе они начинают слаться друг за другом
+                        // непрерырвно и все с ошибкой завершаются.
+                        if (successStatus){
+                            self._startAsyncSynchronizationWithServer();
+                        }else{
+                             setTimeout(self._startAsyncSynchronizationWithServer, 20000);
+                        }
+                    }
+                }
+
+                // Запускает асинхронную синхронизацию.
+                // Предполагается что записи в editedRows имеются на момент вызова.
+                // То есть проверку на наличие элементов в editedRows (необходимость синхронизации)
+                // делает вызывающая сторона.
+                this._startAsyncSynchronizationWithServer = function(){
+
+                    // Если синхронизация уже выполняется (ждем ответа от сервера), то запускать ее повторно
+                    // не надо чтобы не плодить запросов. Дождемся сначала ответа а потом запустим следующую.
+                    if (self._isWaitForServerResponse)
+                        return;
+
+                    // Устанавливаем флаг что пошел запрос
+                    self._isWaitForServerResponse = true;
+
+                    // Сохраняем число элементов при отправке этого запроса на сервер для синхронизации
+                    this._editedRowsCountBeforeSynchronization = self._editedRows.length;
+
+                    // Отправляем запрос и принимаем ответ
+                    $.post(
+                        "{% url 'my_uu.views.lk_save_uchet_ajax' %}",
+                        { rows_json: JSON.stringify(
+                            self._editedRows.slice(0, this._editedRowsCountBeforeSynchronization)
+                        )}
+                    ).done(function(data, textStatus, jqXHR){
+                        self._handleServerResponse(true, 0, data);
+                    }).fail(function(jqXHR, textStatus, errorThrown){
+                        self._handleServerResponse(false, 0);
+                    });
+                }
+
+                // Вызывается из Grid Source при измеении строки
+                this.updateRowGridSourceCallback = function (rowid, rowdata, commit) {
+
+                    // Сохраняем какая строка была изменнеа
+                    self._editedRows.push( rowdata );
+
+                    // Если тут выставить false, то реализация jqxgrid вызовет setcellvalue со старым значением
+                    // после чего снова вызовается updaterow и будет бесконечная рекурсия. Так что
+                    // если ставить false, то надо учесть эту особенность реализации.
+                    // Пока же ставим true. Предполагая что если не удастся синхронизировать
+                    // то мы просто юзеру покажем эту ошибку и уже будет не важно что данные в таблице
+                    // будут несовпадать с данными на сервере.
+                    commit(true);
+
+                    // Запуск асинхронной синхронизации
+                    self._startAsyncSynchronizationWithServer();
+                };
+
+                this.addRowGridSourceCallback = function (rowid, rowdata, position, commit) {
+                    self.updateRowGridSourceCallback(rowid, rowdata, commit);
+                }
+
+                // Подсветка строки пока она не синхронизирована с сервером
+                // Коллбек вызывается при отрисовке ячеек грида.
+                this.getCellClassNameGridCallback = function (rowGridIndex, datafield, value, rowdata) {
+                    rowGridId = $('#uuGrid').jqxGrid('getrowid', rowGridIndex);
+                    if (self._isRowWasEdited(rowGridId)) {
+                        return "editedRow";
+                    }
+                };
+            }
+            var editedRowsServerSync = new GridEditedRowsServerSyncronization();
+
+
+            // Получая на вход массив что пришел от сервера - создает дата адаптер который
+            // передается гриду чтобы тот отрисовался.
+            function createGridDataAdapterFromServerArray(serverArray){
+                var data1 = new Array();
+                for(var j=0;j<serverArray.length;++j){
+                    var row = {};
+                    u = serverArray[j];
+                    row['serverRowId'] = u['id'];
+                    row['date'] = moment(u['date']).format('DD.MM.YYYY');
+                    row['utype'] = u['utype__name'];
+                    row['sum'] = String(u['sum']).replace('.', ',');
+                    row['account'] = u['account__name'];
+                    row['category'] = u['category__name'];
+                    row['comment'] = u['comment'];
+                    data1[j] = row;
+                }
+                var source =
+                {
+                    localdata: data1,
+                    datafields:
+                    [
+                        { name: 'serverRowId', type: 'string'},
+                        { name: 'date', type: 'string'},
+                        { name: 'utype', type: 'string'},
+                        { name: 'sum', type: 'string'},
+                        { name: 'account', type: 'string'},
+                        { name: 'category', type: 'string'},
+                        { name: 'comment', type: 'string'},
+                    ],
+                    datatype: "array",
+
+                    // Подсветка строки пока она не синхроинизирована с сервером
+                    // Эта функция вызывается после каждго редактирования любой ячейки.
+                    updaterow: function (rowid, rowdata, commit) {
+
+                        // Если юзер набрал дату 1.1.1, то в грид сохраним 01.01.2001
+                        // Если юзер набрал сумму 34,3, то в грид сохраним 34.30
+                        // Сначала, при первом вызове, мы устанавливаем в грид новые данные, нормализованные.
+                        // После чего функция вызовется повторно но уже с нормализованными данными.
+                        // Если нормализация уже выполнена, то checkGridDataNormalizationAndNormalize вернет
+                        // false и тогда вторым шагом при второ вызове - сохраним нормализованные данные
+                        // на сервер.
+                        // Тут более правильно передавать не rowid а rowindex но я не нашел быстрого
+                        // способа получить одно из другого и пока подойдет и rowid так что его и передаю.
+                        if (!checkGridDataNormalizationAndNormalize(rowdata, rowid)) {
+                            editedRowsServerSync.updateRowGridSourceCallback(rowid, rowdata, commit);
+                        }
+                    },
+                    addrow: editedRowsServerSync.addRowGridSourceCallback
+
+                };
+                var dataAdapter = new $.jqx.dataAdapter(source);
+                return dataAdapter;
+            }
+
+
+            function GridCtrl($scope, $http){
+
+                // Список возможных значений периодов для оторажения.
+                $scope.viewPeriodSet = {{ viewPeriodSetJson | safe }};
+                $scope.viewPeriodMonthSet = {{ viewPeriodMonthSetJson | safe }};
+                $scope.viewPeriodCode = {{ viewPeriodCodeJson | safe }};
+
+                /* Делает поиск текста в списке по значению. Названа в честь функции ВПР в Ексель. */
+                $scope.vpr = function(code, list){
+                    for(var i=0;i<list.length;++i){
+                        if (list[i][0] == code)
+                        {
+                            return list[i][1];
+                        }
+                    };
+                    alert('Не найдено значение ' + code);
+                };
+
+                /* Когда юзер меняет период просмотра */
+                $scope.$watch('viewPeriodCode', function(newValue, oldValue, $scope){
+                    if (newValue != oldValue){
+
+                        // То мы посылаем запрос на сервер и загружаем новые данные
+                        $http({method: 'POST', url: '/lk/load_uchet_ajax/', data: {viewPeriodCode: newValue}}).
+                        success(function(data, status, headers, config) {
+                            var uchetRecords = data['uchetRecords'];
+                            adjustGridHeightToNewRowsCount(uchetRecords.length);
+                            $("#uuGrid").jqxGrid({source: createGridDataAdapterFromServerArray(uchetRecords)});
+                        }).
+                        error(function(data, status, headers, config) {
+                            if (status == 0){
+                                alert('Ошибка связи с сервером. Сервер недоступен.');
+                            }else{
+                                alert('Во время обработки запроса произошла ошибка на сервере. Попроуйте повторить операцию позже или уточните состояние в службе поддержки.');
+                            };
+                        });
+                    }
+                });
 
                 $scope.accountBalanceList2 = adjustServerBalance(JSON.parse('{{ accountBalanceListJson|escapejs }}'));
 
@@ -369,209 +696,8 @@
 
                 $(document).ready(function () {
 
-                    // Класс отвечает за хранение id удаляемых строк (запрос ушел на сервер но ответ еще не пришел ждем).
-                    function GridDeletedRowsServerSyncronization(){
-                        // В списке храним id строк которые были удалены (отправляются на сервер)
-                        var self = this;
-                        this.deletedRows = new Array();
-
-                        this.isRowDisabled = function(rowId){
-                            for(var i=0; i<this.deletedRows.length; ++i){
-                                if (rowId == this.deletedRows[i]){
-                                    return true;
-                                };
-                            }
-                            return false;
-                        };
-
-                        this.markRowAsDisabled = function(rowId){
-                            this.deletedRows.push(rowId);
-                        }
-
-                        this.removeRowAsDisabled = function(rowId){
-                            var i = this.deletedRows.indexOf(rowId);
-                            this.deletedRows.splice(i, 1);
-                        }
-
-                    }
-
-                    window.deletedRowsServerSync = new GridDeletedRowsServerSyncronization();
-
-                    // Класс отвечает за синхронизацию с сервером отредактированных строк.
-                    function GridEditedRowsServerSyncronization(){
-
-                        var self = this;
-                        self._isWaitForServerResponse = false;
-
-                        // В списке храним id строк и данные для отправки на сервер.
-                        this._editedRows = new Array();
-
-                        // Тут храним индекс последней записи в editedRows перед отправкой запроса на сервер.
-                        // Надо для очистки после синхронизации.
-                        this._editedRowsCountBeforeSynchronization = 0;
-
-                        // Функция возвращает true если строка rowGridId еще является несинхронизированной.
-                        this._isRowWasEdited = function(rowGridId) {
-                            for (var i = 0; i < self._editedRows.length; i++) {
-                                if (self._editedRows[i].uid == rowGridId) {
-                                    return "editedRow";
-                                }
-                            }
-                        }
-
-                        this._handleCounter = 0;
-
-                        // Вызывается в момент получения от сервера ответа после отправки запроса для синхронизации
-                        this._handleServerResponse = function(successStatus, httpErrorCode, httpSuccessData) {
-
-                            self._handleCounter++;
-
-                            // Синхронизация прошла успешно -
-                            if (successStatus){
-
-                                // Скрываем блок ошибки при сохранении на сервер
-                                $('#syncErrorMessageBlock').hide();
-
-                                // Обновляем источник данных - добавляем в него serverRowId (для инстертнутых в БД строк)
-                                var rowsFromServer = JSON.parse(httpSuccessData).rows_json;
-                                var boundrows = $('#uuGrid').jqxGrid('getboundrows');
-                                for(var ri=0; ri<rowsFromServer.length; ++ri) {
-                                    var rid = rowsFromServer[ri].uid;
-                                    var brix = $('#uuGrid').jqxGrid('getrowboundindexbyid', rid);
-                                    boundrows[brix].serverRowId = rowsFromServer[ri].serverRowId;
-                                };
-
-                                // Стираем записи из массива которые в нем были на момент отправки запроса.
-                                // Стирать важно перед тем как затем удаляем класс с выделенных строк.
-                                // Потому что при удалении класса почему-то снова вызываетя рендер для строк
-                                // и если мы еще не удалили индекс строк то в результате синхронизированные строки
-                                // при удалении стиля снова на миг подсвечиваются и возникает мигание.
-                                // Этот эффект было заметно если изменить строку 1. До получения ответа - затем изменить
-                                // стркоу 2. И в момент полчения ответа по строке 1 она сначала поткухнет а потом снова
-                                // загорится а потом со строкой 2 потухнет.
-                                // Поэтому используем вспомогательный массив originalArray.
-                                originalArray = self._editedRows.slice(0);
-                                self._editedRows.splice(0, self._editedRowsCountBeforeSynchronization);
-
-                                // Код далее удаляет класс editedRows который проставляется в ячейки строки
-                                // а удаляем его чтобы снять выделние с ячеек которые синхронизировались с сервером.
-                                for (var i=0; i<self._editedRowsCountBeforeSynchronization; ++i){
-                                    var rowGridId = originalArray[i].uid;
-                                    var rowGridInHtmlId = '#row' + rowGridId + 'uuGrid';
-                                    $('#uuGrid').find(rowGridInHtmlId).find('[role="gridcell"]').removeClass('editedRow');
-                                }
-
-                                // Сохраняем новый баланс (и таблица счетов авто-обновится)
-                                var abl = adjustServerBalance(JSON.parse(httpSuccessData).accountBalanceList)
-                                $scope.accountBalanceList2 = abl;
-                                $scope.$apply();
-
-                            } else {
-
-                                // Показываем блок ошибки при сохранении на сервер
-                                $('#syncErrorMessageBlock').show();
-
-                            }
-
-                            // Сбрасываем флаг что ждали ответа.
-                            self._isWaitForServerResponse = false;
-
-                            // Если есть записи для отправки (появились пока ждали ответ от сервера)
-                            // то заного инициируем синхронизацию
-                            if (self._editedRows.length > 0) {
-
-                                // Если была ошибка, то следующий запрос надо послать не ранее
-                                // чем через 20 секунд. Иначе они начинают слаться друг за другом
-                                // непрерырвно и все с ошибкой завершаются.
-                                if (successStatus){
-                                    self._startAsyncSynchronizationWithServer();
-                                }else{
-                                     setTimeout(self._startAsyncSynchronizationWithServer, 20000);
-                                }
-                            }
-                        }
-
-                        // Запускает асинхронную синхронизацию.
-                        // Предполагается что записи в editedRows имеются на момент вызова.
-                        // То есть проверку на наличие элементов в editedRows (необходимость синхронизации)
-                        // делает вызывающая сторона.
-                        this._startAsyncSynchronizationWithServer = function(){
-
-                            // Если синхронизация уже выполняется (ждем ответа от сервера), то запускать ее повторно
-                            // не надо чтобы не плодить запросов. Дождемся сначала ответа а потом запустим следующую.
-                            if (self._isWaitForServerResponse)
-                                return;
-
-                            // Устанавливаем флаг что пошел запрос
-                            self._isWaitForServerResponse = true;
-
-                            // Сохраняем число элементов при отправке этого запроса на сервер для синхронизации
-                            this._editedRowsCountBeforeSynchronization = self._editedRows.length;
-
-                            // Отправляем запрос и принимаем ответ
-                            $.post(
-                                "{% url 'my_uu.views.lk_save_uchet_ajax' %}",
-                                { rows_json: JSON.stringify(
-                                    self._editedRows.slice(0, this._editedRowsCountBeforeSynchronization)
-                                )}
-                            ).done(function(data, textStatus, jqXHR){
-                                self._handleServerResponse(true, 0, data);
-                            }).fail(function(jqXHR, textStatus, errorThrown){
-                                self._handleServerResponse(false, 0);
-                            });
-                        }
-
-                        // Вызывается из Grid Source при измеении строки
-                        this.updateRowGridSourceCallback = function (rowid, rowdata, commit) {
-
-                            // Сохраняем какая строка была изменнеа
-                            self._editedRows.push( rowdata );
-
-                            // Если тут выставить false, то реализация jqxgrid вызовет setcellvalue со старым значением
-                            // после чего снова вызовается updaterow и будет бесконечная рекурсия. Так что
-                            // если ставить false, то надо учесть эту особенность реализации.
-                            // Пока же ставим true. Предполагая что если не удастся синхронизировать
-                            // то мы просто юзеру покажем эту ошибку и уже будет не важно что данные в таблице
-                            // будут несовпадать с данными на сервере.
-                            commit(true);
-
-                            // Запуск асинхронной синхронизации
-                            self._startAsyncSynchronizationWithServer();
-                        };
-
-                        this.addRowGridSourceCallback = function (rowid, rowdata, position, commit) {
-                            self.updateRowGridSourceCallback(rowid, rowdata, commit);
-                        }
-
-                        // Подсветка строки пока она не синхронизирована с сервером
-                        // Коллбек вызывается при отрисовке ячеек грида.
-                        this.getCellClassNameGridCallback = function (rowGridIndex, datafield, value, rowdata) {
-                            rowGridId = $('#uuGrid').jqxGrid('getrowid', rowGridIndex);
-                            if (self._isRowWasEdited(rowGridId)) {
-                                return "editedRow";
-                            }
-                        };
-                    }
-
-                    var editedRowsServerSync = new GridEditedRowsServerSyncronization();
-
-                    // Данные для таблицы
-                    var data = new Array();
-                    {% for u in uchetRecords %}
-
-                        (function(){
-                            var row = {};
-                            row['serverRowId'] = {{ u.id }};
-                            row['date'] = '{{ u.dateDDMMYYYY }}';
-                            row['utype'] = '{{ u.utype.name }}';
-                            row['sum'] = String('{{ u.sum }}').replace('.', ',');
-                            row['account'] = '{{ u.account.name }}';
-                            row['category'] = '{{ u.category.name }}';
-                            row['comment'] = '{{ u.comment }}';
-                            data[{{ forloop.counter0 }}] = row;
-                        })();
-
-                    {% endfor %}
+                    // Начальные данные (согласно выбранному периоду)
+                    var uchetRecords = {{ uchetRecordsJson | safe }};
 
                     // Справочные значения (тип записи, счет, категория)
                     // Используются также при добавлении новой записи.
@@ -600,90 +726,6 @@
                         {% endfor %}
                     ];
 
-
-                    // Функция получает на вход данные для строки. И номер строки.
-                    // Если формат данных для полей "Сумма" или "Дата" не нормализован, то
-                    // функция сохраняет в грид нормализованные данные и вернет true.
-                    // Если нормализован, то вернет false.
-                    function checkGridDataNormalizationAndNormalize(rowdata, rowIndex){
-                        // Нормализация для столбца даты
-                        var dateOriginalValue = rowdata['date'];
-                        var dateNormalizedValue = dateOriginalValue;
-
-                        if (dateOriginalValue.match(/^\s*\d{0,1}\d\.\d{0,1}\d.\d{0,1}\d\s*$/)){
-                            dateNormalizedValue = moment(dateOriginalValue, 'DD.MM.YY').format('DD.MM.YYYY');
-                        }
-                        else{
-                            dateNormalizedValue = moment(dateOriginalValue, 'DD.MM.YYYY').format('DD.MM.YYYY');
-                        }
-
-                        // Если значение изменилось после нормализации - сохраним его в грид.
-                        // Если не делать эту проверку на изменение значения то будет рекурсия бесконечная
-                        // так как при установке нового значения снова вызовется текущий обработчик.
-                        if (dateNormalizedValue != dateOriginalValue) {
-                            $("#uuGrid").jqxGrid('setcellvalue', rowIndex, 'date', dateNormalizedValue);
-                            return true;
-                        }
-
-                        // Нормализация для столбца суммы
-                        var sumOriginalValue = rowdata['sum'];
-                        var sumNormalizedValue = sumOriginalValue;
-
-                        // Сохраняем в грид с запятой, в виде строки.
-                        // Хотя это не очень правильно (числа хранятся как строки и сортировка например будет
-                        // неправильно работать), нам это сейчас походит, потому что
-                        // при редактировании (когда отображается поле ввода) чтобы числа были с запятыми
-                        // а сортировка пока нам не нужна.
-                        sumNormalizedValue = parseFloat(String(sumOriginalValue).replace(',', '.')).toFixed(2);
-                        sumNormalizedValue = String(sumNormalizedValue).replace('.', ',');
-
-                        // Если значение изменилось после нормализации - сохраним его в грид.
-                        // Если не делать эту проверку на изменение значения то будет рекурсия бесконечная
-                        // так как при установке нового значения снова вызовется текущий обработчик.
-                        if (sumOriginalValue != sumNormalizedValue) {
-                            $("#uuGrid").jqxGrid('setcellvalue', rowIndex, 'sum', sumNormalizedValue);
-                            return true;
-                        }
-
-                        return false;
-                    }
-
-                    var source =
-                    {
-                        localdata: data,
-                        datafields:
-                        [
-                            { name: 'serverRowId', type: 'string'},
-                            { name: 'date', type: 'string'},
-                            { name: 'utype', type: 'string'},
-                            { name: 'sum', type: 'string'},
-                            { name: 'account', type: 'string'},
-                            { name: 'category', type: 'string'},
-                            { name: 'comment', type: 'string'},
-                        ],
-                        datatype: "array",
-
-                        // Подсветка строки пока она не синхроинизирована с сервером
-                        // Эта функция вызывается после каждго редактирования любой ячейки.
-                        updaterow: function (rowid, rowdata, commit) {
-
-                            // Если юзер набрал дату 1.1.1, то в грид сохраним 01.01.2001
-                            // Если юзер набрал сумму 34,3, то в грид сохраним 34.30
-                            // Сначала, при первом вызове, мы устанавливаем в грид новые данные, нормализованные.
-                            // После чего функция вызовется повторно но уже с нормализованными данными.
-                            // Если нормализация уже выполнена, то checkGridDataNormalizationAndNormalize вернет
-                            // false и тогда вторым шагом при второ вызове - сохраним нормализованные данные
-                            // на сервер.
-                            // Тут более правильно передавать не rowid а rowindex но я не нашел быстрого
-                            // способа получить одно из другого и пока подойдет и rowid так что его и передаю.
-                            if (!checkGridDataNormalizationAndNormalize(rowdata, rowid)) {
-                                editedRowsServerSync.updateRowGridSourceCallback(rowid, rowdata, commit);
-                            }
-                        },
-                        addrow: editedRowsServerSync.addRowGridSourceCallback
-
-                    };
-                    var dataAdapter = new $.jqx.dataAdapter(source);
 
                     // Класс икапсулирует в себе код для того чтобы выпадающий список показывался сразу при
                     // начале редактировании ячейки и скрывался сразу после выбора в нем значение.
@@ -770,7 +812,7 @@
                     $("#uuGrid").jqxGrid({
                         theme: 'darkblue',
                         width: 860,
-                        height: calcGridHeightToNewRowsCount(data.length),
+                        height: calcGridHeightToNewRowsCount(uchetRecords.length),
                         selectionmode: 'multiplecellsextended',
                         editable: true,
                         columns: [
@@ -813,7 +855,6 @@
                                 cellsalign: 'right',
                                 validation: function (cell, value) {
                                     var valRes = uuValidateSum(value);
-                                    console.log(valRes);
                                     if (valRes !== true) {
                                         return { result: false, message: valRes };
                                     }
@@ -849,9 +890,11 @@
                                 cellclassname: editedRowsServerSync.getCellClassNameGridCallback,
                                 datafield: 'comment'
                             }
-                        ],
-                        source: dataAdapter
+                        ]
                     });
+
+                    // Загрузка данных.
+                    $("#uuGrid").jqxGrid({source: createGridDataAdapterFromServerArray(uchetRecords)});
 
                     // Установка русской строки для пустого грида (вместо дефолтовой No data to display)
                     uuLocalizeJqxGrid("uuGrid");
@@ -909,13 +952,14 @@
                         }
                     });
 
+
                     // Делат шапку jqxGrid fixed (копируя слой поверх)
                     var $elem = $('.jqx-grid-header'); // Original element with attached data
-                    var $elem2 = $elem.clone().appendTo($elem.parent())
+                    var $elem2 = $elem.clone().appendTo($elem.parent().parent());
                     $elem2.css('position', 'fixed' );
-                    $elem2.css('top', '111px' );
+                    $elem2.css('top', '149px' );
                     $elem2.css('z-index', '100');
-                    $elem2.attr('uu-visible-header', '1')
+                    $elem2.attr('uu-visible-header', '1');
 
                     // Устанавливаем обработчик на смену выделения чтобы выделенная ячейка была видима
                     $("#uuGrid").on('cellselect', function (event) {
@@ -978,6 +1022,7 @@
 
                                 // Обновляем баланс на счетах согласно полученному от сервера.
                                 var abl = adjustServerBalance(JSON.parse(data).accountBalanceList);
+                                $scope = $('#mainScope').scope();
                                 $scope.accountBalanceList2 = abl;
                                 $scope.$apply();
 
@@ -1000,10 +1045,30 @@
 
         </script>
 
-        <div ng-controller="GridCtrl">
+        <div id="mainScope" ng-controller="GridCtrl">
+
+            <!-- Это просто белая плашка чтобы собой зкрывать грид когда тот скроллируется  -->
+            <div style="position: fixed; background-color: white; z-index: 101; width: 860px; top: 110px; height: 40px;">
+
+            </div>
+            <div style="margin-top: 0px; position: fixed; top: 114px; z-index: 101;">
+                Отображать операции за:
+                <div class="btn-group">
+                    <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">
+                        {$ vpr(viewPeriodCode, viewPeriodSet.concat(viewPeriodMonthSet)) $}
+                        <span class="caret"></span>
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li style="cursor: pointer;" ng-repeat="p in viewPeriodMonthSet"><a ng-click="$parent.viewPeriodCode = p[0]" ng-style="{ 'font-weight': viewPeriodCode == p[0] ? 'bold' : 'normal' }">{$ p[1] $}</a></li>
+                        <li class="disabled" ng-if="viewPeriodMonthSet.length == 0" role="presentation"><a>Отображение по месяцам<br />станет доступно когда<br /> появятся операции учета.</a></li>
+                        <li role="presentation" class="divider"></li>
+                        <li style="cursor: pointer;" ng-repeat="p in viewPeriodSet"><a ng-click="$parent.viewPeriodCode = p[0]" ng-style="{ 'font-weight': viewPeriodCode == p[0] ? 'bold' : 'normal' }">{$ p[1] $}</a></li>
+                    </ul>
+                </div>
+            </div>
 
             <div>
-                <div id='uuGrid' style="border: 0px solid grey; margin-top: -3px;"></div>
+                <div id='uuGrid' style="border: 0px solid grey; margin-top: 35px;"></div>
             </div>
 
             <div style="padding-bottom: 120px;"></div>

@@ -96,10 +96,12 @@ def register_user_ajax(request):
             resp.setError(u'Пользователь с таким адресом эл. почты уже зарегистрирован в сервисе. ')
             return resp.buildHttpJsonResponse()
 
+    # Для всех юзеров обязательно создаем профиль (доп. набор полей к джанговской модели юзера)
+    profile = my_uu.models.UserProfile.objects.get_or_create(user=u)
+
     # Устанавливаем HTTP Referer для юзера
     import urllib
     if 'uu_ref' in request.COOKIES:
-        profile = my_uu.models.UserProfile.objects.get_or_create(user=u)
 
         # Эта сервия преобразований приводит к юникодной строке в которой русские буквы
         inpHttpRef = urllib.unquote(request.COOKIES['uu_ref']).decode('utf8')
@@ -213,6 +215,11 @@ def uuTrackEventDynamic(user, eventConstant):
     user.eventlog_set.create(event = my_uu.models.Event.objects.get(id = eventConstant))
 
 
+# Преобразует Django-model в список словарьей чтобы можно было JSON выполнить.
+def _getUchetRecordsList(uchetRecords):
+    return list(uchetRecords.values('id', 'date', 'utype__name', 'sum', 'account__name', 'category__name', 'comment'))
+
+
 def _getAccountBalanceList(request):
     accountBalanceList = my_uu.models.Account.objects.filter(user=request.user)
     accountBalanceList = accountBalanceList.annotate(balance = Sum('uchet__sum'))
@@ -233,14 +240,19 @@ def _getCategoryList(request):
 @uuTrackEventDecor(my_uu.models.Event.VISIT_UCH)
 def lk_uch(request):
 
+    #import simplejson
+    #dthandler = lambda obj: obj.isoformat() if isinstance(obj, datetime.datetime)  or isinstance(obj, datetime.date) else None
     return render(request, 'lk_uch.html', {
         'request': request,
-        'uchetRecords': my_uu.models.Uchet.objects.filter(user=request.user).order_by('date', '-utype', 'id'),
+        'uchetRecordsJson': json.dumps(_getUchetRecordsList(request.user.get_profile().getUchetRecordsInViewPeriod()), cls=DjangoJSONEncoder),
         'uTypeList': my_uu.models.UType.objects.all().order_by('id'),
         'accountList': my_uu.models.Account.objects.filter(user=request.user).order_by('id'),
         'categoryList': my_uu.models.Category.objects.filter(user=request.user).order_by('id'),
         'accountBalanceListJson': json.dumps(_getAccountBalanceList(request), cls=DjangoJSONEncoder),
         'categoryListJson': json.dumps(_getCategoryList(request), cls=DjangoJSONEncoder),
+        'viewPeriodSetJson': json.dumps(my_uu.models.UserProfile.VIEW_PERIOD_CODE_CHOICES, cls=DjangoJSONEncoder),
+        'viewPeriodMonthSetJson': json.dumps((request.user.get_profile().getUchetMonthSet()), cls=DjangoJSONEncoder),
+        'viewPeriodCodeJson': json.dumps(request.user.get_profile().view_period_code),
     })
 
 
@@ -655,6 +667,20 @@ def lk_delete_uchet_ajax(request):
     rowId = rowForDelete['serverRowId']
     my_uu.models.Uchet.objects.get(id= rowId).delete()
     return JsonResponseWithStatusOk(accountBalanceList = _getAccountBalanceList(request))
+
+
+# Загрузить данные учета за период
+@uu_login_required
+def lk_load_uchet_ajax(request):
+
+    # Сохраняем период за который юзер запросил просмотр
+    userProfile = request.user.get_profile()
+    userProfile.view_period_code = json.loads(request.body)['viewPeriodCode']
+    userProfile.save()
+
+    # Возвращаем записи за этот период
+    uchetRecords = _getUchetRecordsList(userProfile.getUchetRecordsInViewPeriod())
+    return JsonResponseWithStatusOk(uchetRecords = uchetRecords)
 
 
 class MyUUUIException(BaseException):
