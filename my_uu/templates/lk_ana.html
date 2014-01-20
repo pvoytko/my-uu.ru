@@ -2,6 +2,9 @@
 
 {% block add_to_head %}
 
+    <!-- Форматирование дат -->
+    <script type="text/javascript" src="{{ STATIC_URL }}libs/moment/moment.min.js"></script>
+
     <!-- Вспомогательные разные функции -->
     <script src="{{ STATIC_URL }}js/uu_utils.js"></script>
 
@@ -14,27 +17,50 @@
 
     <script>
         function AnaController($scope){
-            $scope.reportIndex = 0;
-            $scope.dataRowListArray = [{{ dataRowListW|safe }}, {{ dataRowListM|safe }}];
-            $scope.totalRowArray = [{{ totalRowW|safe }}, {{ totalRowM|safe }}];
-            $scope.periodsArray = [{{ periodsW|safe }}, {{ periodsM|safe }}];
-            $scope.getDataRowList = function(){ return $scope.dataRowListArray[$scope.reportIndex] };
-            $scope.getTotalRow = function(){ return $scope.totalRowArray[$scope.reportIndex]; };
-            $scope.getPeriods = function(){ return $scope.periodsArray[$scope.reportIndex]; };
+
+            $scope.periodCode = 'week';
+            $scope.anaType = 'rashod';
+
+            // Тут получаем с сервера данные в формате
+            // pageData {
+            //     'dataRows': {
+            //         'rashod-week': ...
+            //         'rashod-month': ...
+            //         'dohod-week': ...
+            //         ....
+            //     },
+            //     ...
+            // }
+            $scope.pageData = {{ pageData|safe }};
+
+            $scope.getDataRowList = function(){ return $scope.pageData['dataRows'][$scope.anaType + '-' + $scope.periodCode] };
+            $scope.getTotalRow = function(){ return $scope.pageData['totalRow'][$scope.anaType + '-' + $scope.periodCode]; };
+            $scope.getPeriods = function(){ return $scope.pageData['periods'][$scope.anaType + '-' + $scope.periodCode]; };
         }
     </script>
 
     <div ng-controller="AnaController">
 
         <!-- Выбор группировки -->
-        <h5 style="display: inline;">Анализ расходов по периодам</h5>
+        <h5 style="display: inline;">Анализ </h5>
         <div style="padding-bottom: 7px; display: inline-block; position: relative; top:-4px; padding-left: 12px;">
 
             <label class="radio inline">
-              <input type="radio" name="period" value="0" ng-model="reportIndex"> по неделям
+              <input type="radio" name="anaType" value="rashod" ng-model="anaType">расходов
             </label>
             <label class="radio inline">
-              <input type="radio" name="period" value="1" ng-model="reportIndex"> по месяцам
+              <input type="radio" name="anaType" value="dohod" ng-model="anaType">доходов
+            </label>
+
+        </div>
+        <h5 style="display: inline; padding-left: 60px;">По периодам</h5>
+        <div style="padding-bottom: 7px; display: inline-block; position: relative; top:-4px; padding-left: 12px;">
+
+            <label class="radio inline">
+              <input type="radio" name="periodCode" value="week" ng-model="periodCode">неделя
+            </label>
+            <label class="radio inline">
+              <input type="radio" name="periodCode" value="month" ng-model="periodCode">месяц
             </label>
 
         </div>
@@ -51,14 +77,17 @@
             </thead>
             <tbody>
                 <tr ng-show="getDataRowList().length == 0">
-                    <td colspan="7" style="text-align: center; padding: 50px;">Еще нет данных. Начните вести учет.</td>
+                    <td colspan="7" style="text-align: center; padding: 50px;">Нет операций для отобржения. Начните вести учет.</td>
                 </tr>
                 <tr ng-repeat="row in getDataRowList()">
                     <td style="background-color: #f0f0f0; "><div style="text-overflow: ellipsis; white-space: nowrap; overflow: hidden; width: 200px;">{$ row.category $}</div></td>
                     <td ng-repeat="i in row.data track by $index" style="text-align: right;">{$ i $}</td>
                 </tr>
                 <tr>
-                    <td style="background-color: #f0f0f0; font-weight: bold; text-align: right;">Расходы всего</td>
+                    <td style="background-color: #f0f0f0; font-weight: bold; text-align: right;">
+                        <span ng-if="anaType == 'rashod'">Расходы всего</span>
+                        <span ng-if="anaType == 'dohod'">Доходы всего</span>
+                    </td>
                     <td ng-repeat="i in getTotalRow() track by $index" style="background-color: #f0f0f0; text-align: right; font-weight: bold;">{$ i $}</td>
                 </tr>
             </tbody>

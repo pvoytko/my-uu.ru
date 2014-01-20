@@ -240,8 +240,6 @@ def _getCategoryList(request):
 @uuTrackEventDecor(my_uu.models.Event.VISIT_UCH)
 def lk_uch(request):
 
-    #import simplejson
-    #dthandler = lambda obj: obj.isoformat() if isinstance(obj, datetime.datetime)  or isinstance(obj, datetime.date) else None
     return render(request, 'lk_uch.html', {
         'request': request,
         'uchetRecordsJson': json.dumps(_getUchetRecordsList(request.user.get_profile().getUchetRecordsInViewPeriod()), cls=DjangoJSONEncoder),
@@ -363,7 +361,7 @@ def lk_ana(request):
         return startDateStr + u"–" + endDateStr;
 
 
-    def getWeekAnaData():
+    def addWeekAnaDataToPageData(pageData):
 
         # Максимальные и минимальные даты которые есть в учете для этого юзера
         minMaxDate = request.user.uchet_set.aggregate(min_date = Min('date'), max_date = Max('date'))
@@ -372,71 +370,82 @@ def lk_ana(request):
         periodsList = getWeekPeriodsList(datetime.datetime.now())
         periodsHeaders = [dict( first = u'Неделя ' + str(d.isocalendar()[1]), second = getDatesForWeek(d) ) for d in periodsList]
 
-        # Результат
-        l = []
+        # Тут мы получаем таблицу данных для расходов и доходов и суммирующую строку
+        l2 = {}
+        totalRow = {}
+        for type in (my_uu.models.UType.RASHOD, my_uu.models.UType.DOHOD):
 
-        # Если есть хотя бы одна запись учета, то формируем содержание списка на выдачу
-        if minMaxDate['min_date'] != None:
+            # Результат
+            l = []
 
-            assert minMaxDate['max_date'] != None, u'Если минимальня дата не None, то и максимальная должна быть не None.'
+            # Если есть хотя бы одна запись учета, то формируем содержание списка на выдачу
+            if minMaxDate['min_date'] != None:
 
-            # Для каждой категории
-            for (i, item) in enumerate(categoryList):
+                assert minMaxDate['max_date'] != None, u'Если минимальня дата не None, то и максимальная должна быть не None.'
 
-                # Получаем суммы по дням (только для расходов)
-                sumForDays = request.user.uchet_set.filter(category = item, utype = my_uu.models.UType.RASHOD)
-                sumForDays = sumForDays.values('date').distinct()
-                sumForDays = sumForDays.annotate(sum = Sum('sum'))
+                # Для каждой категории
+                for (i, item) in enumerate(categoryList):
 
-                # Если ни одной суммы для этой категории, то такую категорию пропускаем
-                if sumForDays.count() > 0:
+                    # Получаем суммы по дням (только для расходов)
+                    sumForDays = request.user.uchet_set.filter(category = item, utype = type)
+                    sumForDays = sumForDays.values('date').distinct()
+                    sumForDays = sumForDays.annotate(sum = Sum('sum'))
 
-                    # Номера недель (или ЧНДК)
-                    rangeIter = AnaWeekIterator(datetime.datetime.now())
+                    # Если ни одной суммы для этой категории, то такую категорию пропускаем
+                    if sumForDays.count() > 0:
 
-                    # Формируем список со значениями. Число элементов в списке = число заголовков.
-                    from collections import OrderedDict
-                    d = OrderedDict()
-                    d['category'] = item.name
-                    for c, w in enumerate(rangeIter):
-                        d[c] = 0
+                        # Номера недель (или ЧНДК)
+                        rangeIter = AnaWeekIterator(datetime.datetime.now())
 
-                    # Сейчас проходим по всем дням и суммам и плюсуем эти суммы к неделям
-                    skipCategory = True
-                    for sumForDay in sumForDays:
-                        weekIndex = rangeIter.getWeekIndexForDate(sumForDay['date'])
-                        if weekIndex is not None:
-                            d[weekIndex] += sumForDay['sum']
-                            skipCategory = False
+                        # Формируем список со значениями. Число элементов в списке = число заголовков.
+                        from collections import OrderedDict
+                        d = OrderedDict()
+                        d['category'] = item.name
+                        for c, w in enumerate(rangeIter):
+                            d[c] = 0
 
-                    # Сохраняем результат
-                    if not skipCategory:
-                        l.append(d)
+                        # Сейчас проходим по всем дням и суммам и плюсуем эти суммы к неделям
+                        skipCategory = True
+                        for sumForDay in sumForDays:
+                            weekIndex = rangeIter.getWeekIndexForDate(sumForDay['date'])
+                            if weekIndex is not None:
+                                d[weekIndex] += sumForDay['sum']
+                                skipCategory = False
 
-        l2 = []
-        totalRow = [0] * len(periodsList)
-        for li in l:
-            l2row = {}
-            l2row['category'] = li['category']
-            l2row['data'] = []
-            dataCellIndex = -1
-            for k in sorted(li.keys()):
-                if k != 'category':
-                    dataCellIndex += 1
-                    l2row['data'].append(float(li[k]))
+                        # Сохраняем результат
+                        if not skipCategory:
+                            l.append(d)
 
-                    # Подсчитываем суммирующую строку
-                    totalRow[dataCellIndex] += float(li[k])
+            l2[type] = []
+            totalRow[type] = [0] * len(periodsList)
+            for li in l:
+                l2row = {}
+                l2row['category'] = li['category']
+                l2row['data'] = []
+                dataCellIndex = -1
+                for k in sorted(li.keys()):
+                    if k != 'category':
+                        dataCellIndex += 1
+                        l2row['data'].append(float(li[k]))
 
-            l2row['data'] = formatMoneyRow(l2row['data'])
+                        # Подсчитываем суммирующую строку
+                        totalRow[type][dataCellIndex] += float(li[k])
 
-            l2.append(l2row)
+                l2row['data'] = formatMoneyRow(l2row['data'])
 
-        totalRow = formatMoneyRow(totalRow)
+                l2[type].append(l2row)
 
-        return periodsHeaders, l2, totalRow
+            totalRow[type] = formatMoneyRow(totalRow[type])
 
-    def getMonthAnaData():
+        # Итог работы функции
+        pageData['periods']['rashod-week'] = periodsHeaders
+        pageData['periods']['dohod-week'] = periodsHeaders
+        pageData['dataRows']['rashod-week'] = l2[my_uu.models.UType.RASHOD]
+        pageData['dataRows']['dohod-week'] = l2[my_uu.models.UType.DOHOD]
+        pageData['totalRow']['rashod-week'] = totalRow[my_uu.models.UType.RASHOD]
+        pageData['totalRow']['dohod-week'] = totalRow[my_uu.models.UType.DOHOD]
+
+    def addMonthAnaDataToPageData(pageData):
 
         # Создаем масив месяцев от текущего назад 5 месяцав (всего отображается 6).
         monthsData = [0] * 6
@@ -459,43 +468,53 @@ def lk_ana(request):
         periodsHeaders = [dict(first = monthNames[i[1]-1], second = i[0]) for i in periodsList]
 
         # Строка суммы
-        t = [0] * len(periodsList)
+        t = {}
+        d = {}
+        for type in (my_uu.models.UType.RASHOD, my_uu.models.UType.DOHOD):
+            t[type] = [0] * len(periodsList)
 
-        # Для каждой категории
-        d = []
-        for (i, cat) in enumerate(categoryList):
+            # Для каждой категории
+            d[type] = []
+            for (i, cat) in enumerate(categoryList):
 
-            # Получаем суммы по месяцам (только для расходов)
-            sumForDays = request.user.uchet_set.filter(category = cat, utype = my_uu.models.UType.RASHOD)
-            sumForDays = sumForDays.extra(select={'month': 'extract( month from date )', 'year': 'extract( year from date )'}).values('year', 'month').annotate(sum = Sum('sum')).order_by('year', 'month')
+                # Получаем суммы по месяцам (только для расходов)
+                sumForDays = request.user.uchet_set.filter(category = cat, utype = type)
+                sumForDays = sumForDays.extra(select={'month': 'extract( month from date )', 'year': 'extract( year from date )'}).values('year', 'month').annotate(sum = Sum('sum')).order_by('year', 'month')
 
-            # Строка с данными для категории
-            rowData = [0] * len(periodsList)
-            for dbVal in sumForDays:
-                perVal = (dbVal['year'], dbVal['month'])
-                if perVal in periodsList:
-                    periodIndex = periodsList.index(perVal)
-                    rowData[periodIndex] += float(dbVal['sum'])
-                    t[periodIndex] += float(dbVal['sum'])
+                # Строка с данными для категории
+                rowData = [0] * len(periodsList)
+                for dbVal in sumForDays:
+                    perVal = (dbVal['year'], dbVal['month'])
+                    if perVal in periodsList:
+                        periodIndex = periodsList.index(perVal)
+                        rowData[periodIndex] += float(dbVal['sum'])
+                        t[type][periodIndex] += float(dbVal['sum'])
 
-            # Добавлям строку с категорией только если есть ненулевые данные
-            if any(rowData):
-                d.append(dict(category = cat.name, data = formatMoneyRow(rowData)))
+                # Добавлям строку с категорией только если есть ненулевые данные
+                if any(rowData):
+                    d[type].append(dict(category = cat.name, data = formatMoneyRow(rowData)))
 
-        t = formatMoneyRow(t)
-        return periodsHeaders, d, t
+            t[type] = formatMoneyRow(t[type])
 
-    periodsW, dataRowListW, totalRowW = getWeekAnaData()
-    periodsM, dataRowListM, totalRowM = getMonthAnaData()
+        # Итог работы функции
+        pageData['periods']['rashod-month'] = periodsHeaders
+        pageData['periods']['dohod-month'] = periodsHeaders
+        pageData['dataRows']['rashod-month'] = d[my_uu.models.UType.RASHOD]
+        pageData['dataRows']['dohod-month'] = d[my_uu.models.UType.DOHOD]
+        pageData['totalRow']['rashod-month'] = t[my_uu.models.UType.RASHOD]
+        pageData['totalRow']['dohod-month'] = t[my_uu.models.UType.DOHOD]
+
+    pageData = {
+        'periods': {},
+        'dataRows': {},
+        'totalRow': {}
+    }
+
+    addWeekAnaDataToPageData(pageData)
+    addMonthAnaDataToPageData(pageData)
 
     return render(request, 'lk_ana.html', {
-        'request': request,
-        'periodsW': json.dumps(periodsW, cls=DjangoJSONEncoder),
-        'dataRowListW': json.dumps(dataRowListW, cls=DjangoJSONEncoder),
-        'totalRowW': json.dumps(totalRowW, cls=DjangoJSONEncoder),
-        'periodsM': json.dumps(periodsM, cls=DjangoJSONEncoder),
-        'dataRowListM': json.dumps(dataRowListM, cls=DjangoJSONEncoder),
-        'totalRowM': json.dumps(totalRowM, cls=DjangoJSONEncoder),
+        'pageData': json.dumps(pageData, cls=DjangoJSONEncoder),
     } )
 
 
