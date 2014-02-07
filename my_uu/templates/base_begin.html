@@ -84,7 +84,7 @@
                 $scope._setupServerCallbacks = function(httpObj){
                       httpObj.success(function(resp, status) {
                           if (resp.status_ok){
-                              window.location = '/lk/';
+                              window.location = '/lk/beg/';
                           } else {
                               $scope.errorText = resp.response;
                               $scope.loading = false;

@@ -143,13 +143,13 @@ def login_user_ajax(request):
     if frm.is_valid():
 
         # На разработческой машине можно войти под любым юзером без пароля
-        # if settings.IS_DEVELOPER_COMP:
-        #    user = django.contrib.auth.models.User.objects.get(email = data['email'])
+        if settings.IS_DEVELOPER_COMP:
+            user = django.contrib.auth.models.User.objects.get(email = data['email'])
 
             # Если не выставить бекэнд то потом ошибка при получении юзера.
-        #   user.backend = "django.contrib.auth.backends.ModelBackend"
-        # else:
-        user = _authenticateByEmailAndPassword(**data)
+            user.backend = "django.contrib.auth.backends.ModelBackend"
+        else:
+            user = _authenticateByEmailAndPassword(**data)
 
         if user is not None:
             login(request, user)
@@ -213,6 +213,12 @@ def uuTrackEventDecor(eventConstant):
 # Сохраняет запись о событии
 def uuTrackEventDynamic(user, eventConstant):
     user.eventlog_set.create(event = my_uu.models.Event.objects.get(id = eventConstant))
+
+
+# Начало
+@uu_login_required
+def lk_beg(request):
+    return render(request, 'lk_beg.html')
 
 
 # Преобразует Django-model в список словарьей чтобы можно было JSON выполнить.

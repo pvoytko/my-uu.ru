@@ -50,6 +50,7 @@
         </div>
 
         <ul class="nav nav-pills" style="position: fixed; visibility: block; top: 73px; z-index: 101;">
+            <li{% block beg_active %}{% endblock %}><a href="/lk/beg/">Начало</a></li>
             <li{% block uch_active %}{% endblock %}><a href="/lk/">Учет</a></li>
             <li{% block ana_active %}{% endblock %}><a href="/lk/ana/">Анализ</a></li>
             <li{% block set_active %}{% endblock %}><a href="/lk/set/">Счета и категории</a></li>
