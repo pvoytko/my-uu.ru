@@ -230,8 +230,8 @@ def _getAccountBalanceList(request):
     accountBalanceList = my_uu.models.Account.objects.filter(user=request.user)
     accountBalanceList = accountBalanceList.annotate(balance = Sum('uchet__sum'))
     accountBalanceList = accountBalanceList.order_by('id')
-    if len(accountBalanceList) > 14:
-        assert False, 'Слишком большое количество счетов, интерфейс пока не рассчитан на такое количество.'
+    if len(accountBalanceList) > 28:
+        raise RuntimeError('Слишком большое количество счетов, интерфейс пока не рассчитан на такое количество.')
     return list(accountBalanceList.values('id', 'name', 'balance'))
 
 
