@@ -964,6 +964,8 @@ def lk_pay(request):
 # Уведомление об оплате, надо внести платеж юзера в БД
 def robokassa_result_url(request):
 
+    from decimal import Decimal
+
     # Инфо об оплате от робокассы
     invId = request.POST['InvId']
     sumOut = request.POST['OutSum']
@@ -978,7 +980,7 @@ def robokassa_result_url(request):
     uuTrackEventDynamic(p.user, my_uu.models.EventLog.EVENT_ROBOKASSA_PAY_NOTIFY)
 
     # Сравниваем сумму поступления и сумму которая там была
-    if int(p.sum) != int(sumOut):
+    if Decimal(p.sum) != Decimal(sumOut):
         raise RuntimeError("Сумма платежа в уведомлении от ROBOKASSA {0} не равна сумме инициированной пользователем {1}.".format(
             sumOut,
             p.sum
