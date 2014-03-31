@@ -978,7 +978,7 @@ def robokassa_result_url(request):
     uuTrackEventDynamic(p.user, my_uu.models.EventLog.EVENT_ROBOKASSA_PAY_NOTIFY)
 
     # Сравниваем сумму поступления и сумму которая там была
-    if p.sum != sumOut:
+    if int(p.sum) != (sumOut):
         raise RuntimeError("Сумма платежа в уведомлении от ROBOKASSA {0} не равна сумме инициированной пользователем {1}.".format(
             sumOut,
             p.sum
@@ -986,6 +986,9 @@ def robokassa_result_url(request):
 
     # Отмечаем платеж принятым, с этого момента режим юзера будет сменен на "Оплаченный"
     p.date_payment = datetime.datetime.now()
+
+    # Возвращаем ОК-ответ Робокассе (ОК + номер счета, к примеру, ОК5)
+    return HttpResponse('OK' + str(p.id))
 
 
 # Этот метод вызывается со страницы "Оплата" для того чтобы сформировать УРЛ по которому отредиректить юзера
