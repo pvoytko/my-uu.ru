@@ -257,6 +257,7 @@ def lk_uch(request):
         'viewPeriodSetJson': json.dumps(my_uu.models.UserProfile.VIEW_PERIOD_CODE_CHOICES, cls=DjangoJSONEncoder),
         'viewPeriodMonthSetJson': json.dumps((request.user.get_profile().getUchetMonthSet()), cls=DjangoJSONEncoder),
         'viewPeriodCodeJson': json.dumps(request.user.get_profile().view_period_code),
+        'showAddUchetDialog': 1 if request.user.get_profile().showAddUchetDialog() else 0 # 1 или 0 - т.к. JS не понимает True / False
     })
 
 
@@ -629,6 +630,15 @@ class JsonResponseWithStatusOk(HttpResponse):
 # Сохранить данные учета (через Аякс вызывается)
 @uu_login_required
 def lk_save_uchet_ajax(request):
+
+    # Делаем проверку, если нужно оплатить, значит не даем сохранять запись.
+    # По идее мы должны разрешать изменять, но тогда может возникнуть хак что юзер будет вносить записи
+    # за старую дату а потом изменять за новую тем самым обойдет ограничение. Чтобы этого хака не было, да и
+    # т.к. так проще реализовать, я запрещаю и редактирование и создание. Т.е. если у пользователя дохера записей
+    # более 40, то он не сможет их даже редачить в бесплатном режиме.
+    if request.user.get_profile().errorOnSaveUchet():
+        raise RuntimeError('Попытка сохранить/отредактировать запись в режиме когда эта возможность ограничена и для снятия огранчения нужно оплатить')
+
     rowsForUpdateAndInsert = json.loads(request.POST['rows_json'])
 
     # Перебираем все полученные строки
@@ -673,6 +683,7 @@ def lk_save_uchet_ajax(request):
         # Добавление
         # Полученный serverRecordId устанавливаем для этой строки.
         else:
+
             u = my_uu.models.Uchet.objects.create(**rowDbData)
             u.save()
             r['serverRowId'] = u.id

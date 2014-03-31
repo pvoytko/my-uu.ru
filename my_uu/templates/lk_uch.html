@@ -131,6 +131,9 @@
     <script>
         function AddRecordCtrl($scope, $element){
 
+            // Флаг сбрасывается если сработало ограничение на внесение и больше вносить нельзя.
+            $scope.showAddUchetDialog = {{ showAddUchetDialog }};
+
             // Список счетов и категорий
             $scope.accounts = {{ accountBalanceListJson|safe }};
             $scope.categories = {{ categoryListJson|safe }};
@@ -205,7 +208,7 @@
             <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
             <h4>Внесение операции учета</h4>
         </div>
-        <div class="modal-body">
+        <div class="modal-body" ng-show="showAddUchetDialog">
 
             <form class="form-horizontal" ng-enter="closeDlg()">
                 <div class="control-group">
@@ -289,9 +292,30 @@
                 {$ error $}
             </div>
         </div>
-        <div class="modal-footer">
+        <div class="modal-footer" ng-show="showAddUchetDialog">
             <button ng-click="closeDlg()" class="btn btn-large btn-info pull-left">Внести (Enter)</button>
             <button href="#" class="btn pull-right" style="margin-top: 5px;" data-dismiss="modal">Отмена (Esc)</button>
+        </div>
+
+        {# Далее идет тело и подвал диалога для случая когда нужна оплата - показывается сообщение оплатить #}
+        <div class="modal-body" ng-show="!showAddUchetDialog">
+
+            <p>
+                Внесение новых операций в "Пробном" режиме работы недоступно.
+            </p>
+            <p>
+                Если Вам нравится пользоваться сервисом, оплатите его использование.
+            </p>
+            <p>
+                Тогда ограничение будет снято.
+            </p>
+            <p>
+                Для этого, пройдите на страницу <a href="{% url 'my_uu.views.lk_pay' %}"><strong>"Оплата"</strong></a>.
+            </p>
+
+        </div>
+        <div class="modal-footer" ng-show="!showAddUchetDialog">
+            <button href="#" class="btn" style="margin-top: 5px;" data-dismiss="modal">Закрыть</button>
         </div>
     </div>
     </div>

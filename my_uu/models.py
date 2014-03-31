@@ -96,36 +96,75 @@ class UserProfile(models.Model):
             raise RuntimeError(u'Возникла ситуация нескольких платежей, на которую алгорим не реализован и требуется дореализовать')
 
         # Зная дату активации и сумму платежа рассчитываем дату по которую режим "Оплаченный".
-        return activatedPayment.date_payment + datetime.timedelta(days = activatedPayment.sum)
+        return activatedPayment.date_payment + datetime.timedelta(days = int(activatedPayment.sum))
 
     # Возвращает количество дней учета для этого юзера (используется на странице "Оплата"
     def getUchetDaysCount(self):
         uchetRecords = Uchet.objects.filter(user = self.user)
         return uchetRecords.values_list('date', flat=True).distinct().count()
 
-    # Возвращает текстовое описание текущего режима работы с сервисом (на странице "Оплата")
-    def getPayModeDescription(self):
+    # Возвращает True если пользователь не может вносить новые записи учета без оплаты, т.е. ему нужно оплатить.
+    # Метод используется при формировании страницы "Учет". Если метод вернул True, то диалог внесения блокируется.
+    def showAddUchetDialog(self):
+        return self.getPayModeCodeAndDescr()[0] != UserProfile.PAY_MODE_TRIAL_LIMITED
+
+    # Возвращает True если надо выдать ошибку при попытке сохранить запись учета т.к. ща режиме когда сохранение запрещено.
+    def errorOnSaveUchet(self):
+        # Когда кончился платный режим, т.е. мы находимся в неоплаченном режиме и достигли ограничения 40 записей,
+        # тогда нельзя соранять, а надо показаь ошибку. Но мы даем еще 2 часа право сохранить после этого момента.
+        # Зачем? Иначе возможна херовая ошибка, которая будет проявляться следующим образом.
+        # Допустим, он открыл страничку в 23-59. Значит флаг на странице установился что вносить записи в диалоге можно.
+        # Диалог внесения не блокирован. Но при попытке сохранить на сервере у него будет возникать ошибка сохранения.
+        # Ведь сохранять-то он будет уже после 00-00. Чтобы ее не возникало, надо либо сложную клиентскую логику
+        # делать отслеживать момент когда истечет время, либо просто разрешить пару часов после истечения срока
+        # сохранять запии на сервере. Тогда точно за это время пользователь перегрузит хотя бы раз страницу и
+        # диалог внесения будет заблокирован тоже. Вот именно этот второй вариант и реализован, он проще.
+        pbd = self.getPaidByDate()
+        paidLessThen2HoursAgo = pbd != None and (datetime.datetime.now() - pbd) < datetime.timedelta(hours=2)
+
+        # Аналогично, диалог блокируется при достижении 40 дней учета, а на сервере ошибка - при 45.
+        daysUchetLessThen45 = self.getUchetDaysCount() < 45
+
+        # Итог
+        return (self.getPayModeCodeAndDescr()[0] == UserProfile.PAY_MODE_TRIAL_LIMITED) and not paidLessThen2HoursAgo and not daysUchetLessThen45
+
+
+    PAY_MODE_NOT_LIMITED_FOR_USER_4 = 'PAY_MODE_NOT_LIMITED_FOR_USER_4'
+    PAY_MODE_NOT_LIMITED = 'PAY_MODE_NOT_LIMITED'
+    PAY_MODE_PAID = 'PAY_MODE_PAID'
+    PAY_MODE_TRIAL = 'PAY_MODE_TRIAL'
+    PAY_MODE_TRIAL_LIMITED = 'PAY_MODE_TRIAL_LIMITED'
+
+    # Возвращает пару - код и текстовое описание.
+    # По коду в программе можно проверить в каком сейчас режиме работает юзер.
+    # А текст используется чтобы показать текстовое описание пользователю.
+    def getPayModeCodeAndDescr(self):
 
         # Без ограничений режим работал по 7 апреля для меня лично и по 9 апреля всем остальным
         if self.user.id == 4 and (datetime.datetime.now().date() < datetime.date(2014, 4, 7)):
-            return u"Без ограничений по 07.04.2014"
+            return (UserProfile.PAY_MODE_NOT_LIMITED_FOR_USER_4, u"Без ограничений по 07.04.2014")
         elif self.user.id != 4 and datetime.datetime.now().date() < datetime.date(2014, 4, 9):
-            return u"Без ограничений по 09.04.2014"
+            return (UserProfile.PAY_MODE_NOT_LIMITED, u"Без ограничений по 09.04.2014")
 
         # Далее если есть действующая оплата, то режим "Оплаченный"
         elif self.getPaidByDate() is not None and datetime.datetime.now().date() <= self.getPaidByDate():
             d = self.getPaidByDate()
-            return u"Оплаченный по " + d.format('%D.%m.%Y') + u". Осталось дней: " + str((datetime.datetime.now().date() - d).days)
+            return (UserProfile.PAY_MODE_PAID, u"Оплаченный по " + d.format('%D.%m.%Y') + u". Осталось дней: " + str((datetime.datetime.now().date() - d).days))
 
         # Если же активной оплаты нет, то если количество дней учета менее 40, то режим - "Пробный"
         elif self.getUchetDaysCount() < 40:
-            return u"Пробный. Текущее количество дней учета: {0} из 40".format(self.getUchetDaysCount())
+            return (UserProfile.PAY_MODE_TRIAL, u"Пробный. Текущее количество дней учета: {0} из 40".format(self.getUchetDaysCount()))
 
         # Сюда попадаем если количество дней учета 40 и более, то
         # Пробный "исчерпанный"
         else:
-            return 'Пробный. Вы достигли максимальное количество дней учета в режиме работы "Пробный". ' + \
-                'Для внесения новых операций в сервис Вам необходимо оплатить, чтобы перейти на режим "Оплаченный".'
+            return (UserProfile.PAY_MODE_TRIAL_LIMITED, 'Пробный. Вы достигли максимальное количество дней учета в режиме работы "Пробный". ' + \
+                'Для внесения новых операций в сервис Вам необходимо оплатить, чтобы перейти на режим "Оплаченный".')
+
+
+    # Возвращает текстовое описание текущего режима работы с сервисом (на странице "Оплата")
+    def getPayModeDescription(self):
+        return self.getPayModeCodeAndDescr()[1]
 
 
 
