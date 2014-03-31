@@ -168,35 +168,38 @@ class Uchet(models.Model):
         return self.date.strftime('%d.%m.%Y')
 
 
-# Событие для сохранения в журнале (отслеживаемые события)
-class Event(models.Model):
-
-    name = models.CharField(max_length=255, unique=True)
-
-    VISIT_UCH = 1
-    VISIT_ANA = 2
-    VISIT_SET = 3
-    VISIT_IMP = 4
-    ADD_UCH = 5
-    EDT_UCH = 6
-    DEL_UCH = 7
-    IMP = 8
-    ADD_SET = 9
-    EDT_SET = 10
-    DEL_SET = 11
-    UNSUBSCR = 12
-    SUBSCR = 13
-    # При добавлении сюда констант надо:
-    # 1 добавить примечание в БД с этим ID
-    # 2 создать python manage.py dumpdata --indent=4 my_uu.Event > my_uu/fixtures/event_initial.json
-    # 3 загрузить ее manage.py loaddata event_initial.json на боевом
-
-
 # Журнал событий
 class EventLog(models.Model):
+
+    EVENT_VISIT_UCH = (1,"Заход на страницу учета")
+    EVENT_VISIT_ANA = (2,"Заход на страницу анализа")
+    EVENT_VISIT_SET = (3,"Заход на страницу настроек")
+    EVENT_VISIT_IMP = (4,"Заход на страницу импорта")
+    EVENT_ADD_UCH = (5,"Добавил запись учета")
+    EVENT_EDT_UCH = (6,"Изменил запись учета")
+    EVENT_DEL_UCH = (7,"Удалил запись учета")
+    EVENT_IMP = (8,"Прислал данные для импорта")
+    EVENT_ADD_SET = (9,"Добавил счет или категорию")
+    EVENT_EDT_SET = (10,"Изменил счет или категорию")
+    EVENT_DEL_SET = (11,"Удалил счет или категорию")
+    EVENT_UNSUBSCR = (12,"Отписался от рассылки")
+    EVENT_SUBSCR = (13,"Подписался на рассылку")
+
+    EVENT_VISIT_PAY =               (14, "Заход на страницу оплаты")
+    EVENT_DO_ORDER =                (15, "Нажал кнопку 'Оплатить'")
+    EVENT_ROBOKASSA_PAY_NOTIFY =    (16, "Пришла оплата от ROBOKASSA")
+
     user = models.ForeignKey(django.contrib.auth.models.User)
     datetime = models.DateTimeField(auto_now_add=True)
-    event = models.ForeignKey(Event)
+    event2 = models.IntegerField()
+
+    @property
+    def event_name(self):
+        for a in dir(EventLog):
+            if a.startswith('EVENT_'):
+                if getattr(self, a)[0] == self.event2:
+                    return getattr(self, a)[1]
+        raise RuntimeError('Ошибка получения описания события. В базе соранен код события #{0}, но константа EVENT в классе EventLog с таким значением кода не найдена.'.format(self.event2))
 
 
 # Заполняется если юзер отписался

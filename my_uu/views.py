@@ -205,14 +205,14 @@ def uuTrackEventDecor(eventConstant):
     def uuTrackEventDecorImpl(f):
         def uuTrackEventWrapper(request, *args, **kwargs):
             # Отслеживаем (сохраняем в журнал) это действие юзера
-            request.user.eventlog_set.create(event = my_uu.models.Event.objects.get(id = eventConstant))
+            request.user.eventlog_set.create(event2 = eventConstant[0])
             return f(request, *args, **kwargs)
         return uuTrackEventWrapper
     return uuTrackEventDecorImpl
 
 # Сохраняет запись о событии
 def uuTrackEventDynamic(user, eventConstant):
-    user.eventlog_set.create(event = my_uu.models.Event.objects.get(id = eventConstant))
+    user.eventlog_set.create(event2 = eventConstant[0])
 
 
 # Начало
@@ -243,7 +243,7 @@ def _getCategoryList(request):
 
 # Главная страница личного кабиета
 @uu_login_required
-@uuTrackEventDecor(my_uu.models.Event.VISIT_UCH)
+@uuTrackEventDecor(my_uu.models.EventLog.EVENT_VISIT_UCH)
 def lk_uch(request):
 
     return render(request, 'lk_uch.html', {
@@ -262,7 +262,7 @@ def lk_uch(request):
 
 # Страница Настройки личного кабиета
 @uu_login_required
-@uuTrackEventDecor(my_uu.models.Event.VISIT_SET)
+@uuTrackEventDecor(my_uu.models.EventLog.EVENT_VISIT_SET)
 def lk_set(request):
     import json
 
@@ -326,7 +326,7 @@ class AnaWeekIterator(object):
 
 # Страница Анализ личного кабиета
 @uu_login_required
-@uuTrackEventDecor(my_uu.models.Event.VISIT_ANA)
+@uuTrackEventDecor(my_uu.models.EventLog.EVENT_VISIT_ANA)
 def lk_ana(request):
 
     # Уникальный список категорий
@@ -526,7 +526,7 @@ def lk_ana(request):
 
 # Страница импорта
 @uu_login_required
-@uuTrackEventDecor(my_uu.models.Event.VISIT_IMP)
+@uuTrackEventDecor(my_uu.models.EventLog.EVENT_VISIT_IMP)
 def lk_imp(request):
     return render(request, 'lk_imp.html', { 'request': request })
 
@@ -539,7 +539,7 @@ def lk_exp(request):
 
 # Импорт данных через аякс
 @uu_login_required
-@uuTrackEventDecor(my_uu.models.Event.IMP)
+@uuTrackEventDecor(my_uu.models.EventLog.EVENT_IMP)
 def lk_imp_ajax(request):
     importedData = json.loads(request.body)
 
@@ -658,11 +658,11 @@ def lk_save_uchet_ajax(request):
         # Получаем id строки на сервере если есть и удаляем лишние поля (чтоб не вылазило ошибки при update)
         serverRowId = None
         if 'serverRowId' in r:
-            uuTrackEventDynamic(request.user, my_uu.models.Event.EDT_UCH)
+            uuTrackEventDynamic(request.user, my_uu.models.EventLog.EVENT_EDT_UCH)
             serverRowId = rowDbData['serverRowId']
             del rowDbData['serverRowId']
         else:
-            uuTrackEventDynamic(request.user, my_uu.models.Event.ADD_UCH)
+            uuTrackEventDynamic(request.user, my_uu.models.EventLog.EVENT_ADD_UCH)
 
         del rowDbData['uid']
 
@@ -686,7 +686,7 @@ def lk_save_uchet_ajax(request):
 
 # Удалить строку учета (через Аякс вызывается)
 @uu_login_required
-@uuTrackEventDecor(my_uu.models.Event.DEL_UCH)
+@uuTrackEventDecor(my_uu.models.EventLog.EVENT_DEL_UCH)
 def lk_delete_uchet_ajax(request):
     rowForDelete = json.loads(request.POST['rowForDelete'])
     rowId = rowForDelete['serverRowId']
@@ -742,10 +742,10 @@ def _lk_save_settings_ajax(request, userPropName, modelClass):
 
     # Создаем новый или изменяем существующий счет
     if 'id' in newAccountData:
-        uuTrackEventDynamic(request.user, my_uu.models.Event.EDT_SET)
+        uuTrackEventDynamic(request.user, my_uu.models.EventLog.EVENT_EDT_SET)
         a = getattr(request.user, userPropName).get(id = newAccountData['id'])
     else:
-        uuTrackEventDynamic(request.user, my_uu.models.Event.ADD_SET)
+        uuTrackEventDynamic(request.user, my_uu.models.EventLog.EVENT_ADD_SET)
         a = modelClass()
         a.user = request.user
 
@@ -772,7 +772,7 @@ def _lk_save_settings_ajax(request, userPropName, modelClass):
 
 
 @uu_login_required
-@uuTrackEventDecor(my_uu.models.Event.DEL_SET)
+@uuTrackEventDecor(my_uu.models.EventLog.EVENT_DEL_SET)
 def _lk_delete_settings_ajax(request, userPropName):
     try:
 
@@ -912,12 +912,12 @@ def unsubscr_do(request, obfuscatedUserId):
     # Отписка
     if 'uns' in request.POST:
         my_uu.models.Unsubscribe.objects.get_or_create(user=user)
-        uuTrackEventDynamic(user, my_uu.models.Event.UNSUBSCR)
+        uuTrackEventDynamic(user, my_uu.models.EventLog.EVENT_UNSUBSCR)
 
     # Подписка
     if 'sub' in request.POST:
         my_uu.models.Unsubscribe.objects.get(user=user).delete()
-        uuTrackEventDynamic(user, my_uu.models.Event.SUBSCR)
+        uuTrackEventDynamic(user, my_uu.models.EventLog.EVENT_SUBSCR)
 
     return HttpResponseRedirect(reverse(unsubscr_view, kwargs={'obfuscatedUserId': obfuscatedUserId}))
 
@@ -954,13 +954,18 @@ def feedback_request_ajax(request):
 
 # Страница оплаты
 @uu_login_required
+@uuTrackEventDecor(my_uu.models.EventLog.EVENT_VISIT_PAY)
 def lk_pay(request):
     return render(request, 'lk_pay.html', {
         'payModeDescription': request.user.get_profile().getPayModeDescription()
     })
 
+
 # Уведомление об оплате, надо внести платеж юзера в БД
 def robokassa_result_url(request):
+
+    # Сохраняем событие что платеж поступил
+    uuTrackEventDynamic(p.user, my_uu.models.EventLog.EVENT_ROBOKASSA_PAY_NOTIFY)
 
     # Инфо об оплате от робокассы
     invId = request.POST['OutSum']
@@ -987,7 +992,9 @@ def robokassa_result_url(request):
 # для оплаты выбранного им периода работы сервиса. УРЛ содержит: сумму без комиссии robokassa, ID счета,
 # crc, которые вычисляются как раз в этом методе на сервере.
 @uu_login_required
+@uuTrackEventDecor(my_uu.models.EventLog.EVENT_DO_ORDER)
 def robokassa_do_order_ajax(request):
+
     # УРЛ интерфейса оплаты
     periodCode = json.loads(request.body)['period']
     COST_DICT = {
