@@ -965,8 +965,8 @@ def lk_pay(request):
 def robokassa_result_url(request):
 
     # Инфо об оплате от робокассы
-    invId = request.POST['OutSum']
-    sumOut = request.POST['InvId']
+    invId = request.POST['InvId']
+    sumOut = request.POST['OutSum']
 
     # Проверку подписи не делаю, экономлю время программирования.
     signat = request.POST['SignatureValue']
