@@ -1012,7 +1012,6 @@ def robokassa_result_url(request):
 @uuTrackEventDecor(my_uu.models.EventLog.EVENT_DO_ORDER)
 def robokassa_do_order_ajax(request):
 
-    # УРЛ интерфейса оплаты
     periodCode = json.loads(request.body)['period']
     COST_DICT = {
         'days30': 30,
@@ -1026,16 +1025,20 @@ def robokassa_do_order_ajax(request):
     payment = my_uu.models.Payment(date_created = datetime.datetime.now(), sum = cost, user = request.user)
     payment.save()
 
-    # Формирование подписи
-    def getCrc(login, outSum, invId, shpItem, mrchPass):
-        sCrcBase = u"{0}:{1}:{2}:{3}:shpItem={4}".format(login, outSum, invId, mrchPass, shpItem)
-        import md5
-        s = md5.new(sCrcBase).hexdigest()
-        return s
-
     # Урл интерфейса оплаты для юзера в Робокассе
     def getUrl(login, outSum, invId, shpItem, desc, mrchPass):
-        return u'http://auth.robokassa.ru:80/Merchant/Index.aspx?MerchantLogin={login}&OutSum={outSum}&InvoiceID={invoiceId}&shpItem={shpItem}&SignatureValue={signValue}&Description={desc}&Culture={cult}&Encoding={encod}'.format(
+
+        # Формирование подписи
+        def getCrc(login, outSum, invId, shpItem, mrchPass):
+            sCrcBase = u"{0}:{1}:{2}:{3}:shpItem={4}".format(login, outSum, invId, mrchPass, shpItem)
+            import md5
+            s = md5.new(sCrcBase).hexdigest()
+            return s
+
+        server1 = u"http://test.robokassa.ru/Index.aspx"
+        server2 = u"http://auth.robokassa.ru:80/Merchant/Index.aspx"
+
+        return server1 + u'?MerchantLogin={login}&OutSum={outSum}&InvoiceID={invoiceId}&shpItem={shpItem}&SignatureValue={signValue}&Description={desc}&Culture={cult}&Encoding={encod}'.format(
             login = login,
             outSum = outSum,
             invoiceId = invId,
