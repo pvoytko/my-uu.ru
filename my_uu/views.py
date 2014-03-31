@@ -988,6 +988,7 @@ def robokassa_result_url(request):
 
     # Отмечаем платеж принятым, с этого момента режим юзера будет сменен на "Оплаченный"
     p.date_payment = datetime.datetime.now()
+    p.save()
 
     # Возвращаем ОК-ответ Робокассе (ОК + номер счета, к примеру, ОК5)
     return HttpResponse('OK' + str(p.id))
