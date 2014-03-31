@@ -978,7 +978,7 @@ def robokassa_result_url(request):
     uuTrackEventDynamic(p.user, my_uu.models.EventLog.EVENT_ROBOKASSA_PAY_NOTIFY)
 
     # Сравниваем сумму поступления и сумму которая там была
-    if int(p.sum) != (sumOut):
+    if int(p.sum) != int(sumOut):
         raise RuntimeError("Сумма платежа в уведомлении от ROBOKASSA {0} не равна сумме инициированной пользователем {1}.".format(
             sumOut,
             p.sum
