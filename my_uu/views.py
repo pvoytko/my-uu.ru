@@ -1035,10 +1035,13 @@ def robokassa_do_order_ajax(request):
             s = md5.new(sCrcBase).hexdigest()
             return s
 
+        # Тестовый сервер робокассы для отладки
         server1 = u"http://test.robokassa.ru/Index.aspx"
+
+        # Боевой сервер робокассы
         server2 = u"http://auth.robokassa.ru:80/Merchant/Index.aspx"
 
-        return server1 + u'?MerchantLogin={login}&OutSum={outSum}&InvoiceID={invoiceId}&shpItem={shpItem}&SignatureValue={signValue}&Description={desc}&Culture={cult}&Encoding={encod}'.format(
+        return server2 + u'?MerchantLogin={login}&OutSum={outSum}&InvoiceID={invoiceId}&shpItem={shpItem}&SignatureValue={signValue}&Description={desc}&Culture={cult}&Encoding={encod}'.format(
             login = login,
             outSum = outSum,
             invoiceId = invId,
