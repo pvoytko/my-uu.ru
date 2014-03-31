@@ -972,7 +972,7 @@ def robokassa_result_url(request):
     signat = request.POST['SignatureValue']
 
     # Находим запись платежа, созданную вначале процесса оплаты
-    p = my_uu.models.Payment.get(id = invId)
+    p = my_uu.models.Payment.objects.get(id = invId)
 
     # Сохраняем событие что платеж поступил
     uuTrackEventDynamic(p.user, my_uu.models.EventLog.EVENT_ROBOKASSA_PAY_NOTIFY)
