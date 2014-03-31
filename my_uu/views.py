@@ -1051,7 +1051,7 @@ def robokassa_do_order_ajax(request):
 
     return JsonResponseWithStatusOk(
         url = getUrl(
-            u'pvoytko',
+            u'my-uu.ru',
             cost,
             payment.id,
             1,
