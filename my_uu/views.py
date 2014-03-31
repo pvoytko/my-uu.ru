@@ -964,9 +964,6 @@ def lk_pay(request):
 # Уведомление об оплате, надо внести платеж юзера в БД
 def robokassa_result_url(request):
 
-    # Сохраняем событие что платеж поступил
-    uuTrackEventDynamic(p.user, my_uu.models.EventLog.EVENT_ROBOKASSA_PAY_NOTIFY)
-
     # Инфо об оплате от робокассы
     invId = request.POST['OutSum']
     sumOut = request.POST['InvId']
@@ -976,6 +973,9 @@ def robokassa_result_url(request):
 
     # Находим запись платежа, созданную вначале процесса оплаты
     p = my_uu.models.Payment.get(id = invId)
+
+    # Сохраняем событие что платеж поступил
+    uuTrackEventDynamic(p.user, my_uu.models.EventLog.EVENT_ROBOKASSA_PAY_NOTIFY)
 
     # Сравниваем сумму поступления и сумму которая там была
     if p.sum != sumOut:
