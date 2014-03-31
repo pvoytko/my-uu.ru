@@ -1,0 +1,151 @@
+{% extends 'lk_base.html' %}
+
+{% block pay_active %} class="active"{% endblock %}
+
+{% block lk_content %}
+
+    <style>
+        .dotted_link{
+            border-bottom: 1px dotted blue;
+            color: blue;
+            cursor: pointer;
+        }
+        .dotted_link:hover{
+            border-bottom-color: dodgerblue;
+            color: dodgerblue;
+        }
+    </style>
+
+    <h4>Режимы работы с сервисом</h4>
+    <div class="row">
+        <div class="span8">
+            <table class="table table-striped table-hover">
+                <thead>
+                    <th width="60%"></th>
+                    <th>Режим "Пробный"</th>
+                    <th>Режим "Оплаченный"</th>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Доступны все возможности сервиса</td>
+                        <td>да</td>
+                        <td>да</td>
+                    </tr>
+                    <tr>
+                        <td>Максимальное количество дней учета</td>
+                        <td>40</td>
+                        <td>без ограничений</td>
+                    </tr>
+                    <tr>
+                        <td>Цена</td>
+                        <td>бесплатно</td>
+                        <td>1 рубль в день</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <ul>
+        <li>Вступают в действие с 10.04.2014
+        <li>Количество дней учета – это количество дней, по которым в сервисе внесена хотя бы одна операция учета.
+    </ul>
+    <h4>Ваш текущий режим работы</h4>
+    <ul>
+        <li>{{ payModeDescription }}
+    </ul>
+
+    <script>
+        function PaymentCtrl($scope, $http){
+            $scope.period = 'days30';
+            $scope.cost = {
+                'days30': 30,
+                'days60': 60,
+                'days90': 90,
+                'days120': 120
+            };
+            $scope.doOrderAndRedirect = function($event){
+                if ($event.shiftKey){
+                    $scope.errorText = '';
+                    $scope.loading = true;
+                    $http.post('/robokassa_do_order_ajax/', {
+                        period: $scope.period
+                    }).success(function(response){
+                        window.location = response.url;
+                    }).error(function(data, status){
+                          // Статус 0 приходит если нет соединения с севером.
+                          $scope.loading = false;
+                          if (status == 0){
+                              $scope.errorText = 'Отсутствует соединение с сервером. Проверьте соединение с интернетом.';
+                          }else{
+                              $scope.errorText = 'Ошибка на сервере. Пожалуйста, повторите попытку еще раз, повторите немного позднее или обратитесь в службу поддержки.';
+                          }
+                    });
+                }
+            }
+
+        }
+    </script>
+
+    <h4>Оплатить</h4>
+    <form ng-controller="PaymentCtrl">
+        <p>Выберите оплачиваемый период использования сервиса:</p>
+        <p>
+            <button type="button" class="btn" ng-class="{active: period=='days30'}" ng-click="period='days30'">30</button>
+            <button type="button" class="btn" ng-class="{active: period=='days60'}" ng-click="period='days60'">60</button>
+            <button type="button" class="btn" ng-class="{active: period=='days90'}" ng-click="period='days90'">90</button>
+            <button type="button" class="btn" ng-class="{active: period=='days120'}" ng-click="period='days120'">120</button>
+            <span>дней</span>
+        </p>
+        <p>Цена составит:</p>
+        <p>
+            <strong style="font-size: 150%;">{$ cost[period] $}</strong> рублей
+        </p>
+        <p>
+            <span data-toggle="collapse" data-target="#demo" class="dotted_link">
+                Как происходит зачисление и списание денег
+            </span>
+        </p>
+        <div id="demo" class="collapse">
+            <p>
+                Пример. Вы сделали платеж 10 мая, выбрав в качестве оплачиваемого периода использования сервиса – 90 дней.
+            </p>
+            <p>
+                Оплата поступает в сервис автоматически и мгновенно.
+            </p>
+            <p>
+                Сразу для Вас активируется режим "Оплаченный" (Вы увидите это под заголовком "Ваш текущий режим работы" выше).
+            </p>
+            <p>
+                Режим сохраняется 90 полных дней (день оплаты + 90 дней, по 8 августа вкючительно).
+            </p>
+            <p>
+                На этот срок предоставляется услуга работы с сервисом без ограничений.
+            </p>
+            <p>
+                Через 90 дней, 9 августа, при внесении новой операции учета, Вы снова увидите сообщение о необходимости оплаты.
+            </p>
+        </div>
+        <p>
+            <span data-toggle="collapse" data-target="#demo2" class="dotted_link">
+                Способы оплаты
+            </span>
+        </p>
+        <div id="demo2" class="collapse">
+            <p>
+                Используется сервис ROBOKASSA: более 50 способов оплаты без комиссии, в том числе: банковские карты, QIWI, Web Money, Яндекс.Деньги, через терминал и другие.
+            </p>
+        </div>
+        <div ng-show="errorText" class="alert alert-danger" ng-bind="errorText">
+        </div>
+        <div ng-show="loading" class="alert alert-info">
+            Подготовка оплаты, ждите до 15 секунд...
+        </div>
+        <!-- <a ng-click="doOrderAndRedirect()" class="btn btn-success btn-large" disabled="true" style="margin-bottom: 20px;">Оплатить</a> -->
+        <a ng-click="doOrderAndRedirect($event)" class="btn btn-default btn-large" disabled="true" style="margin-bottom: 20px;">Оплатить</a>
+        <p>
+            Кнопка "Оплатить" станет активна через несколько дней после подключения ROBOKASSA.
+        </p>
+
+    </form>
+
+{% endblock %}

@@ -56,6 +56,7 @@
             <li{% block set_active %}{% endblock %}><a href="/lk/set/">Счета и категории</a></li>
             <li{% block imp_active %}{% endblock %}><a href="/lk/imp/">Импорт</a></li>
             <li{% block exp_active %}{% endblock %}><a href="/lk/exp/">Экспорт</a></li>
+            <li{% block pay_active %}{% endblock %}><a href="/lk/pay/">Оплата</a></li>
         </ul>
 
         <div style="background-color: white; height: 112px; z-index: 100; position: fixed; width: 860px; top: 0px;"></div>
@@ -71,7 +72,7 @@
                 bottom: 50%;
                 margin-bottom: -15px;
                 width: 120px;
-                height: 30px;
+                height: 50px;
                 padding: 5px;
                 background-color: lavender;
                 border: 1px solid lightblue;
@@ -88,20 +89,17 @@
             }
         </style>
         <div class="improove__panel">
-            <button class="btn improove__btn" id="improove">Улучшить</button>
+            <button class="btn improove__btn" id="improove">Вопрос или <br>предложение</button>
         </div>
 
         <div id="improove-dialog-modal" style="display: none; padding-top: 20px;" ng-controller="ImprooveCtrl">
             <ul>
+                <li>Не получается сделать то, что Вы хотите?</li>
                 <li>Не хватает какой-то функции?</li>
-                <li>Что-то работает не так как хочется?</li>
                 <li>Что-то не удобно?</li>
             </ul>
             <p>
                 Напишите несколько слов об этом в поле ниже и нажмите кнопку "Отправить".
-            </p>
-            <p>
-                Через некоторое время получите уведомление о появлении в сервисе именно той функции, которой Вам так не хватало.
             </p>
             <textarea rows="6" class="span7" ng-show="!isSendToServerNow && !isSendToServerSuccess && !isSendToServerError" style="resize: none;" ng-model="improoveText">
             </textarea>
@@ -123,13 +121,12 @@
         <script>
             $('#improove').click(function(){
                 $( "#improove-dialog-modal" ).dialog({
-                    height: 140,
                     modal: true,
                     dialogClass: "improove-dlg",
                     width: 600,
-                    height: 400,
+                    height: 360,
                     resizable: false,
-                    title: 'Улучшить сервис'
+                    title: 'Задать вопрос или сообщить предложение'
                 });
                 $( "#improove-dialog-modal").parent().find(".ui-dialog-titlebar-close").html("<span style='position: relative; top: -3px;'>&times;</span>");
             });

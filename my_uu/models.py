@@ -2,9 +2,21 @@
 from django.db import models
 import django.contrib.auth.models
 from django.contrib.auth.models import User
+import datetime
 
 
-# ДОбавляем поле HTTP_REFERER в модель юзера
+# Платеж. Создается в момент инициации оплаты в адрес Робокассы, тогда хранит только ID (= номер счета)
+# В момент поступления оплаты из сервиса устанавливается дата оплаты и дата активации.
+# Дата активации нужна на случай если у юзера уже активирован платеж сейчас, тогда этот надо активировать
+# не сразу, а начиная с даты завершения текущего.
+class Payment(models.Model):
+    sum = models.DecimalField(decimal_places=2, max_digits=5)
+    user = models.ForeignKey('auth.User')
+    date_created = models.DateTimeField()
+    date_payment = models.DateTimeField(null=True)
+
+
+# ДОбавляем поля в модель юзера
 class UserProfile(models.Model):
     user = models.OneToOneField(User)
 
@@ -68,6 +80,53 @@ class UserProfile(models.Model):
     def getUchetRecordsInViewPeriod(self):
         urecs = Uchet.objects.filter(user=self.user)
         return self._filterUchetByViewPeriod(urecs).order_by('date', '-utype', 'id')
+
+    # Вычисляет дату по которую у юзера оплачено.
+    # На основании информации о платежах из базы.
+    # Либо None если оплаты нет.
+    def getPaidByDate(self):
+
+        # Для этого находим все платежи в базе этого пользователя.
+        # Пока реализован алгоритм только если 1 платеж в базе, надо дореаизовать на случай 2-х.
+        # В т.ч. если юзер платить до того как кончился перыдущий активированный платеж.
+        activatedPayment = Payment.objects.filter(user = self.user, date_payment__isnull = False)
+        if activatedPayment.count() == 0:
+            return None
+        if activatedPayment.count() > 1:
+            raise RuntimeError(u'Возникла ситуация нескольких платежей, на которую алгорим не реализован и требуется дореализовать')
+
+        # Зная дату активации и сумму платежа рассчитываем дату по которую режим "Оплаченный".
+        return activatedPayment.date_payment + datetime.timedelta(days = activatedPayment.sum)
+
+    # Возвращает количество дней учета для этого юзера (используется на странице "Оплата"
+    def getUchetDaysCount(self):
+        uchetRecords = Uchet.objects.filter(user = self.user)
+        return uchetRecords.values_list('date', flat=True).distinct().count()
+
+    # Возвращает текстовое описание текущего режима работы с сервисом (на странице "Оплата")
+    def getPayModeDescription(self):
+
+        # Без ограничений режим работал по 7 апреля для меня лично и по 9 апреля всем остальным
+        if self.user.id == 4 and (datetime.datetime.now().date() < datetime.date(2014, 4, 7)):
+            return u"Без ограничений по 07.04.2014"
+        elif self.user.id != 4 and datetime.datetime.now().date() < datetime.date(2014, 4, 9):
+            return u"Без ограничений по 09.04.2014"
+
+        # Далее если есть действующая оплата, то режим "Оплаченный"
+        elif self.getPaidByDate() is not None and datetime.datetime.now().date() <= self.getPaidByDate():
+            d = self.getPaidByDate()
+            return u"Оплаченный по " + d.format('%D.%m.%Y') + u". Осталось дней: " + str((datetime.datetime.now().date() - d).days)
+
+        # Если же активной оплаты нет, то если количество дней учета менее 40, то режим - "Пробный"
+        elif self.getUchetDaysCount() < 40:
+            return u"Пробный. Текущее количество дней учета: {0} из 40".format(self.getUchetDaysCount())
+
+        # Сюда попадаем если количество дней учета 40 и более, то
+        # Пробный "исчерпанный"
+        else:
+            return 'Пробный. Вы достигли максимальное количество дней учета в режиме работы "Пробный". ' + \
+                'Для внесения новых операций в сервис Вам необходимо оплатить, чтобы перейти на режим "Оплаченный".'
+
 
 
 # Счет

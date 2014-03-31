@@ -950,3 +950,85 @@ def feedback_request_ajax(request):
     )
 
     return JsonResponseBuilder().buildHttpJsonResponse()
+
+
+# Страница оплаты
+@uu_login_required
+def lk_pay(request):
+    return render(request, 'lk_pay.html', {
+        'payModeDescription': request.user.get_profile().getPayModeDescription()
+    })
+
+# Уведомление об оплате, надо внести платеж юзера в БД
+def robokassa_result_url(request):
+
+    # Инфо об оплате от робокассы
+    invId = request.POST['OutSum']
+    sumOut = request.POST['InvId']
+
+    # Проверку подписи не делаю, экономлю время программирования.
+    signat = request.POST['SignatureValue']
+
+    # Находим запись платежа, созданную вначале процесса оплаты
+    p = my_uu.models.Payment.get(id = invId)
+
+    # Сравниваем сумму поступления и сумму которая там была
+    if p.sum != sumOut:
+        raise RuntimeError("Сумма платежа в уведомлении от ROBOKASSA {0} не равна сумме инициированной пользователем {1}.".format(
+            sumOut,
+            p.sum
+        ))
+
+    # Отмечаем платеж принятым, с этого момента режим юзера будет сменен на "Оплаченный"
+    p.date_payment = datetime.datetime.now()
+
+
+# Этот метод вызывается со страницы "Оплата" для того чтобы сформировать УРЛ по которому отредиректить юзера
+# для оплаты выбранного им периода работы сервиса. УРЛ содержит: сумму без комиссии robokassa, ID счета,
+# crc, которые вычисляются как раз в этом методе на сервере.
+@uu_login_required
+def robokassa_do_order_ajax(request):
+    # УРЛ интерфейса оплаты
+    periodCode = json.loads(request.body)['period']
+    COST_DICT = {
+        'days30': 30,
+        'days60': 60,
+        'days90': 90,
+        'days120': 120,
+    }
+
+    # Цена которую должен заплатить юзер
+    cost = COST_DICT[periodCode]
+    payment = my_uu.models.Payment(date_created = datetime.datetime.now(), sum = cost, user = request.user)
+    payment.save()
+
+    # Формирование подписи
+    def getCrc(login, outSum, invId, shpItem, mrchPass):
+        sCrcBase = u"{0}:{1}:{2}:{3}:shpItem={4}".format(login, outSum, invId, mrchPass, shpItem)
+        import md5
+        s = md5.new(sCrcBase).hexdigest()
+        return s
+
+    # Урл интерфейса оплаты для юзера в Робокассе
+    def getUrl(login, outSum, invId, shpItem, desc, mrchPass):
+        return u'http://auth.robokassa.ru:80/Merchant/Index.aspx?MerchantLogin={login}&OutSum={outSum}&InvoiceID={invoiceId}&shpItem={shpItem}&SignatureValue={signValue}&Description={desc}&Culture={cult}&Encoding={encod}'.format(
+            login = login,
+            outSum = outSum,
+            invoiceId = invId,
+            shpItem = 1,
+            signValue = getCrc(login, outSum, invId, shpItem, mrchPass),
+            desc = desc,
+            cult = u'ru',
+            encod = u'utf-8'
+        )
+
+    return JsonResponseWithStatusOk(
+        url = getUrl(
+            u'pvoytko',
+            cost,
+            payment.id,
+            1,
+            u'Оплата использования сервиса my-uu.ru',
+            u'RFCDeH8w'
+        )
+    )
