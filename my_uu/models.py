@@ -228,6 +228,10 @@ class EventLog(models.Model):
     EVENT_DO_ORDER =                (15, "Нажал кнопку 'Оплатить'")
     EVENT_ROBOKASSA_PAY_NOTIFY =    (16, "Пришла оплата от ROBOKASSA")
 
+    EVENT_VISIT_EXP = (17,"Заход на страницу экспорта")
+    EVENT_VISIT_BEGIN = (18,"Заход на страницу начало")
+    EVENT_LOGIN = (19,"Авторизовался")
+
     user = models.ForeignKey(django.contrib.auth.models.User)
     datetime = models.DateTimeField(auto_now_add=True)
     event2 = models.IntegerField()

@@ -154,6 +154,9 @@ def login_user_ajax(request):
         if user is not None:
             login(request, user)
             resp.setSuccess(None)
+
+            uuTrackEventDynamic(user, my_uu.models.EventLog.EVENT_LOGIN)
+
         else:
             resp.setError(u'Пользователь с таким паролем и адресом эл. почты не найден.')
     else:
@@ -217,6 +220,7 @@ def uuTrackEventDynamic(user, eventConstant):
 
 # Начало
 @uu_login_required
+@uuTrackEventDecor(my_uu.models.EventLog.EVENT_VISIT_BEGIN)
 def lk_beg(request):
     return render(request, 'lk_beg.html')
 
@@ -534,6 +538,7 @@ def lk_imp(request):
 
 # Страница экспорта
 @uu_login_required
+@uuTrackEventDecor(my_uu.models.EventLog.EVENT_VISIT_EXP)
 def lk_exp(request):
     return render(request, 'lk_exp.html', { 'request': request })
 
