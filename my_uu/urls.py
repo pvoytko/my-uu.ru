@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from django.conf.urls import patterns, include, url
+from django.conf import settings
 
 urlpatterns = patterns('',
 
@@ -61,6 +62,10 @@ urlpatterns = patterns('',
     # Страница для получения ОС почему не стали пользоваться
     url(r'^feedback_request/(?P<obfuscatedUserId>\d+)/$', 'my_uu.views.feedback_request'),
     url(r'^feedback_request_ajax/$', 'my_uu.views.feedback_request_ajax'),
+
+    # Активация магазина в Z-PAYMENT
+    url(r'^ZP86478908.HTML$',  'django.views.static.serve', {'document_root': settings.PROJECT_DIR, 'path': '/static/ZP86478908.HTML' }),
+
 )
 
 from django.contrib.staticfiles.urls import staticfiles_urlpatterns
