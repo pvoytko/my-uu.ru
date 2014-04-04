@@ -47,7 +47,8 @@ urlpatterns = patterns('',
     # Личный кабинет оплата (инфо об оплате, и страница возврата после оплаты и страница отмены и страница уведомления)
     url(r'^lk/pay/$', 'my_uu.views.lk_pay'),
     url(r'^robokassa_result_url/$', 'my_uu.views.robokassa_result_url'),
-    url(r'^robokassa_do_order_ajax/$', 'my_uu.views.robokassa_do_order_ajax'),
+    url(r'^zpayment_result_url/$', 'my_uu.views.zpayment_result_url'),
+    url(r'^do_order_ajax/$', 'my_uu.views.do_order_ajax'),
 
     # Административная часть (Павел Войтко)
     url(r'^adm/act/$', 'my_uu.views.adm_act'),

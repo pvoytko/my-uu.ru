@@ -978,45 +978,77 @@ def lk_pay(request):
     })
 
 
-# Уведомление об оплате, надо внести платеж юзера в БД
-def robokassa_result_url(request):
-
-    from decimal import Decimal
-
-    # Инфо об оплате от робокассы
-    invId = request.POST['InvId']
-    sumOut = request.POST['OutSum']
-
-    # Проверку подписи не делаю, экономлю время программирования.
-    signat = request.POST['SignatureValue']
+def confirmPayment(invId, eventConstant):
 
     # Находим запись платежа, созданную вначале процесса оплаты
     p = my_uu.models.Payment.objects.get(id = invId)
 
     # Сохраняем событие что платеж поступил
-    uuTrackEventDynamic(p.user, my_uu.models.EventLog.EVENT_ROBOKASSA_PAY_NOTIFY)
-
-    # Сравниваем сумму поступления и сумму которая там была
-    if Decimal(p.sum) != Decimal(sumOut):
-        raise RuntimeError("Сумма платежа в уведомлении от ROBOKASSA {0} не равна сумме инициированной пользователем {1}.".format(
-            sumOut,
-            p.sum
-        ))
+    uuTrackEventDynamic(p.user, eventConstant)
 
     # Отмечаем платеж принятым, с этого момента режим юзера будет сменен на "Оплаченный"
     p.date_payment = datetime.datetime.now()
     p.save()
 
-    # Возвращаем ОК-ответ Робокассе (ОК + номер счета, к примеру, ОК5)
-    return HttpResponse('OK' + str(p.id))
+
+# Уведомление об оплате, надо внести платеж юзера в БД, от РОБОКАССЫЫ
+def robokassa_result_url(request):
+    confirmPayment(request.POST['InvId'], my_uu.models.EventLog.EVENT_ROBOKASSA_PAY_NOTIFY)
+    return HttpResponse('OK' + request.POST['InvId'])
+
+
+# Уведомление об оплате, надо внести платеж юзера в БД, от Z-PAYMENT
+def zpayment_result_url(request):
+    confirmPayment(request.POST['InvId'], my_uu.models.EventLog.EVENT_ZPAYMENT_PAY_NOTIFY)
+    return HttpResponse('OK' + request.POST['InvId'])
+
+
+# Возвращает УРЛ на который надо отредиректить юзера чтобы инициализировать оплату в платежном шлюзе.
+def getPaymentGatewayInitPayUrl(userEmail, cost, invId):
+
+    # УРЛ интерфейса оплаты для юзера в Z-PAYMENT
+    import urllib
+    if True:
+        return "https://z-payment.com/merchant.php?" + urllib.urlencode({
+                u'LMI_PAYEE_PURSE': 14574,
+                u'LMI_PAYMENT_AMOUNT': cost,
+                u'LMI_PAYMENT_DESC': 'Оплата использования сервиса my-uu.ru',
+                u'LMI_PAYMENT_NO': invId,
+                u'CLIENT_MAIL': userEmail
+            })
+    else:
+
+        # Формирование подписи
+        def getCrc(login, outSum, invId, shpItem, mrchPass):
+            sCrcBase = u"{0}:{1}:{2}:{3}:shpItem={4}".format(login, outSum, invId, mrchPass, shpItem)
+            import md5
+            s = md5.new(sCrcBase).hexdigest()
+            return s
+
+        # Тестовый сервер робокассы для отладки
+        server1 = u"http://test.robokassa.ru/Index.aspx?"
+
+        # Боевой сервер робокассы
+        server2 = u"http://auth.robokassa.ru:80/Merchant/Index.aspx?"
+
+        return server2 +  + urllib.urlencode({
+            u'MerchantLogin': u'my-uu.ru',
+            u'OutSum': cost,
+            u'InvoiceID': invId,
+            u'shpItem': 1,
+            u'SignatureValue': getCrc(u'my-uu.ru', cost, invId, 1, u'RFCDeH8w'),
+            u'Description': u'Оплата использования сервиса my-uu.ru',
+            u'Culture': u'ru',
+            u'Encoding': u'utf-8'
+        })
 
 
 # Этот метод вызывается со страницы "Оплата" для того чтобы сформировать УРЛ по которому отредиректить юзера
-# для оплаты выбранного им периода работы сервиса. УРЛ содержит: сумму без комиссии robokassa, ID счета,
-# crc, которые вычисляются как раз в этом методе на сервере.
+# для оплаты выбранного им периода работы сервиса. УРЛ содержит параметры которые должен передать магазин
+# платежному шлюзу. Все эти параметры вычисляются в этом методе на сервере.
 @uu_login_required
 @uuTrackEventDecor(my_uu.models.EventLog.EVENT_DO_ORDER)
-def robokassa_do_order_ajax(request):
+def do_order_ajax(request):
 
     periodCode = json.loads(request.body)['period']
     COST_DICT = {
@@ -1031,40 +1063,6 @@ def robokassa_do_order_ajax(request):
     payment = my_uu.models.Payment(date_created = datetime.datetime.now(), sum = cost, user = request.user)
     payment.save()
 
-    # Урл интерфейса оплаты для юзера в Робокассе
-    def getUrl(login, outSum, invId, shpItem, desc, mrchPass):
-
-        # Формирование подписи
-        def getCrc(login, outSum, invId, shpItem, mrchPass):
-            sCrcBase = u"{0}:{1}:{2}:{3}:shpItem={4}".format(login, outSum, invId, mrchPass, shpItem)
-            import md5
-            s = md5.new(sCrcBase).hexdigest()
-            return s
-
-        # Тестовый сервер робокассы для отладки
-        server1 = u"http://test.robokassa.ru/Index.aspx"
-
-        # Боевой сервер робокассы
-        server2 = u"http://auth.robokassa.ru:80/Merchant/Index.aspx"
-
-        return server2 + u'?MerchantLogin={login}&OutSum={outSum}&InvoiceID={invoiceId}&shpItem={shpItem}&SignatureValue={signValue}&Description={desc}&Culture={cult}&Encoding={encod}'.format(
-            login = login,
-            outSum = outSum,
-            invoiceId = invId,
-            shpItem = 1,
-            signValue = getCrc(login, outSum, invId, shpItem, mrchPass),
-            desc = desc,
-            cult = u'ru',
-            encod = u'utf-8'
-        )
-
-    return JsonResponseWithStatusOk(
-        url = getUrl(
-            u'my-uu.ru',
-            cost,
-            payment.id,
-            1,
-            u'Оплата использования сервиса my-uu.ru',
-            u'RFCDeH8w'
-        )
-    )
+    # Получаем УРЛ и пост-данные которые надо полать на этот УРЛ в платежный шлюз
+    url = getPaymentGatewayInitPayUrl(request.user.email, cost, payment.id)
+    return JsonResponseWithStatusOk(url = url)

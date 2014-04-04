@@ -68,7 +68,7 @@
                 if ($event.shiftKey){
                     $scope.errorText = '';
                     $scope.loading = true;
-                    $http.post('/robokassa_do_order_ajax/', {
+                    $http.post('/do_order_ajax/', {
                         period: $scope.period
                     }).success(function(response){
                         window.location = response.url;
@@ -128,12 +128,13 @@
         </div>
         <p>
             <span data-toggle="collapse" data-target="#demo2" class="dotted_link">
-                Способы оплаты
+                Способы оплаты и комиссия
             </span>
         </p>
         <div id="demo2" class="collapse">
             <p>
-                Используется сервис ROBOKASSA: более 50 способов оплаты без комиссии, в том числе: банковские карты, QIWI, Web Money, Яндекс.Деньги, через терминал и другие.
+                Используется платежный сервис Z-PAYMENT, который позволяет оплатить банковскими картами, QIWI, Web Money, Яндекс.Деньгами, через терминал и другими способами. Оплата любым способом для Вас доступна без комиссии, всю комиссию оплачивает сервис "Мой Удобный Учет".
+                Если Вы не нашли удобного Вам способа, сообщите об этом.
             </p>
         </div>
         <div ng-show="errorText" class="alert alert-danger" ng-bind="errorText">
@@ -144,7 +145,13 @@
         <!-- <a ng-click="doOrderAndRedirect()" class="btn btn-success btn-large" disabled="true" style="margin-bottom: 20px;">Оплатить</a> -->
         <a ng-click="doOrderAndRedirect($event)" class="btn btn-default btn-large" disabled="true" style="margin-bottom: 20px;">Оплатить</a>
         <p>
-            Кнопка "Оплатить" станет активна через несколько дней после подключения ROBOKASSA.
+            Кнопка "Оплатить" станет активна через несколько дней после подключения Z-PAYMENT.
+        </p>
+        <p>
+            Нажав кнопку "Оплатить", Вы попадете на страницу выбора способа оплаты в платежном сервисе Z-PAYMENT.
+        </p>
+        <p>
+            Выберите удобный Вам способ оплаты, оплатите и следуйте далее пока не попадете снова на эту страницу.
         </p>
 
     </form>
