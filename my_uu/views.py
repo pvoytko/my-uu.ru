@@ -999,8 +999,8 @@ def robokassa_result_url(request):
 
 # Уведомление об оплате, надо внести платеж юзера в БД, от Z-PAYMENT
 def zpayment_result_url(request):
-    confirmPayment(request.POST['InvId'], my_uu.models.EventLog.EVENT_ZPAYMENT_PAY_NOTIFY)
-    return HttpResponse('OK' + request.POST['InvId'])
+    confirmPayment(request.POST['LMI_PAYMENT_NO'], my_uu.models.EventLog.EVENT_ZPAYMENT_PAY_NOTIFY)
+    return HttpResponse('YES')
 
 
 # Возвращает УРЛ на который надо отредиректить юзера чтобы инициализировать оплату в платежном шлюзе.
