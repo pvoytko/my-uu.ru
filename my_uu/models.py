@@ -149,7 +149,7 @@ class UserProfile(models.Model):
         # Далее если есть действующая оплата, то режим "Оплаченный"
         elif self.getPaidByDate() is not None and datetime.datetime.now().date() <= self.getPaidByDate():
             d = self.getPaidByDate()
-            return (UserProfile.PAY_MODE_PAID, u"Оплаченный по " + d.format('%D.%m.%Y') + u". Осталось дней: " + str((datetime.datetime.now().date() - d).days))
+            return (UserProfile.PAY_MODE_PAID, u"Оплаченный по " + d.strftime('%D.%m.%Y') + u". Осталось дней: " + str((datetime.datetime.now().date() - d).days))
 
         # Если же активной оплаты нет, то если количество дней учета менее 40, то режим - "Пробный"
         elif self.getUchetDaysCount() < 40:
