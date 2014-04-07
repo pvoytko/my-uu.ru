@@ -981,8 +981,7 @@ def lk_pay(request):
 def confirmPayment(invId, eventConstant):
 
     # Находим запись платежа, созданную вначале процесса оплаты
-    #p = my_uu.models.Payment.objects.get(id = invId)
-    p = my_uu.models.Payment.objects.get(id = 11)
+    p = my_uu.models.Payment.objects.get(id = invId)
 
     # Сохраняем событие что платеж поступил
     #uuTrackEventDynamic(p.user, eventConstant)
@@ -1004,7 +1003,8 @@ def robokassa_result_url(request):
 
 # Уведомление об оплате, надо внести платеж юзера в БД, от Z-PAYMENT
 def zpayment_result_url(request):
-    confirmPayment(request.POST['LMI_PAYMENT_NO'], my_uu.models.EventLog.EVENT_ZPAYMENT_PAY_NOTIFY)
+    # confirmPayment(request.POST['LMI_PAYMENT_NO'], my_uu.models.EventLog.EVENT_ZPAYMENT_PAY_NOTIFY)
+    confirmPayment(11, my_uu.models.EventLog.EVENT_ZPAYMENT_PAY_NOTIFY)
     return HttpResponse('YES')
 
 
