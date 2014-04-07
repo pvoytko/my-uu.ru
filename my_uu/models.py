@@ -96,7 +96,7 @@ class UserProfile(models.Model):
             raise RuntimeError(u'Возникла ситуация нескольких платежей, на которую алгорим не реализован и требуется дореализовать')
 
         # Зная дату активации и сумму платежа рассчитываем дату по которую режим "Оплаченный".
-        return activatedPayment.date_payment + datetime.timedelta(days = int(activatedPayment.sum))
+        return activatedPayment[0].date_payment + datetime.timedelta(days = int(activatedPayment[0].sum))
 
     # Возвращает количество дней учета для этого юзера (используется на странице "Оплата"
     def getUchetDaysCount(self):
