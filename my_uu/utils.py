@@ -43,6 +43,20 @@ def sendEmailRegistrationPerformed(userEmail, userPassword):
     )
 
 
+# Отправляет Email что оплата произведена
+def sendEmailPaymentReceived(paymentRecord):
+    sendHtmlEmailFromSupport(
+        'pvoytko@gmail.com',
+        u'[my-uu.ru] Получена оплата пользователя',
+        'email_payment_received.html',
+        {
+            'userId': paymentRecord.user.id,
+            'userEmail': paymentRecord.user.email,
+            'sum': paymentRecord.sum,
+        }
+    )
+
+
 # Отправляет запрос на ОС
 def sendFeedbackRequest(user):
     userEmail = user.email

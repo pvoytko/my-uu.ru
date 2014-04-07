@@ -981,14 +981,19 @@ def lk_pay(request):
 def confirmPayment(invId, eventConstant):
 
     # Находим запись платежа, созданную вначале процесса оплаты
-    p = my_uu.models.Payment.objects.get(id = invId)
+    #p = my_uu.models.Payment.objects.get(id = invId)
+    p = my_uu.models.Payment.objects.get(id = 11)
 
     # Сохраняем событие что платеж поступил
-    uuTrackEventDynamic(p.user, eventConstant)
+    #uuTrackEventDynamic(p.user, eventConstant)
 
     # Отмечаем платеж принятым, с этого момента режим юзера будет сменен на "Оплаченный"
-    p.date_payment = datetime.datetime.now()
-    p.save()
+    #p.date_payment = datetime.datetime.now()
+    #p.save()
+
+    # Письмо мне что юзер оплатил
+    import utils
+    utils.sendEmailPaymentReceived(p)
 
 
 # Уведомление об оплате, надо внести платеж юзера в БД, от РОБОКАССЫЫ
