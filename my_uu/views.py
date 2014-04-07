@@ -984,11 +984,11 @@ def confirmPayment(invId, eventConstant):
     p = my_uu.models.Payment.objects.get(id = invId)
 
     # Сохраняем событие что платеж поступил
-    #uuTrackEventDynamic(p.user, eventConstant)
+    uuTrackEventDynamic(p.user, eventConstant)
 
     # Отмечаем платеж принятым, с этого момента режим юзера будет сменен на "Оплаченный"
-    #p.date_payment = datetime.datetime.now()
-    #p.save()
+    p.date_payment = datetime.datetime.now()
+    p.save()
 
     # Письмо мне что юзер оплатил
     import utils
@@ -1003,8 +1003,7 @@ def robokassa_result_url(request):
 
 # Уведомление об оплате, надо внести платеж юзера в БД, от Z-PAYMENT
 def zpayment_result_url(request):
-    # confirmPayment(request.POST['LMI_PAYMENT_NO'], my_uu.models.EventLog.EVENT_ZPAYMENT_PAY_NOTIFY)
-    confirmPayment(11, my_uu.models.EventLog.EVENT_ZPAYMENT_PAY_NOTIFY)
+    confirmPayment(request.POST['LMI_PAYMENT_NO'], my_uu.models.EventLog.EVENT_ZPAYMENT_PAY_NOTIFY)
     return HttpResponse('YES')
 
 
