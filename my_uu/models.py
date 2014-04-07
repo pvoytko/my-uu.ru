@@ -120,7 +120,7 @@ class UserProfile(models.Model):
         # сохранять запии на сервере. Тогда точно за это время пользователь перегрузит хотя бы раз страницу и
         # диалог внесения будет заблокирован тоже. Вот именно этот второй вариант и реализован, он проще.
         pbd = self.getPaidByDate()
-        paidLessThen2HoursAgo = pbd != None and (datetime.datetime.now() - pbd) < datetime.timedelta(hours=2)
+        paidLessThen2HoursAgo = (pbd != None) and ((datetime.datetime.now().date() - pbd) < datetime.timedelta(hours=2))
 
         # Аналогично, диалог блокируется при достижении 40 дней учета, а на сервере ошибка - при 45.
         daysUchetLessThen45 = self.getUchetDaysCount() < 45
