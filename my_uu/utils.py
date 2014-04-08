@@ -101,7 +101,7 @@ def sendFeedbackEmail(userId, userEmailFrom, text):
         }
     )
 
-# Получая число возвращает строку
+# Получая число возвращает строку "11,05 р."
 def formatMoneyValue(mval):
     def group(number):
         s = '%d' % number
@@ -111,3 +111,20 @@ def formatMoneyValue(mval):
             s = s[:-3]
         return s + ' '.join(reversed(groups))
     return "{0} р.".format(group(round(mval, 0)))
+
+
+# Номер к меяцу. 1 - янв, 2 - фев, ...
+def formatMonth(monthNum):
+    monthL = [u'янв', u'фев', u'мар', u'апр', u'май', u'июн', u'июл', u'авг', u'сен', u'окт', u'ноя', u'дек']
+    return monthL[monthNum-1]
+
+# Получая дату возвращает строку "11 мар 2014"
+def formatDTWithYear(dt):
+    # Дата "от-до" у платежа может быть None. Форматировать ее не надо, потому тут проверка.
+    if dt is None:
+        raise RuntimeError(u"В аргумент к функции formatDTWithYear поступил None")
+    return u"{0} {1} {2}".format(dt.day, formatMonth(dt.month), dt.year)
+
+# Получая дату возвращает строку "11 мар 2014 12:56"
+def formatDTWithYearAndTime(dt):
+    return u"{0} {1}".format(formatDTWithYear(dt), dt.strftime("%H:%M"))

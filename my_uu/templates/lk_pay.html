@@ -84,6 +84,42 @@
         }
     </script>
 
+    {% comment %}
+    <h4>Ваши совершённые платежи</h4>
+    {% if payments %}
+        <table class="table table-condensed table-striped table-hover">
+            <thead>
+                <th>Время поступления</th>
+                <th>Сумма</th>
+                <th>Дней использования</th>
+                <th>Период действия платежа</th>
+            </thead>
+            <tbody>
+                {% for p in payments %}
+                    <tr>
+                        <td>
+                            {{ p.date_payment_formatted }}
+                        </td>
+                        <td>
+                            {{ p.sum_formatted }}
+                        </td>
+                        <td>
+                            {{ p.days }}
+                        </td>
+                        <td>
+                            {{ p.from_to_period }}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>
+            Здесь будет отображаться информация о Ваших платежах. Сейчас платежей нет.
+        </p>
+    {% endif %}
+    {% endcomment %}
+
     <h4>Оплатить</h4>
     <form ng-controller="PaymentCtrl">
         <p>Выберите оплачиваемый период использования сервиса:</p>

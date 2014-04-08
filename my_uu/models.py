@@ -3,6 +3,7 @@ from django.db import models
 import django.contrib.auth.models
 from django.contrib.auth.models import User
 import datetime
+import utils
 
 
 # Платеж. Создается в момент инициации оплаты в адрес Робокассы, тогда хранит только ID (= номер счета)
@@ -14,6 +15,33 @@ class Payment(models.Model):
     user = models.ForeignKey('auth.User')
     date_created = models.DateTimeField()
     date_payment = models.DateTimeField(null=True)
+
+    # Количество оплаченных дней
+    days = models.PositiveIntegerField()
+
+    # Дата, начиная с которой этот платеж начинает действовать. Заполняется при получении оплаты.
+    date_from = models.DateField(null=True)
+
+    # Дата, по которую включительно действует этот платеж. Заполняется при получении оплаты.
+    date_to = models.DateField(null=True)
+
+    # Код способа оплаты из Z-PAYMENT. Заполняется при получении оплаты.
+    zpayment_type_code = models.CharField(max_length=50, null = True)
+
+    # Дата в формате "11 апр 2014 15:45" для отображения на странице "Оплата"
+    @property
+    def date_payment_formatted(self):
+        return utils.formatDTWithYearAndTime(self.date_payment)
+
+    # Сумма в формате "30 р." для оторажения на странице "Оплата"
+    @property
+    def sum_formatted(self):
+        return utils.formatMoneyValue(self.sum)
+
+    # Дата в формате "11 мар 2014 - 8 апр 2014" для отображения на странице "Оплата"
+    @property
+    def from_to_period(self):
+        return utils.formatDTWithYear(self.date_from) + u" – " + utils.formatDTWithYear(self.date_to)
 
 
 # ДОбавляем поля в модель юзера

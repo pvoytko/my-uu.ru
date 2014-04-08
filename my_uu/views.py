@@ -13,6 +13,7 @@ import django.core.exceptions
 import django.db.utils
 from django.conf import settings
 from django import forms
+import utils
 
 
 import json
@@ -251,7 +252,6 @@ def _getCategoryList(request):
 def lk_uch(request):
 
     return render(request, 'lk_uch.html', {
-        'request': request,
         'uchetRecordsJson': json.dumps(_getUchetRecordsList(request.user.get_profile().getUchetRecordsInViewPeriod()), cls=DjangoJSONEncoder),
         'uTypeList': my_uu.models.UType.objects.all().order_by('id'),
         'accountList': my_uu.models.Account.objects.filter(user=request.user).order_by('id'),
@@ -360,15 +360,11 @@ def lk_ana(request):
         startDate = dateOfWeek - datetime.timedelta(days=(dateOfWeek.isocalendar()[2]-1))
         endDate = dateOfWeek + datetime.timedelta(days=(7-dateOfWeek.isocalendar()[2]))
 
-        def monthStr(date):
-            monthL = [u'янв', u'фев', u'мар', u'апр', u'май', u'июн', u'июл', u'авг', u'сен', u'окт', u'ноя', u'дек']
-            return monthL[date.month-1]
-
         # Печатаем число
         startDateStr = unicode(startDate.day)
         if startDate.month != endDate.month:
-            startDateStr += u" " + monthStr(startDate)
-        endDateStr = unicode(endDate.day) + u" " + monthStr(endDate);
+            startDateStr += u" " + utils.formatMonth(startDate.month)
+        endDateStr = unicode(endDate.day) + u" " + utils.formatMonth(endDate.month);
         return startDateStr + u"–" + endDateStr;
 
 
@@ -974,7 +970,8 @@ def feedback_request_ajax(request):
 @uuTrackEventDecor(my_uu.models.EventLog.EVENT_VISIT_PAY)
 def lk_pay(request):
     return render(request, 'lk_pay.html', {
-        'payModeDescription': request.user.get_profile().getPayModeDescription()
+        'payModeDescription': request.user.get_profile().getPayModeDescription(),
+        'payments': request.user.payment_set.all().filter(date_payment__isnull = False).order_by('date_payment')
     })
 
 
