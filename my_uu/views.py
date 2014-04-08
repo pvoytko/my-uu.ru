@@ -975,7 +975,12 @@ def lk_pay(request):
     })
 
 
-def confirmPayment(invId, eventConstant):
+# Сохранить в БД инфо что платеж поступил на расчетный счет сервиса.
+# invId - номер счета
+# sumSeller - фактически поступившая сумма (за вычетом комиссии способа оплаты)
+# eventConstant - какое событие записать
+# zpTypeCode - код способа оплаты в Z-PAYMENT https://z-payment.com/api/get_codeoper.php
+def confirmPayment(invId, sumSeller, zpTypeCode, eventConstant):
 
     # Находим запись платежа, созданную вначале процесса оплаты
     p = my_uu.models.Payment.objects.get(id = invId)
@@ -983,8 +988,24 @@ def confirmPayment(invId, eventConstant):
     # Сохраняем событие что платеж поступил
     uuTrackEventDynamic(p.user, eventConstant)
 
-    # Отмечаем платеж принятым, с этого момента режим юзера будет сменен на "Оплаченный"
+    # Сохраняем дату поступления платежа просто для истории
     p.date_payment = datetime.datetime.now()
+
+    # Сохраняем дату с которой по которую платеж действует.
+    # Дата с которой = след. день за днем по который уже оплачено или сегодня если активных оплат нет.
+    # Дата по которую = дата с которой + кол-во дней - 1.
+    pay_to = p.user.get_profile().getPaidByDate()
+    today = datetime.date.today()
+    p.date_from = today if (pay_to is None) else pay_to + datetime.timedelta(days=1)
+    p.date_to = p.date_from + datetime.timedelta(days = p.days - 1)
+
+    # Сумму, которую получает магазин на расчетный счет в приеме платежей
+    p.sum_seller = sumSeller
+
+    # Код способа оплаты
+    p.zpayment_type_code = zpTypeCode
+
+    # Запись в БД
     p.save()
 
     # Письмо мне что юзер оплатил
@@ -1000,7 +1021,12 @@ def robokassa_result_url(request):
 
 # Уведомление об оплате, надо внести платеж юзера в БД, от Z-PAYMENT
 def zpayment_result_url(request):
-    confirmPayment(request.POST['LMI_PAYMENT_NO'], my_uu.models.EventLog.EVENT_ZPAYMENT_PAY_NOTIFY)
+    confirmPayment(
+        request.POST['LMI_PAYMENT_NO'],
+        request.POST['ZP_SUMMA_SELLER'],
+        request.POST['ZP_TYPE_PAY'],
+        my_uu.models.EventLog.EVENT_ZPAYMENT_PAY_NOTIFY
+    )
     return HttpResponse('YES')
 
 
@@ -1052,16 +1078,17 @@ def getPaymentGatewayInitPayUrl(userEmail, cost, invId):
 def do_order_ajax(request):
 
     periodCode = json.loads(request.body)['period']
-    COST_DICT = {
+    COST_AND_DAYS_DICT = {
         'days30': 30,
         'days60': 60,
         'days90': 90,
         'days120': 120,
     }
 
-    # Цена которую должен заплатить юзер
-    cost = COST_DICT[periodCode]
-    payment = my_uu.models.Payment(date_created = datetime.datetime.now(), sum = cost, user = request.user)
+    # Цена которую должен заплатить юзер и количество дней юзанья которые он оплачивает
+    cost = COST_AND_DAYS_DICT[periodCode]
+    days = COST_AND_DAYS_DICT[periodCode]
+    payment = my_uu.models.Payment(date_created = datetime.datetime.now(), sum = cost, user = request.user, days = days)
     payment.save()
 
     # Получаем УРЛ и пост-данные которые надо полать на этот УРЛ в платежный шлюз

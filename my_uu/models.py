@@ -111,20 +111,24 @@ class UserProfile(models.Model):
 
     # Вычисляет дату по которую у юзера оплачено.
     # На основании информации о платежах из базы.
-    # Либо None если оплаты нет.
+    # Либо None если оплаты нет или оплата уже не действует.
+    # Гарантируется что дата возвращаемая этим методом больше или равна сегодняшней.
+    # Это используется при проверке оплачена ли сейчас работа, если этот метод вернул дату - да, если None - нет.
     def getPaidByDate(self):
 
         # Для этого находим все платежи в базе этого пользователя.
-        # Пока реализован алгоритм только если 1 платеж в базе, надо дореаизовать на случай 2-х.
-        # В т.ч. если юзер платить до того как кончился перыдущий активированный платеж.
-        activatedPayment = Payment.objects.filter(user = self.user, date_payment__isnull = False)
-        if activatedPayment.count() == 0:
+        # Сортируем по дате по которую оплачено.
+        # И берем макс. значение.
+        # Если оно сегодняшнее или позднее - возвращаем.
+        payments = Payment.objects.filter(user = self.user, date_payment__isnull = False).order_by('-date_to')
+        if not payments.exists():
             return None
-        if activatedPayment.count() > 1:
-            raise RuntimeError(u'Возникла ситуация нескольких платежей, на которую алгорим не реализован и требуется дореализовать')
+        maxDate = payments[0].date_to
+        today = datetime.date.today()
+        if maxDate < today:
+            return None
 
-        # Зная дату активации и сумму платежа рассчитываем дату по которую режим "Оплаченный".
-        return activatedPayment[0].date_payment.date() + datetime.timedelta(days = int(activatedPayment[0].sum))
+        return maxDate
 
     # Возвращает количество дней учета для этого юзера (используется на странице "Оплата"
     def getUchetDaysCount(self):
@@ -175,9 +179,11 @@ class UserProfile(models.Model):
             return (UserProfile.PAY_MODE_NOT_LIMITED, u"Без ограничений по 09.04.2014")
 
         # Далее если есть действующая оплата, то режим "Оплаченный"
-        elif self.getPaidByDate() is not None and datetime.datetime.now().date() <= self.getPaidByDate():
+        elif self.getPaidByDate() is not None:
+
+            # Дату делаем "Оплаченный по ДД.ММ.ГГГГ", т.к. "Оплаченный по ДД май ГГГГ" не подходит
             d = self.getPaidByDate()
-            return (UserProfile.PAY_MODE_PAID, u"Оплаченный по " + d.strftime('%d.%m.%Y') + u". Осталось дней: " + str((d - datetime.datetime.now().date()).days))
+            return (UserProfile.PAY_MODE_PAID, u"Оплаченный по " +  d.strftime('%d.%m.%Y') + u". Осталось дней: " + str((d - datetime.datetime.now().date()).days))
 
         # Если же активной оплаты нет, то если количество дней учета менее 40, то режим - "Пробный"
         elif self.getUchetDaysCount() < 40:
