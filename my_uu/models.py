@@ -28,6 +28,9 @@ class Payment(models.Model):
     # Код способа оплаты из Z-PAYMENT. Заполняется при получении оплаты.
     zpayment_type_code = models.CharField(max_length=50, null = True)
 
+    # Сумма, которую фактически получает магазин (за вычетом комиссии платежного шлюза).
+    sum_seller = models.DecimalField(decimal_places=2, max_digits=5, null=True)
+
     # Дата в формате "11 апр 2014 15:45" для отображения на странице "Оплата"
     @property
     def date_payment_formatted(self):
