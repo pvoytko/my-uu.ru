@@ -276,7 +276,9 @@ class EventLog(models.Model):
     EVENT_LOGIN =           (19, "Авторизовался")
 
     EVENT_EXP =             (20, "Просмотрел данные для экспорта")
-    # NEXT_ID = 22
+
+    EVENT_PAYMENT_NEED_DIALOG = (22, "Отослана страница с диалогом 'нужна оплата'")
+    # NEXT_ID = 23
 
     user = models.ForeignKey(django.contrib.auth.models.User)
     datetime = models.DateTimeField(auto_now_add=True)

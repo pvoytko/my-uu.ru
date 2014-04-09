@@ -251,6 +251,11 @@ def _getCategoryList(request):
 @uuTrackEventDecor(my_uu.models.EventLog.EVENT_VISIT_UCH)
 def lk_uch(request):
 
+    # Определяем надо ли показать юзеру сообщение что нужна оплата, и если надо, отслеживем событие.
+    showAddUchetDialog = request.user.get_profile().showAddUchetDialog()
+    if not showAddUchetDialog:
+        uuTrackEventDynamic(request.user, my_uu.models.EventLog.EVENT_PAYMENT_NEED_DIALOG)
+
     return render(request, 'lk_uch.html', {
         'uchetRecordsJson': json.dumps(_getUchetRecordsList(request.user.get_profile().getUchetRecordsInViewPeriod()), cls=DjangoJSONEncoder),
         'uTypeList': my_uu.models.UType.objects.all().order_by('id'),
@@ -261,7 +266,7 @@ def lk_uch(request):
         'viewPeriodSetJson': json.dumps(my_uu.models.UserProfile.VIEW_PERIOD_CODE_CHOICES, cls=DjangoJSONEncoder),
         'viewPeriodMonthSetJson': json.dumps((request.user.get_profile().getUchetMonthSet()), cls=DjangoJSONEncoder),
         'viewPeriodCodeJson': json.dumps(request.user.get_profile().view_period_code),
-        'showAddUchetDialog': 1 if request.user.get_profile().showAddUchetDialog() else 0 # 1 или 0 - т.к. JS не понимает True / False
+        'showAddUchetDialog': 1 if showAddUchetDialog else 0 # 1 или 0 - т.к. JS не понимает True / False
     })
 
 
