@@ -267,7 +267,7 @@ class EventLog(models.Model):
     EVENT_SUBSCR = (13,"Подписался на рассылку")
 
     EVENT_VISIT_PAY =               (14, "Заход на страницу оплаты")
-    EVENT_DO_ORDER =                (15, "Нажал кнопку 'Оплатить'")
+    EVENT_DO_ORDER =                (15, 'Нажал кнопку "Оплатить"')
     EVENT_ROBOKASSA_PAY_NOTIFY =    (16, "Пришла оплата от ROBOKASSA")
     EVENT_ZPAYMENT_PAY_NOTIFY =     (21, "Пришла оплата от Z-PAYMENT")
 
@@ -277,8 +277,11 @@ class EventLog(models.Model):
 
     EVENT_EXP =             (20, "Просмотрел данные для экспорта")
 
-    EVENT_PAYMENT_NEED_DIALOG = (22, "Отослана страница с диалогом 'нужна оплата'")
-    # NEXT_ID = 23
+    EVENT_PAYMENT_NEED_DIALOG = (22, 'Отослана страница с диалогом "Нужна оплата"')
+    EVENT_VISIT_FEEDBACK_REQUEST = (23, 'Заход на страницу "Почему не стал использовать"')
+    EVENT_SEND_FEEDBACK_REQUEST = (24, 'Отправил "Почему не стал использовать"')
+    EVENT_REGISTERED = (25, 'Зарегистрировался')
+    EVENT_LOGOUT = (26, 'Выход')
 
     user = models.ForeignKey(django.contrib.auth.models.User)
     datetime = models.DateTimeField(auto_now_add=True)

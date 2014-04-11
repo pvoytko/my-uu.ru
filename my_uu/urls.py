@@ -54,11 +54,11 @@ urlpatterns = patterns('',
     url(r'^adm/act/$', 'my_uu.views.adm_act'),
     url(r'^adm/exp/$', 'my_uu.views.adm_exp'),
     url(r'^adm/exp_reg/$', 'my_uu.views.adm_exp_reg'),
+    url(r'^adm/test/$', 'my_uu.views.adm_test'),
 
     # Отписаться юзеру (без регистрации)
     url(r'^unsubscr/(?P<obfuscatedUserId>\d+)/$', 'my_uu.views.unsubscr_view'),
     url(r'^unsubscr/(?P<obfuscatedUserId>\d+)/do/$', 'my_uu.views.unsubscr_do'),
-    url(r'^unsubscr/test/$', 'my_uu.views.unsubscr_view'),
 
     # Страница для получения ОС почему не стали пользоваться
     url(r'^feedback_request/(?P<obfuscatedUserId>\d+)/$', 'my_uu.views.feedback_request'),

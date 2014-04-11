@@ -123,6 +123,8 @@ def register_user_ajax(request):
     user = _authenticateByEmailAndPassword(**data)
     login(request, user)
 
+    uuTrackEventDynamic(user, my_uu.models.EventLog.EVENT_REGISTERED)
+
     return resp.buildHttpJsonResponse()
 
 
@@ -178,6 +180,7 @@ def login_user_ajax(request):
 # ВЫход
 def logout_user(request):
     import django.contrib.auth.views
+    uuTrackEventDynamic(request.user, my_uu.models.EventLog.EVENT_LOGOUT)
     return django.contrib.auth.views.logout(request, next_page = reverse('my_uu.views.main'))
 
 
@@ -947,6 +950,8 @@ def feedback_request(request, obfuscatedUserId):
 
     # Передаем в шаблон из УРЛа
     oUserId = obfuscatedUserId
+    user = django.contrib.auth.models.User.objects.get(id = my_uu.utils.restoreId(int(oUserId)))
+    uuTrackEventDynamic(user, my_uu.models.EventLog.EVENT_VISIT_FEEDBACK_REQUEST)
     return locals()
 
 
@@ -959,6 +964,8 @@ def feedback_request_ajax(request):
     # Так как вход на эту страницу должен быть без авторизации (чтоб из емейла работали ссылки).
     obfuscatedUserId = requestBody['oUserId']
     user = User.objects.get(id = my_uu.utils.restoreId(int(obfuscatedUserId)))
+
+    uuTrackEventDynamic(user, my_uu.models.EventLog.EVENT_SEND_FEEDBACK_REQUEST)
 
     # Посылаем письмо
     my_uu.utils.sendFeedbackEmail(
@@ -1099,3 +1106,12 @@ def do_order_ajax(request):
     # Получаем УРЛ и пост-данные которые надо полать на этот УРЛ в платежный шлюз
     url = getPaymentGatewayInitPayUrl(request.user.email, cost, payment.id)
     return JsonResponseWithStatusOk(url = url)
+
+
+# Это страница для тестирования
+# как выглядит сообщение-запрос ОС у тех кто ушел юзая 1 день.
+@uuAdmLoginRequired
+@uuRenderWith('adm_test.html')
+def adm_test(request):
+    if request.POST and request.POST['command'] == 'request':
+        return my_uu.utils.sendFeedbackRequest(my_uu.models.User.objects.get(email = 'pvoytko@gmail.com'))
