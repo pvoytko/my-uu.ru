@@ -14,6 +14,7 @@ import django.db.utils
 from django.conf import settings
 from django import forms
 import utils
+import simplejson
 
 
 import json
@@ -235,12 +236,17 @@ def _getUchetRecordsList(uchetRecords):
 
 
 def _getAccountBalanceList(request):
-    accountBalanceList = my_uu.models.Account.objects.filter(user=request.user)
+    accountBalanceList = my_uu.models.Account.objects.filter(user=request.user, visible=True)
     accountBalanceList = accountBalanceList.annotate(balance = Sum('uchet__sum'))
-    accountBalanceList = accountBalanceList.order_by('id')
+    accountBalanceList = accountBalanceList.order_by('position')
     if len(accountBalanceList) > 28:
         raise RuntimeError('Слишком большое количество счетов, интерфейс пока не рассчитан на такое количество.')
-    return list(accountBalanceList.values('id', 'name', 'balance'))
+    ll = list(accountBalanceList.values('id', 'name', 'balance', 'balance_start'))
+    for r in ll:
+        if r['balance'] is None:
+            r['balance'] = 0
+        r['balance'] += r['balance_start']
+    return ll
 
 
 def _getCategoryList(request):
@@ -273,25 +279,39 @@ def lk_uch(request):
     })
 
 
-# Страница Настройки личного кабиета
+# Страница Счета личного кабиета
 @uu_login_required
-@uuTrackEventDecor(my_uu.models.EventLog.EVENT_VISIT_SET)
-def lk_set(request):
-    import json
+@uuTrackEventDecor(my_uu.models.EventLog.EVENT_VISIT_ACCOUNTS)
+def lk_acc(request):
+
 
     # Получаем счета и категории с указанием количества записей
-    rowsA = my_uu.models.Account.objects.annotate(count = Count('uchet'))
-    rowsA = rowsA.filter(user=request.user).values('id', 'name', 'count')
-    rowsC = my_uu.models.Category.objects.annotate(count = Count('uchet'))
-    rowsC = rowsC.filter(user=request.user).values('id', 'name', 'count')
+    rowsA = my_uu.models.Account.objects.annotate(count = Count('uchet'), balance_current = Sum('uchet__sum')).order_by('position')
+    rowsA = rowsA.filter(user=request.user).values('id', 'name', 'count', 'position', 'visible', 'balance_start', 'balance_current')
+    for r in rowsA:
+        if r['balance_current'] is None:
+            r['balance_current'] = 0
+        r['balance_current'] += r['balance_start']
 
-    # Отдаем на выход
-    accountListJsonString = json.dumps(list(rowsA))
+    # Результат
+    return render(request, 'lk_acc.html', {
+        'request': request,
+        'accountListJsonString': simplejson.dumps(list(rowsA)),
+    } )
+
+
+# Страница Категории личного кабиета
+@uu_login_required
+@uuTrackEventDecor(my_uu.models.EventLog.EVENT_VISIT_CATEGORIES)
+def lk_cat(request):
+
+    # Получаем счета и категории с указанием количества записей
+    rowsC = my_uu.models.Category.objects.annotate(count = Count('uchet')).order_by('position', 'id')
+    rowsC = rowsC.filter(user=request.user).values('id', 'name', 'count', 'visible')
     categoryListJsonString = json.dumps(list(rowsC))
 
-    return render(request, 'lk_set.html', {
+    return render(request, 'lk_cat.html', {
         'request': request,
-        'accountListJsonString': accountListJsonString,
         'categoryListJsonString': categoryListJsonString
     } )
 
@@ -343,7 +363,7 @@ class AnaWeekIterator(object):
 def lk_ana(request):
 
     # Уникальный список категорий
-    categoryList = request.user.category_set.all().distinct()
+    categoryList = request.user.category_set.all().order_by('position', 'id')
 
     # Форматирует как деньги переданный список чисел
     def formatMoneyRow(moneyRow):
@@ -375,6 +395,75 @@ def lk_ana(request):
         endDateStr = unicode(endDate.day) + u" " + utils.formatMonth(endDate.month);
         return startDateStr + u"–" + endDateStr;
 
+    def formatDayAndMonth(date):
+        return unicode(date.day) + u" " + utils.formatMonth(date.month)
+
+    def formatDayOfWeek(date):
+        return [u'Пн', u'Вт', u'Ср', u'Чт', u'Пт', u'Сб', u'Вс'][date.weekday()]
+
+    def addDayAnaDataToPageData(pageData):
+
+        # Тут мы храним даты по которым готовим таблицу.
+        # Храним их для того чтобы быстро опредлить индекс столбца к которому надо отнести сумму по дате.
+        anaDates = []
+
+        # Формируем заголовки таблицы - от екущей даты до 5-ти дневной давности (всего 6 столбцов)
+        # 21 апр Пн, 20 апр Вс, 19 апр Сб, ...
+        today = datetime.date.today()
+        periodsHeaders = []
+        for delta in range(0, 6):
+            d = today - datetime.timedelta(days = 5-delta)
+            periodsHeaders.append( { 'first': formatDayAndMonth(d), 'second': formatDayOfWeek(d) } )
+            anaDates.append(d)
+
+        # Тут хранится список объектов, 1 объект на одну строку в таблице. В каждом объекте - название категории и данные.
+        pageData['dataRows']['rashod-day'] = []
+        pageData['dataRows']['dohod-day'] = []
+
+        # Тут хранится итоговая строка - список из 6 чисел, сначала заполняем нуляем, а потом к ней плюсуем.
+        pageData['totalRow']['rashod-day'] = [0] * len(periodsHeaders)
+        pageData['totalRow']['dohod-day'] = [0] * len(periodsHeaders)
+
+        # Сначала для расходов, а потом для доходов заполняем таблицу.
+        for typeN, typeI in (('rashod', my_uu.models.UType.RASHOD), ('dohod', my_uu.models.UType.DOHOD)):
+
+            # Для каждой категории
+            for (i, cat) in enumerate(categoryList):
+
+                # Сюда будем заносить суммы по дням для текущей категории
+                sumForDaysRow = [0] * 6
+
+                # Получаем суммы по дням (только для расходов) в нашем диапазоне
+                sumForDays = request.user.uchet_set.filter(category = cat, utype = typeI)
+                sumForDays = sumForDays.values('date').distinct()
+                sumForDays = sumForDays.annotate(sum = Sum('sum'))
+                sumForDays = sumForDays.filter(date__gte = (today - datetime.timedelta(days = 5)), date__lte = today)
+
+                # Если ни одной суммы для этой категории, то такую категорию пропускаем
+                # А если есть сумма для нее - то добавляем.
+                if sumForDays.count() > 0:
+
+                    # Тут задача скопировать QS в строку на возврат.
+                    for s in sumForDays:
+                        if s['date'] in anaDates:
+                            i = anaDates.index(s['date'])
+                            sumForDaysRow[i] += float(s['sum'])
+                            pageData['totalRow'][typeN + '-day'][i] += float(s['sum'])
+
+                    # Сохраняем на возврат строку для категории
+                    pageData['dataRows'][typeN + '-day'].append({
+                        'category': cat.name,
+                        'data': formatMoneyRow(sumForDaysRow)
+                    })
+
+
+        # Итог работы функции
+        pageData['periods']['rashod-day'] = periodsHeaders
+        pageData['periods']['dohod-day'] = periodsHeaders
+        # pageData['dataRows']['rashod-day'] заполнили выше
+        # pageData['dataRows']['dohod-day'] заполнили выше
+        pageData['totalRow']['rashod-day'] = formatMoneyRow(pageData['totalRow']['rashod-day'])
+        pageData['totalRow']['dohod-day'] = formatMoneyRow(pageData['totalRow']['dohod-day'])
 
     def addWeekAnaDataToPageData(pageData):
 
@@ -525,6 +614,7 @@ def lk_ana(request):
         'totalRow': {}
     }
 
+    addDayAnaDataToPageData(pageData)
     addWeekAnaDataToPageData(pageData)
     addMonthAnaDataToPageData(pageData)
 
@@ -740,10 +830,21 @@ class AccountNameValidationError(MyUUUIException):
         )
 
 
+class AccountMustBeZeroError(MyUUUIException):
+    def __init__(self, errText):
+        super(AccountMustBeZeroError, self).__init__(
+            errText
+        )
+
+
 class DeleteAccountWithUchetRecordsException(MyUUUIException):
-    def __init__(self):
+    def __init__(self, isAccount):
+        texts = {
+            True: u"Есть операции учета где используется этот счет. Удалить можно только такой счет, с которым не связано ни одной операции учета.",
+            False: u"Есть операции учета где используется эта категория. Удалить можно только такую категорию, с которой не связано ни одной операции учета.",
+        }
         super(DeleteAccountWithUchetRecordsException, self).__init__(
-            u"Есть связанные записи учета. Удаление невозможно."
+            texts[isAccount]
         )
 
 
@@ -757,21 +858,22 @@ class DeleteLastAccountException(MyUUUIException):
         super(DeleteLastAccountException, self).__init__( texts[isAccount] )
 
 
-def _lk_save_settings_ajax(request, userPropName, modelClass):
+def _lk_save_settings_ajax(request, userPropName, modelClass, editEventConstant, addEventConstant, setName, rowGetter):
 
     newAccountData = json.loads(request.body)
 
     # Создаем новый или изменяем существующий счет
     if 'id' in newAccountData:
-        uuTrackEventDynamic(request.user, my_uu.models.EventLog.EVENT_EDT_SET)
+        uuTrackEventDynamic(request.user, editEventConstant)
         a = getattr(request.user, userPropName).get(id = newAccountData['id'])
     else:
-        uuTrackEventDynamic(request.user, my_uu.models.EventLog.EVENT_ADD_SET)
+        uuTrackEventDynamic(request.user, addEventConstant)
         a = modelClass()
         a.user = request.user
 
-    a.name = newAccountData['name']
-
+    # Сохраняем все что пришло
+    for k in newAccountData.keys():
+        setattr(a, k, newAccountData[k])
 
     try:
         try:
@@ -781,34 +883,48 @@ def _lk_save_settings_ajax(request, userPropName, modelClass):
         # Если исключение в поле name, то такой вид исключений обрабатываем переделываем в наш вид
         # который мы умеем обрабатывать.
         except django.core.exceptions.ValidationError, e:
-            if 'name' in e.message_dict:
-                raise AccountNameValidationError(u" ".join(e.message_dict['name']))
+
+            # Тест что это u'Category с таким User и Name уже существует.'
+            if len(e.message_dict.values()) == 1:
+                m = e.message_dict.values()[0][0]
+                wordSet = [modelClass.__name__, 'User', 'Name']
+                if all([word in m for word in wordSet]):
+                    raise AccountNameValidationError(u"{0} \"{1}\" уже существует.".format(setName, a.name))
+
+            # Тест что это ошибка "Баланс не равен нулю"
+            if len(e.message_dict.values()) == 1:
+                m = e.message_dict.values()[0][0]
+                if m == u'MUST_BE_ZERO':
+                    raise AccountMustBeZeroError(u'Текущий остаток скрываемого счета должен быть равен нулю перед скрытием. Скорректируйте остаток счета одним из способов прежде чем скрывать его и повторите попытку скрыть счет.')
+
+            raise
 
     # Если исключение при проверке поля Account.name, то показываем текст этой ошибки юзеру.
     except MyUUUIException, e:
         return JsonResponseWithStatusError(e)
 
     # Ошибок не возникло, все ОК.
-    return JsonResponseWithStatusOk(id = a.id)
+    # Получаем данные для возврата в клиент.
+    return JsonResponseWithStatusOk(data = rowGetter(a.id))
 
 
 @uu_login_required
-@uuTrackEventDecor(my_uu.models.EventLog.EVENT_DEL_SET)
-def _lk_delete_settings_ajax(request, userPropName):
+def _lk_delete_settings_ajax(request, isAccount, eventConstant):
     try:
 
+        uuTrackEventDynamic(request.user, eventConstant)
+        mgr = request.user.account_set if isAccount else request.user.category_set
+
         accountData = json.loads(request.body)
-        a = getattr(request.user, userPropName).get(id = accountData['id'])
+        a = mgr.get(id = accountData['id'])
 
         # Нельзя удалять если есть связанные записи учета
         if a.uchet_set.count() != 0:
-            raise DeleteAccountWithUchetRecordsException()
+            raise DeleteAccountWithUchetRecordsException(isAccount)
 
         # Нельзя удалять если это последний счет (категория).
         # Так как в этом случае заглючит таблица учета в которой ни одного счета ни одной категории.
-        if getattr(request.user, userPropName).count() == 1:
-            assert userPropName == 'account_set' or userPropName == 'category_set', u'Должно быть либо то либо другое.'
-            isAccount = userPropName == 'account_set'
+        if mgr.count() == 1:
             raise DeleteLastAccountException(isAccount)
 
         a.delete()
@@ -822,20 +938,50 @@ def _lk_delete_settings_ajax(request, userPropName):
 
 @uu_login_required
 def lk_save_account_ajax(request):
-    return _lk_save_settings_ajax(request, 'account_set', my_uu.models.Account)
+
+    def rowGetter(id):
+        rowsA = my_uu.models.Account.objects.annotate(count = Count('uchet'), balance_current = Sum('uchet__sum')).order_by('position', 'id')
+        r = rowsA.filter(id = id).values('id', 'name', 'count', 'position', 'visible', 'balance_start', 'balance_current')[0]
+        if r['balance_current'] is None:
+            r['balance_current'] = 0
+        r['balance_current'] += r['balance_start']
+        return r
+
+    return _lk_save_settings_ajax(request, 'account_set', my_uu.models.Account, my_uu.models.EventLog.EVENT_EDT_ACC, my_uu.models.EventLog.EVENT_ADD_ACC, u'Счет', rowGetter)
+
+def _lk_save_accounts_or_category_position(request, objMgr, eventConstant):
+    uuTrackEventDynamic(request.user, eventConstant)
+    accsIds = json.loads(request.body)
+    accs = objMgr.filter(id__in = accsIds)
+    for a in accs:
+        a.position = accsIds.index(a.id) + 1
+        a.save()
+    return JsonResponseWithStatusOk()
 
 @uu_login_required
 def lk_delete_account_ajax(request):
-    return _lk_delete_settings_ajax(request, 'account_set')
+    return _lk_delete_settings_ajax(request, True, my_uu.models.EventLog.EVENT_DEL_ACC)
+
+@uu_login_required
+def lk_save_accounts_order_ajax(request):
+    return _lk_save_accounts_or_category_position(request, request.user.account_set, my_uu.models.EventLog.EVENT_REORDER_ACCOUNTS)
 
 @uu_login_required
 def lk_save_category_ajax(request):
-    return _lk_save_settings_ajax(request, 'category_set', my_uu.models.Category)
+    def rowGetter(id):
+        rowsC = my_uu.models.Category.objects.annotate(count = Count('uchet'))
+        rowsC = rowsC.filter(user=request.user, id=id).values('id', 'name', 'count', 'visible')
+        return rowsC[0]
+
+    return _lk_save_settings_ajax(request, 'category_set', my_uu.models.Category, my_uu.models.EventLog.EVENT_EDT_CAT, my_uu.models.EventLog.EVENT_ADD_CAT, u'Категория', rowGetter)
 
 @uu_login_required
 def lk_delete_category_ajax(request):
-    return _lk_delete_settings_ajax(request, 'category_set')
+    return _lk_delete_settings_ajax(request, False, my_uu.models.EventLog.EVENT_DEL_CAT)
 
+@uu_login_required
+def lk_save_categories_order_ajax(request):
+    return _lk_save_accounts_or_category_position(request, request.user.category_set, my_uu.models.EventLog.EVENT_REORDER_CATEGORIES)
 
 @uu_login_required
 def lk_improove_ajax(request):

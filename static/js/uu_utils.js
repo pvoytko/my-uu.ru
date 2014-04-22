@@ -14,7 +14,7 @@ function uuFormatCurrency(currencyValue, digitsAfterPoint) {
 // Полчая на вход ID грида подменяет в нем строки на русскоязычные
 function uuLocalizeJqxGrid(jqxGridElemId) {
     var localizationobj = {};
-    localizationobj.emptydatastring = "Нет ни одной записи учета для отображения.";
+    localizationobj.emptydatastring = "Нажмите кнопку «ВНЕСТИ» ниже или клавишу «INSERT» на клавиатуре.  ";
     localizationobj.loadtext = "Загрузка...";
     $("#" + jqxGridElemId).jqxGrid('localizestrings', localizationobj);
 }
@@ -58,8 +58,12 @@ function uuValidateSum(floatStr) {
 // Проверяет строковое значение даты, если ошибка ввода, вернет ее текст.
 // === true если корректно
 function uuValidateDate(dateStr) {
-    if (!moment(dateStr, 'DD.MM.YYYY').isValid()) {
+
+    if (!(dateStr.match(/\d\d.\d\d.\d\d\d\d/))) {
         return "Дата должна иметь формат ДД.ММ.ГГГГ";
+    }
+    if (!moment(dateStr, 'DD.MM.YYYY').isValid()) {
+        return "Указанное значение не является верной датой в формате ДД.ММ.ГГГГ";
     }
     return true;
 }

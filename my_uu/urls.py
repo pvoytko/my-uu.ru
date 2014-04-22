@@ -30,11 +30,14 @@ urlpatterns = patterns('',
     url(r'^lk/ana/$', 'my_uu.views.lk_ana'),
 
     # Личный кабинет счета и категории
-    url(r'^lk/set/$', 'my_uu.views.lk_set'),
+    url(r'^lk/acc/$', 'my_uu.views.lk_acc'),
+    url(r'^lk/cat/$', 'my_uu.views.lk_cat'),
     url(r'^lk/save_account_ajax/$', 'my_uu.views.lk_save_account_ajax'),
     url(r'^lk/delete_account_ajax/$', 'my_uu.views.lk_delete_account_ajax'),
+    url(r'^lk/save_accounts_order_ajax/$', 'my_uu.views.lk_save_accounts_order_ajax'),
     url(r'^lk/save_category_ajax/$', 'my_uu.views.lk_save_category_ajax'),
     url(r'^lk/delete_category_ajax/$', 'my_uu.views.lk_delete_category_ajax'),
+    url(r'^lk/save_categories_order_ajax/$', 'my_uu.views.lk_save_categories_order_ajax'),
 
     # Личный кабинет импорт
     url(r'^lk/imp/$', 'my_uu.views.lk_imp'),

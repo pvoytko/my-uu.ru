@@ -209,7 +209,6 @@ class UserProfile(models.Model):
         return self.getPayModeCodeAndDescr()[1]
 
 
-
 # Счет
 class Account(models.Model):
     user = models.ForeignKey(django.contrib.auth.models.User)
@@ -217,14 +216,39 @@ class Account(models.Model):
         'blank': u'Название счета не должно быть пустым.',
         'max_length': u'Название счета не должно быть более 255 символов длинной.'
     })
+    visible = models.BooleanField()
+    balance_start = models.DecimalField(max_digits=11, decimal_places=2, default=0)
 
+    # Дефолтова позиция = 1000, т.о. при добавлениии она всегда бдует в конец ставиться.
+    position = models.PositiveIntegerField(default=1000)
+
+    # Скрыть можно счет только с тек. балансом = 0
+    def clean(self):
+        from django.core.exceptions import ValidationError
+        from django.db.models import Count, Sum, Min, Max
+        if not self.visible and self.uchet_set.aggregate(sum = Sum('sum')).values()[0] != 0:
+            raise ValidationError(u'MUST_BE_ZERO')
+
+    # Уникальность имени счета только в рамках одного юзера
+    class Meta:
+        unique_together = ('user', 'name',)
+
+
+# Категория
 class Category(models.Model):
     user = models.ForeignKey(django.contrib.auth.models.User)
     name = models.CharField(max_length=255, error_messages={
         'blank': u'Название категории не должно быть пустым.',
         'max_length': u'Название категории не должно быть более 255 символов длинной.'
     })
+    visible = models.BooleanField()
 
+    # Дефолтова позиция = 1000, т.о. при добавлениии она всегда бдует в конец ставиться.
+    position = models.PositiveIntegerField(default=1000)
+
+    # Уникальность имени счета только в рамках одного юзера
+    class Meta:
+        unique_together = ('user', 'name',)
 
 # Тип записи учета - расход доход или перевод
 class UType(models.Model):
@@ -252,17 +276,20 @@ class Uchet(models.Model):
 # Журнал событий
 class EventLog(models.Model):
 
+    # Устарели не используются больше в новом коде (только старые события отображаются с их помощью)
+    OLD_EVENT_ADD_SET = (9,"Добавил счет или категорию")
+    OLD_EVENT_EDT_SET = (10,"Изменил счет или категорию")
+    OLD_EVENT_DEL_SET = (11,"Удалил счет или категорию")
+    OLD_EVENT_VISIT_SET = (3,"Заход на страницу настроек")
+
+    # Новые события
     EVENT_VISIT_UCH = (1,"Заход на страницу учета")
     EVENT_VISIT_ANA = (2,"Заход на страницу анализа")
-    EVENT_VISIT_SET = (3,"Заход на страницу настроек")
     EVENT_VISIT_IMP = (4,"Заход на страницу импорта")
     EVENT_ADD_UCH = (5,"Добавил запись учета")
     EVENT_EDT_UCH = (6,"Изменил запись учета")
     EVENT_DEL_UCH = (7,"Удалил запись учета")
     EVENT_IMP = (8,"Прислал данные для импорта")
-    EVENT_ADD_SET = (9,"Добавил счет или категорию")
-    EVENT_EDT_SET = (10,"Изменил счет или категорию")
-    EVENT_DEL_SET = (11,"Удалил счет или категорию")
     EVENT_UNSUBSCR = (12,"Отписался от рассылки")
     EVENT_SUBSCR = (13,"Подписался на рассылку")
 
@@ -283,6 +310,18 @@ class EventLog(models.Model):
     EVENT_REGISTERED = (25, 'Зарегистрировался')
     EVENT_LOGOUT = (26, 'Выход')
 
+    EVENT_ADD_ACC = (27,"Добавил счет")
+    EVENT_EDT_ACC = (28,"Изменил счет")
+    EVENT_DEL_ACC = (29,"Удалил счет")
+
+    EVENT_ADD_CAT = (30,"Добавил категорию")
+    EVENT_EDT_CAT = (31,"Изменил категорию")
+    EVENT_DEL_CAT = (32,"Удалил категорию")
+    EVENT_VISIT_ACCOUNTS = (33,"Заход на страницу счетов")
+    EVENT_VISIT_CATEGORIES = (34, "Заход на страницу категорий")
+    EVENT_REORDER_ACCOUNTS = (35, "Изменен порядок счетов")
+    EVENT_REORDER_CATEGORIES = (36, "Изменен порядок категорий")
+
     user = models.ForeignKey(django.contrib.auth.models.User)
     datetime = models.DateTimeField(auto_now_add=True)
     event2 = models.IntegerField()
@@ -290,10 +329,10 @@ class EventLog(models.Model):
     @property
     def event_name(self):
         for a in dir(EventLog):
-            if a.startswith('EVENT_'):
+            if a.startswith('EVENT_') or a.startswith('OLD_EVENT_') :
                 if getattr(self, a)[0] == self.event2:
                     return getattr(self, a)[1]
-        raise RuntimeError('Ошибка получения описания события. В базе соранен код события #{0}, но константа EVENT в классе EventLog с таким значением кода не найдена.'.format(self.event2))
+        raise RuntimeError('Ошибка получения описания события. В базе соранен код события #{0}, но константа EVENT (или OLD_EVENT) в классе EventLog с таким значением кода не найдена.'.format(self.event2))
 
 
 # Заполняется если юзер отписался

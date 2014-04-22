@@ -30,6 +30,16 @@
     <!-- Настройка приложения Ангулар -->
     <script src="{{ STATIC_URL }}js/angular_project.js"></script>
 
+    <!-- Ангулар-директива клавиша ввод и Ins - используется на "Учет", "Счета", "Категории" -->
+    <script src="{{ STATIC_URL }}js/ang-keys.js"></script>
+
+    <!-- Форматирование дат -->
+    <script type="text/javascript" src="{{ STATIC_URL }}libs/moment/moment.min.js"></script>
+
+    <!-- Вспомогательные разные функции -->
+    <script src="{{ STATIC_URL }}js/uu_utils.js"></script>
+
+
     {% block add_to_head %}
 
     {% endblock %}
@@ -51,11 +61,15 @@
 
         <ul class="nav nav-pills" style="position: fixed; visibility: block; top: 73px; z-index: 101;">
             <li{% block beg_active %}{% endblock %}><a href="/lk/beg/">Начало</a></li>
+            <li style="width: 2px; background-color: rgb(212, 224, 236);float: left; display: list-item; height: 16px; margin: 9px 3px">&nbsp;</li>
+            <li{% block acc_active %}{% endblock %}><a href="/lk/acc/">Счета</a></li>
+            <li{% block cat_active %}{% endblock %}><a href="/lk/cat/">Категории</a></li>
             <li{% block uch_active %}{% endblock %}><a href="/lk/">Учет</a></li>
             <li{% block ana_active %}{% endblock %}><a href="/lk/ana/">Анализ</a></li>
-            <li{% block set_active %}{% endblock %}><a href="/lk/set/">Счета и категории</a></li>
+            <li style="width: 2px; background-color: rgb(212, 224, 236);float: left; display: list-item; height: 16px; margin: 9px 3px">&nbsp;</li>
             <li{% block imp_active %}{% endblock %}><a href="/lk/imp/">Импорт</a></li>
             <li{% block exp_active %}{% endblock %}><a href="/lk/exp/">Экспорт</a></li>
+            <li style="width: 2px; background-color: rgb(212, 224, 236);float: left; display: list-item; height: 16px; margin: 9px 3px">&nbsp;</li>
             <li{% block pay_active %}{% endblock %}><a href="/lk/pay/">Оплата</a></li>
         </ul>
 
@@ -76,7 +90,7 @@
                 padding: 5px;
                 background-color: lavender;
                 border: 1px solid lightblue;
-                z-index: 105;
+                z-index: 95;
             }
             .improove__btn {
                 color: rgb(39, 100, 133);
@@ -92,16 +106,16 @@
             <button class="btn improove__btn" id="improove">Вопрос или <br>предложение</button>
         </div>
 
-        <div id="improove-dialog-modal" style="display: none; padding-top: 20px;" ng-controller="ImprooveCtrl">
+        <div id="improove-dialog-modal" style="display: none; padding-top: 20px; padding-right: 30px; padding-left: 15px;" ng-controller="ImprooveCtrl">
             <ul>
-                <li>Не получается сделать то, что Вы хотите?</li>
-                <li>Не хватает какой-то функции?</li>
-                <li>Что-то не удобно?</li>
+                <li>Не получается сделать то, что хочется и нужна подсказка?</li>
+                <li>Что-то не удобно, хочется сообщить об этом?</li>
+                <li>Хочется, чтобы появилась нужная Вам функция?</li>
             </ul>
             <p>
-                Напишите несколько слов об этом в поле ниже и нажмите кнопку "Отправить".
+                Напишите это в поле ниже и нажмите кнопку "Отправить".
             </p>
-            <textarea rows="6" class="span7" ng-show="!isSendToServerNow && !isSendToServerSuccess && !isSendToServerError" style="resize: none;" ng-model="improoveText">
+            <textarea rows="6" class="span7" ng-show="!isSendToServerNow && !isSendToServerSuccess && !isSendToServerError" style="resize: none; width: 100%;" ng-model="improoveText">
             </textarea>
             <div class="alert alert-info" ng-show="isSendToServerNow">
                 Отправка на сервер, подождите...
@@ -112,9 +126,9 @@
             <div class="alert alert-error" ng-show="isSendToServerError">
                 <span ng:bind="errorText"></span>
             </div>
-            <div style="position: absolute; bottom: 15px;">
-                <button class="btn btn-success" ng-click="sendToServer()" ng-disabled="isSendToServerNow || isSendToServerSuccess">Отправить</button>
-                <button class="btn" ng-click="clearStatus()" id="improoveDlgCloseBtn">Закрыть</button>
+            <div style="position: absolute; bottom: 15px; right: 15px;">
+                <button class="btn btn-success pull-right" ng-click="sendToServer()" ng-disabled="isSendToServerNow || isSendToServerSuccess">Отправить</button>
+                <button class="btn pull-right" style="margin-right: 15px;" ng-click="clearStatus()" id="improoveDlgCloseBtn">Закрыть (Esc)</button>
             </div>
         </div>
 
@@ -136,6 +150,92 @@
         </script>
 
     </div>
+
+    <!-- Блок с ошибкой показывается если не удалось сохраниться на сервер 500 ошибка или нет связи -->
+    <script>
+        function ServerConectionErrorCtrl($scope){
+            $scope.dialogVisible = false;
+            $scope.messageType = null;
+            $scope.jqReqFail = function(textCode, whatHappensMessage){
+
+                // Нет связи с нетом
+                if (textCode == ""){
+                    $scope.$apply(function($scope){
+                        $scope.whatHappensMessage = whatHappensMessage;
+                        $scope.messageType = "CON";
+                        $scope.dialogVisible = true;
+                    });
+
+                // Internal server error
+                } else {
+                    $scope.$apply(function($scope){
+                        $scope.whatHappensMessage = whatHappensMessage;
+                        $scope.messageType = "ERR";
+                        $scope.dialogVisible = true;
+                    });
+                };
+
+            };
+            $scope.angReqFail = function(whatHappensMessage){
+
+                // Нет связи с нетом или ошибка на сервере
+                $scope.whatHappensMessage = whatHappensMessage;
+                $scope.messageType = "ANG";
+                $scope.dialogVisible = true;
+
+            };
+            $scope.hide = function(){
+                $scope.dialogVisible = false;
+            }
+        };
+    </script>
+    <div id="serverConnectionError" class="alert alert-error" style="z-index: 1000; position: fixed; width: 400px; margin-left: 50%; top: 100px; left: -200px; border: 3px solid #b94a48;" ng-controller="ServerConectionErrorCtrl" ng-show="dialogVisible" ng-cloak>
+        <div ng-if="messageType == 'ERR'">
+            <p><strong>Ошибка на сервере. ((</strong></p>
+            <p><strong>{$whatHappensMessage$}</strong></p>
+            <p>Мы уведомлены и спешим починить.</p>
+            <p>Сейчас Вы можете:</p>
+            <ul>
+                <li>Обновить страницу, иногда это срабатывает.</li>
+                <li>Повторить попытку, тоже может сработать.</li>
+                <li>Ждать починки: отложите работу на несколько часов.</li>
+                <li>Уточнить решение в службе поддержки.</li>
+            </ul>
+        </div>
+        <div ng-if="messageType == 'CON'">
+            <p><strong>Нет связи с сервером. ((</strong></p>
+            <p><strong>{$whatHappensMessage$}</strong></p>
+            <p>Причины: либо соединение с интернетом, либо сервер.</p>
+            <p>Сейчас Вы можете:</p>
+            <ul>
+                <li>Проверить свое соединение с интернетом.</li>
+                <li>Обновить страницу и повторить попытку.</li>
+                <li>Ждать починки: отложите работу на несколько часов.</li>
+                <li>Уточнить решение в службе поддержки.</li>
+            </ul>
+        </div>
+        <div ng-if="messageType == 'ANG'">
+            <p><strong>Ошибка связи с сервером. ((</strong></p>
+            <p><strong>{$whatHappensMessage$}</strong></p>
+            <p>Причины: либо соединение с интернетом, либо сервер.</p>
+            <p>Сейчас Вы можете:</p>
+            <ul>
+                <li>Проверить свое соединение с интернетом.</li>
+                <li>Обновить страницу и повторить попытку.</li>
+                <li>Ждать починки: отложите работу на несколько часов.</li>
+                <li>Уточнить решение в службе поддержки.</li>
+            </ul>
+        </div>
+        <button class="btn-default" ng-click="hide()">Закрыть</button>
+    </div>
+    <script>
+        function uuJqReqFail(code, whatHappensMessage){
+            $('#serverConnectionError').scope().jqReqFail(code, whatHappensMessage);
+        };
+        function uuAngReqFail(whatHappensMessage){
+            $('#serverConnectionError').scope().angReqFail(whatHappensMessage);
+        };
+    </script>
 
 
     {% include 'include_yandex_metrika.html' %}

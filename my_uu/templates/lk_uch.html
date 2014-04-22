@@ -22,12 +22,6 @@
     <script type="text/javascript" src="{{ STATIC_URL }}libs/jqwidgets-2.9.0/jqwidgets/jqxgrid.edit.js"></script>
     <script type="text/javascript" src="{{ STATIC_URL }}libs/jqwidgets-2.9.0/jqwidgets/jqxcombobox.js"></script>
 
-    <!-- Форматирование дат -->
-    <script type="text/javascript" src="{{ STATIC_URL }}libs/moment/moment.min.js"></script>
-
-    <!-- Вспомогательные разные функции -->
-    <script src="{{ STATIC_URL }}js/uu_utils.js"></script>
-
     <!-- Ангулар-директива Баланс счетов -->
     <script src="{{ STATIC_URL }}js/directive_balance.js"></script>
 
@@ -184,20 +178,6 @@
             }
         };
 
-
-        projectModule.directive('ngEnter', function () {
-            return function (scope, element, attrs) {
-                element.bind("keydown keypress", function (event) {
-                    if(event.which === 13) {
-                        scope.$apply(function (){
-                            scope.$eval(attrs.ngEnter);
-                        });
-
-                        event.preventDefault();
-                    }
-                });
-            };
-        });
     </script>
 
     <!-- Диалог добавления операции учета -->
@@ -231,18 +211,21 @@
                         <div class="controls">
                             <span style="position: absolute; left: 5px; margin-left: 197px; margin-top: 5px;">–</span>
                             <input id='sumFocused' type="text" ng-model="$parent.sum" style="padding-left: 15px; width: 96px;">
+                            <span class="help-inline">р.</span>
                         </div>
                     </div>
                     <div ng-switch-when="1" class="control-group">
                         <label class="control-label">Сумма дохода</label>
                         <div class="controls">
                             <input id='sumFocused' type="text" ng-model="$parent.sum" style="width: 106px;">
+                            <span class="help-inline">р.</span>
                         </div>
                     </div>
                     <div ng-switch-when="2" class="control-group">
                         <label class="control-label">Сумма перевода</label>
                         <div class="controls">
                             <input id='sumFocused' type="text" ng-model="$parent.sum" style="width: 106px;">
+                            <span class="help-inline">р.</span>
                         </div>
                     </div>
                 </div>
@@ -293,8 +276,8 @@
             </div>
         </div>
         <div class="modal-footer" ng-show="showAddUchetDialog">
-            <button ng-click="closeDlg()" class="btn btn-large btn-info pull-left">Внести (Enter)</button>
-            <button href="#" class="btn pull-right" style="margin-top: 5px;" data-dismiss="modal">Отмена (Esc)</button>
+            <button ng-click="closeDlg()" class="btn btn-large btn-info pull-right">Внести (Enter)</button>
+            <button href="#" class="btn pull-right" style="margin-top: 5px; margin-right: 15px;" data-dismiss="modal">Отмена (Esc)</button>
         </div>
 
         {# Далее идет тело и подвал диалога для случая когда нужна оплата - показывается сообщение оплатить #}
@@ -944,6 +927,11 @@
                     // При клике на "-" (к примеру при вводе расхода -5 рублей) грид не включает режим редактирования
                     // для ячейки суммы почему-то. Исправляем это поведение. Дя этого нам надо знать в каком режиме
                     // грид. И если не в режиме редактирования еще, то выполнить доп. код.
+                    /*
+
+                    Этот код закоменчен т.к. он создает другой баг: при вводе минуса в поле коммента в диалогге
+                    добавления операции учета фоку с поля ввода с коммента теряется, а это еще хуже и чаще.
+
                     $('#uuGrid').jqxGrid({
 
                         handlekeyboardnavigation: function(event) {
@@ -981,7 +969,7 @@
                             return false;
                         }
                     });
-
+                    */
 
                     // Делат шапку jqxGrid fixed (копируя слой поверх)
                     var $elem = $('.jqx-grid-header'); // Original element with attached data
@@ -1193,7 +1181,11 @@
                         }
 
                         $(document).on('keydown', function(event){
-                            if (event.which == 45){
+
+                            // Только сравнения по which недостаточно.
+                            // Если нажать Ins, то which будет 45 и charCode 0
+                            // Если нажать "-", то which будет 45 и charCode 45
+                            if ((event.which == 45) && (event.charCode==0)){
                                 addUchetRecord();
                             };
                         });

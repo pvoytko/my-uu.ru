@@ -18,7 +18,7 @@
     <script>
         function AnaController($scope){
 
-            $scope.periodCode = 'week';
+            $scope.periodCode = 'day';
             $scope.anaType = 'rashod';
 
             // Тут получаем с сервера данные в формате
@@ -43,25 +43,18 @@
 
         <!-- Выбор группировки -->
         <h5 style="display: inline;">Анализ </h5>
-        <div style="padding-bottom: 7px; display: inline-block; position: relative; top:-4px; padding-left: 12px;">
+        <div style="padding-bottom: 7px; display: inline-block; position: relative; top:0px; padding-left: 12px;">
 
-            <label class="radio inline">
-              <input type="radio" name="anaType" value="rashod" ng-model="anaType">расходов
-            </label>
-            <label class="radio inline">
-              <input type="radio" name="anaType" value="dohod" ng-model="anaType">доходов
-            </label>
+            <button type="button" class="btn" ng-class="{active: anaType=='rashod'}" ng-click="anaType='rashod'">расходов</button>
+            <button type="button" class="btn" ng-class="{active: anaType=='dohod'}" ng-click="anaType='dohod'">доходов</button>
 
         </div>
         <h5 style="display: inline; padding-left: 60px;">По периодам</h5>
-        <div style="padding-bottom: 7px; display: inline-block; position: relative; top:-4px; padding-left: 12px;">
+        <div style="padding-bottom: 7px; display: inline-block; position: relative; padding-left: 12px;">
 
-            <label class="radio inline">
-              <input type="radio" name="periodCode" value="week" ng-model="periodCode">неделя
-            </label>
-            <label class="radio inline">
-              <input type="radio" name="periodCode" value="month" ng-model="periodCode">месяц
-            </label>
+            <button type="button" class="btn" ng-class="{active: periodCode=='day'}" ng-click="periodCode='day'">день</button>
+            <button type="button" class="btn" ng-class="{active: periodCode=='week'}" ng-click="periodCode='week'">неделя</button>
+            <button type="button" class="btn" ng-class="{active: periodCode=='month'}" ng-click="periodCode='month'">месяц</button>
 
         </div>
 
@@ -71,13 +64,13 @@
                 <tr>
                     <th style="background-color: #f0f0f0; width: 200px; text-align: center;">Категория</th>
                     <th style="background-color: #f0f0f0; width: 92px; text-align: center;" ng-repeat="p in getPeriods()">
-                        {$ p.first $}<br />{$ p.second $}
+                        {$ p.first $}<br /><span style="font-weight: normal;">{$ p.second $}</span>
                     </th>
                 </tr>
             </thead>
             <tbody>
                 <tr ng-show="getDataRowList().length == 0">
-                    <td colspan="7" style="text-align: center; padding: 50px;">Нет операций для отобржения. Начните вести учет.</td>
+                    <td colspan="7" style="text-align: center; padding: 50px;">Нет операций для отобржения. Начните вести учет на вкладке "Учет".</td>
                 </tr>
                 <tr ng-repeat="row in getDataRowList()">
                     <td style="background-color: #f0f0f0; "><div style="text-overflow: ellipsis; white-space: nowrap; overflow: hidden; width: 200px;">{$ row.category $}</div></td>
