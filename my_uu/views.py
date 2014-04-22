@@ -250,7 +250,7 @@ def _getAccountBalanceList(request):
 
 
 def _getCategoryList(request):
-    categoryList = my_uu.models.Category.objects.filter(user=request.user)
+    categoryList = my_uu.models.Category.objects.filter(user=request.user, visible=True)
     categoryList = categoryList.order_by('id')
     return list(categoryList.values('id', 'name'))
 
@@ -268,8 +268,8 @@ def lk_uch(request):
     return render(request, 'lk_uch.html', {
         'uchetRecordsJson': json.dumps(_getUchetRecordsList(request.user.get_profile().getUchetRecordsInViewPeriod()), cls=DjangoJSONEncoder),
         'uTypeList': my_uu.models.UType.objects.all().order_by('id'),
-        'accountList': my_uu.models.Account.objects.filter(user=request.user).order_by('id'),
-        'categoryList': my_uu.models.Category.objects.filter(user=request.user).order_by('id'),
+        'accountList': my_uu.models.Account.objects.filter(user=request.user, visible=True).order_by('id'),
+        'categoryList': my_uu.models.Category.objects.filter(user=request.user, visible=True).order_by('id'),
         'accountBalanceListJson': json.dumps(_getAccountBalanceList(request), cls=DjangoJSONEncoder),
         'categoryListJson': json.dumps(_getCategoryList(request), cls=DjangoJSONEncoder),
         'viewPeriodSetJson': json.dumps(my_uu.models.UserProfile.VIEW_PERIOD_CODE_CHOICES, cls=DjangoJSONEncoder),
