@@ -296,7 +296,7 @@ def lk_acc(request):
     # Результат
     return render(request, 'lk_acc.html', {
         'request': request,
-        'accountListJsonString': simplejson.dumps(list(rowsA)),
+        'accountListJsonString': simplejson.dumps(list(rowsA), use_decimal=True),
     } )
 
 

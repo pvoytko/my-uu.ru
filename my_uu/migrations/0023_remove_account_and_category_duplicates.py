@@ -11,17 +11,17 @@ class Migration(DataMigration):
         from django.db.models import Count
 
         # Переименовываем дупликаты категорий добавляя суффикс 2, 3, 4...
-        print u'Категории'
+        print u'Cat'
         dupes = orm.Category.objects.values('user_id', 'name').annotate(Count('id')).order_by().filter(id__count__gt=1)
         for d in dupes:
             cc = orm.Category.objects.filter(user = d['user_id'], name = d['name']).order_by('id')
-            print cc[0].user.id, cc[0].user.email, cc[0].name, cc.count()
+            print cc[0].user.id, cc[0].user.email, cc[0].name.encode('cp866'), cc.count()
             for n, c in enumerate(cc[1:], start=2):
                 c.name = c.name + u' {0}'.format(n)
                 c.save()
 
         # Переименовываем дупликаты счетов добавляя суффикс 2, 3, 4...
-        print u'Счета'
+        print u'Acc'
         dupes = orm.Account.objects.values('user_id', 'name').annotate(Count('id')).order_by().filter(id__count__gt=1)
         for d in dupes:
             cc = orm.Account.objects.filter(user = d['user_id'], name = d['name']).order_by('id')
