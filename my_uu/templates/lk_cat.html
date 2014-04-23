@@ -328,7 +328,7 @@
             </thead>
             <tbody>
                 <tr ng-repeat="a in accountList" ng-class="{ 'row_not_visible': !a.visible }" id="{$ a.id $}">
-                    <td class="move_panel"><div>↕</div></td>
+                    <td class="move_panel" title="Потяните, чтобы изменить порядок"><div>↕</div></td>
                     <td class="ellipsis">{$ a.name $}</td>
                     <td style="text-align: center;">{$ display(a).opCount $}</td>
                     <td style="text-align: center;">{$ display(a).visible $}</td>
