@@ -238,7 +238,7 @@ def _getUchetRecordsList(uchetRecords):
 def _getAccountBalanceList(request):
     accountBalanceList = my_uu.models.Account.objects.filter(user=request.user, visible=True)
     accountBalanceList = accountBalanceList.annotate(balance = Sum('uchet__sum'))
-    accountBalanceList = accountBalanceList.order_by('position')
+    accountBalanceList = accountBalanceList.order_by('position', 'id')
     if len(accountBalanceList) > 28:
         raise RuntimeError('Слишком большое количество счетов, интерфейс пока не рассчитан на такое количество.')
     ll = list(accountBalanceList.values('id', 'name', 'balance', 'balance_start'))
@@ -251,7 +251,7 @@ def _getAccountBalanceList(request):
 
 def _getCategoryList(request):
     categoryList = my_uu.models.Category.objects.filter(user=request.user, visible=True)
-    categoryList = categoryList.order_by('id')
+    categoryList = categoryList.order_by('position', 'id')
     return list(categoryList.values('id', 'name'))
 
 
@@ -268,8 +268,8 @@ def lk_uch(request):
     return render(request, 'lk_uch.html', {
         'uchetRecordsJson': json.dumps(_getUchetRecordsList(request.user.get_profile().getUchetRecordsInViewPeriod()), cls=DjangoJSONEncoder),
         'uTypeList': my_uu.models.UType.objects.all().order_by('id'),
-        'accountList': my_uu.models.Account.objects.filter(user=request.user, visible=True).order_by('id'),
-        'categoryList': my_uu.models.Category.objects.filter(user=request.user, visible=True).order_by('id'),
+        'accountList': my_uu.models.Account.objects.filter(user=request.user, visible=True).order_by('position', 'id'),
+        'categoryList': my_uu.models.Category.objects.filter(user=request.user, visible=True).order_by('position', 'id'),
         'accountBalanceListJson': json.dumps(_getAccountBalanceList(request), cls=DjangoJSONEncoder),
         'categoryListJson': json.dumps(_getCategoryList(request), cls=DjangoJSONEncoder),
         'viewPeriodSetJson': json.dumps(my_uu.models.UserProfile.VIEW_PERIOD_CODE_CHOICES, cls=DjangoJSONEncoder),
@@ -669,40 +669,17 @@ def lk_exp_csv(request):
     res = u""
     plainTextContentType = "text/plain; charset=utf-8"
 
-    def uchetToPlainText(u, replaceCategoryName = None):
-        category = u.category.name
-        if replaceCategoryName:
-            category = replaceCategoryName
-        return u"{0};руб;{1};{2};{3};{4}\n".format(u.sum, category, u.account.name, u.date, u.comment)
+    def uchetToPlainText(u):
+        typeStr = {
+            my_uu.models.UType.RASHOD: u'Расход',
+            my_uu.models.UType.DOHOD: u'Доход',
+            my_uu.models.UType.PEREVOD: u'Перевод',
+        }[u.utype.id]
+        return u"{0};{1};{2};руб;{3};{4};{5}\n".format(u.date.strftime("%d.%m.%Y"), typeStr, u.sum, u.account.name, u.category.name, u.comment)
 
     # Проходим все операции
     for u in request.user.uchet_set.order_by('date').all():
-
-        category = u.category.name
-
-        # Если операция перевода, то для нее создаем вместо категории - для расходной - КУДА, для доходной - ОТКУДА
-        # if u.utype.id == my_uu.models.UType.PEREVOD:
-        #     if u.sum < 0:
-        #         corUchet = request.user.uchet_set.filter(date = u.date, utype = u.utype, sum = -u.sum, comment = u.comment)
-        #     if u.sum > 0:
-        #         corUchet = request.user.uchet_set.filter(date = u.date, utype = u.utype, sum = -u.sum, comment = u.comment)
-        #     if corUchet.count() == 0:
-        #         errMsg = u'Ошибка.\n'
-        #         errMsg += u'Для указаной ниже ошибочной операции перевода не найдена парная ей операция перевода.\n'
-        #         errMsg += u'Для каждой операции перевода должна быть ровно одна парная ей операция перевода: с той же суммой, только с противоположным знаком, от той же даты, с тем же комментарием.\n'
-        #         errMsg += u'Ошибочная операция перевода:\n'
-        #         errMsg += uchetToPlainText(u)
-        #         return HttpResponse(errMsg, content_type=plainTextContentType)
-        #     if corUchet.count() > 1:
-        #         errMsg = u'Ошибка.\n'
-        #         errMsg += u'Для указаной ниже ошибочной операции перевода найдено более одной парной ей операции перевода.\n'
-        #         errMsg += u'Для каждой операции перевода должна быть ровно одна парная ей операция перевода: с той же суммой, только с противоположным знаком, от той же даты, с тем же комментарием.\n'
-        #         errMsg += u'Ошибочная операция перевода:\n'
-        #         errMsg += uchetToPlainText(u)
-        #         return HttpResponse(errMsg, content_type=plainTextContentType)
-        #     category = corUchet[0].account.name
-
-        res += uchetToPlainText(u, category)
+        res += uchetToPlainText(u)
 
     httpResp = HttpResponse(res, content_type=plainTextContentType)
     return httpResp
