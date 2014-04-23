@@ -216,8 +216,10 @@ class Account(models.Model):
         'blank': u'Название счета не должно быть пустым.',
         'max_length': u'Название счета не должно быть более 255 символов длинной.'
     })
-    visible = models.BooleanField()
     balance_start = models.DecimalField(max_digits=11, decimal_places=2, default=0)
+
+    # Видимость, по умолчанию (при регистрации) - счета создаются видимыми
+    visible = models.BooleanField(default=True)
 
     # Дефолтова позиция = 1000, т.о. при добавлениии она всегда бдует в конец ставиться.
     position = models.PositiveIntegerField(default=1000)
@@ -241,7 +243,9 @@ class Category(models.Model):
         'blank': u'Название категории не должно быть пустым.',
         'max_length': u'Название категории не должно быть более 255 символов длинной.'
     })
-    visible = models.BooleanField()
+
+    # Видимость, по умолчанию (при регистрации) - категории создаются видимыми
+    visible = models.BooleanField(default=True)
 
     # Дефолтова позиция = 1000, т.о. при добавлениии она всегда бдует в конец ставиться.
     position = models.PositiveIntegerField(default=1000)
