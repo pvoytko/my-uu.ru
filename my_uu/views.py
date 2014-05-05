@@ -148,10 +148,15 @@ def login_user_ajax(request):
 
         # На разработческой машине можно войти под любым юзером без пароля
         if settings.IS_DEVELOPER_COMP:
-            user = django.contrib.auth.models.User.objects.get(email = data['email'])
+
+            # Находим юзера или записываем None
+            user = django.contrib.auth.models.User.objects.filter(email = data['email'])
+            user = user[0] if user.exists() else None
 
             # Если не выставить бекэнд то потом ошибка при получении юзера.
-            user.backend = "django.contrib.auth.backends.ModelBackend"
+            if user:
+                user.backend = "django.contrib.auth.backends.ModelBackend"
+
         else:
             user = _authenticateByEmailAndPassword(**data)
 
