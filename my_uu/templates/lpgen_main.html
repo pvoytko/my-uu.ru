@@ -318,67 +318,13 @@
     <div class="block block-text is-text" id="block-new15"
          style="display: block;background-position: 0% 0%;background-repeat: no-repeat;border-width: 1px;position: absolute;z-index: 102;top: 556px;height: 54px;width: 499px;anchor-id: #block-new15;left: 20px;background-color: transparent;background-image: none;">
         <p>
-            <strong><span style="color:#(color);"><span
+            <strong><span><span
                     style="font-family: 'lucida sans unicode', 'lucida grande', sans-serif; color: #333399;"><span
                     style="font-size: 24px;">Благодаря использованию сервиса Вы</span></span></span></strong></p>
 
     </div>
 
-    <script>
-
-        function RegCtrl2($scope, $http){
-            $scope.errorText = null;
-            $scope.loading = false;
-            $scope.email = "";
-            $scope.password = "";
-
-            $scope.register = function(){
-                $scope.loading = true;
-                $scope.errorText = '';
-                httpObj = $http({
-                    method: 'POST',
-                    url: '/register_user/',
-                    data: $scope._getDataDictFromScope(),
-                    cache: false,
-                    timeout: 25000
-                });
-                $scope._setupServerCallbacks(httpObj);
-            }
-            $scope._getDataDictFromScope = function(){
-                return {
-                    email: $scope.email,
-                    password: $scope.password
-                };
-            }
-            $scope._setupServerCallbacks = function(httpObj){
-                  httpObj.success(function(resp, status) {
-                      if (resp.status_ok){
-
-                          // Регистрация события-цели
-                          ga('send', 'event', 'goal', 'GOAL_REGISTERED');
-                          yaCounter22867360.reachGoal('GOAL_REGISTERED');
-
-                          window.location = '/lk/';
-                      } else {
-                          $scope.errorText = resp.response;
-                          $scope.loading = false;
-                      }
-                  }).
-                  error(function(data, status) {
-                      // Статус 0 приходит если нет соединения с севером.
-                      if (status == 0){
-                          $scope.errorText = 'Отсутствует соединение с сервером.';
-                      }else{
-                          $scope.errorText = 'Ошибка на сервере. Пожалуйста, повторите попытку позднее или уточние состояние обратившись в службу поддержки.';
-                      }
-                      $scope.loading = false;
-                });
-            }
-        }
-
-    </script>
-
-    <div class="panel panel-warning" style="position: absolute; left: 560px; top: 1450px; z-index: 3000; width: 300px;" ng-controller="RegCtrl2">
+    <div class="panel panel-warning" style="position: absolute; left: 560px; top: 1450px; z-index: 3000; width: 300px;" ng-controller="RegCtrl">
         <div ng-show="loading" style="position: absolute; width: 100%; top: 38px; bottom: 0px; background-color: white; opacity: 0.95; text-align: center; font-size: 19px; font-weight: bold; padding: 20px; padding-top: 60px;">
             Загрузка, <br />подождите 30 секунд...
         </div>
@@ -422,7 +368,7 @@
     </div>
 
     <div class="block block-text is-text" id="block-new24"
-         style="display: block;background-position: 0% 0%;background-repeat: no-repeat;border-width: 1px;position: absolute;z-index: 102;top: 1406px;height: 54px;width: 499px;anchor-id: #block-new24;left: 20px;background-color: transparent;background-image: none;">
+         style="display: block;background-position: 0% 0%;background-repeat: no-repeat;border-width: 1px;position: absolute;z-index: 102;top: 1416px;height: 54px;width: 499px;anchor-id: #block-new24;left: 20px;background-color: transparent;background-image: none;">
         <p>
             <strong><span style="color: #333399;"><span
                     style="font-family: 'lucida sans unicode', 'lucida grande', sans-serif;"><span
@@ -430,31 +376,19 @@
 
     </div>
 
-    <div style="position: absolute; top: 1803px; left: 533px; z-index: 300;">
-        <!-- Start Z-Payment -->
-        <a href="http://www.z-payment.com" target="_blank"><img src="http://www.z-payment.com/images/banners/pay-88-31.gif" alt="Принимаем Z-Payment" border="0" /></a><br />
-        <!-- end Z-Payment -->
-    </div>
-
-
-    <div style="position: absolute; top: 1783px; left: 22px; z-index: 300;">
-        "Мой Удобный Учет", интернет-севис учета личных и семейных расходов и доходов. <br />
-        Автор: Войтко Павел, телефон: +7 (915) 170-64-82 <br />
-        Адрес: Москва, 2-й проезд Марьиной Рощи, 11/15-15.
-    </div>
-
     <div class="block block-box is-box" id="block-new27"
-         style="display: block;background-position: 0% 0%;background-repeat: no-repeat;border-width: 1px;position: absolute;z-index: 107;border-radius: 18px;border-color: #cccccc;top: 1773px;height: 73px;width: 859px;anchor-id: #block-new27;border-style: solid;background-color: #cccccc;left: 0;background-image: none; margin-bottom: 30px; padding-top: 26px; padding-left: 15px;">
-        <div class="pull-right" style="padding-right: 15px; position: relative; top: -16px;">Служба поддержки пользователей: <a href="mailto:support@my-uu.ru">support@my-uu.ru</a></div>
+         style="display: block;background-position: 0% 0%;background-repeat: no-repeat;border-width: 1px;position: absolute;z-index: 107;border-radius: 18px;border-color: #cccccc;top: 1803px;height: 73px;width: 859px;anchor-id: #block-new27;border-style: solid;background-color: #cccccc;left: 0;background-image: none; margin-bottom: 30px; padding-top: 26px; padding-left: 15px;">
+        Мой Удобный Учет 2014
+        <div class="pull-right" style="padding-right: 15px;">Служба поддержки пользователей: <a href="mailto:support@my-uu.ru">support@my-uu.ru</a></div>
     </div>
 
     <!-- Задает высоту страницы-->
-    <div style="position: absolute; top: 1860px; left: 100px;">&nbsp;</div>
+    <div style="position: absolute; top: 1890px; left: 100px;">&nbsp;</div>
 
     <div class="block block-text is-text" id="block-new28"
-         style="display: block;background-position: 0% 0%;background-repeat: no-repeat;border-width: 1px;position: absolute;z-index: 103;top: 1449px;height: 110px;width: 519px;anchor-id: #block-new28;left: 20px;background-color: transparent;background-image: none;">
+         style="display: block;background-position: 0% 0%;background-repeat: no-repeat;border-width: 1px;position: absolute;z-index: 103;top: 1469px;height: 110px;width: 819px;anchor-id: #block-new28;left: 20px;background-color: transparent;background-image: none;">
         <p>
-            <font size="3">Первый месяц использования сервиса бесплатен. Далее можно продолжить пользоваться сервисом в одном из двух режимов: бесплатный (с ограничениями), платный – 1 рубль в день (без ограничений).</font></p>
+            <font size="3">В настоящее время сервис&nbsp;<strong>полностью бесплатен</strong>.&nbsp;</font></p>
 
         <p>
             <span style="font-size: medium;">Для учета расходов вам потребуется <strong>3-5 минут</strong> раз в день.</span>

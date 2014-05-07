@@ -133,7 +133,7 @@ class UserProfile(models.Model):
 
         return maxDate
 
-    # Возвращает количество дней учета для этого юзера (используется на странице "Оплата"
+    # Возвращает количество дней учета для этого юзера (используется на странице "Оплата") и для отображени ее в меню.
     def getUchetDaysCount(self):
         uchetRecords = Uchet.objects.filter(user = self.user)
         return uchetRecords.values_list('date', flat=True).distinct().count()
@@ -230,6 +230,11 @@ class UserProfile(models.Model):
     # Возвращает текстовое описание текущего режима работы с сервисом (на странице "Оплата")
     def getPayModeDescription(self):
         return self.getPayModeCodeAndDescr()[1]
+
+    # Возвращает True если 20 дней учета добавлено.
+    # Используется чтобы показать страницу "Оплата" для таких юзеров.
+    def is20DaysUser(self):
+        return self.getUchetDaysCount() >= 20
 
 
 # Счет
