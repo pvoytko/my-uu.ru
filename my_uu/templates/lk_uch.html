@@ -190,6 +190,14 @@
         </div>
         <div class="modal-body" ng-show="showAddUchetDialog">
 
+            {% ifnotequal get5DaysPaidLeft None %}
+                <div class="alert alert-info">
+                    Режим "Оплаченный" будет действовать сегодня и <strong>еще {{ get5DaysPaidLeft }} дней</strong>.
+                    Затем потребуется произвести оплату для добавления новых операций учета.
+                    Для оплаты пройдите на страницу <a href="{% url 'my_uu.views.lk_pay' %}"><strong>"Оплата"</strong></a>.
+                </div>
+            {% endifnotequal %}
+
             <form class="form-horizontal" ng-enter="closeDlg()">
                 <div class="control-group">
                     <label class="control-label">Операция</label>

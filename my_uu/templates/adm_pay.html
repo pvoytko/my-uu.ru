@@ -1,0 +1,48 @@
+<!doctype html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>Мой Удобный Учет</title>
+    <link rel="stylesheet" href="/static/css/common.css" />
+    <link rel="stylesheet" href="http://code.jquery.com/ui/1.10.3/themes/redmond/jquery-ui.css" />
+    <script src="http://code.jquery.com/jquery-1.9.1.js"></script>
+    <link href="{{ STATIC_URL }}libs/bootstrap/css/bootstrap.min.css" rel="stylesheet" media="screen">
+    <script src="{{ STATIC_URL }}libs/bootstrap/js/bootstrap.min.js"></script>
+    <link rel="shortcut icon" type="image/png" href="{{ STATIC_URL }}img/favicon.png"/>
+</head>
+
+<body>
+
+    <div class="page_content_container">
+
+        <a class="logo__text" href="{% url 'my_uu.views.main' %} " >
+            «Мой Удобный Учет»
+        </a>
+
+        <div>
+            <h5>Платежи</h5>
+        </div>
+
+        <table class="table table-condensed table-striped">
+            <tr>
+                <th>ID и мыло</th>
+                <th>Сумма</th>
+                <th>Дней к оплате</th>
+                <th>Время оплаты ↓</th>
+                <th>Период действия платежа</th>
+            </tr>
+            {% for record in pays %}
+                <tr>
+                    <td style="padding-right: 25px;">{{ record.user.id }} {{ record.user.email }}</td>
+                    <td style="padding-right: 25px;">{{ record.sum_formatted }}</td>
+                    <td style="padding-right: 25px;">{{ record.days }}</td>
+                    <td style="padding-right: 25px;">{{ record.date_payment }}</td>
+                    <td style="padding-right: 25px;">{{ record.from_to_period }}</td>
+                </tr>
+            {% endfor %}
+        </table>
+
+    </div>
+
+
+</body>
+</html>

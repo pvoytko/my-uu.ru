@@ -236,6 +236,19 @@ class UserProfile(models.Model):
     def is20DaysUser(self):
         return self.getUchetDaysCount() >= 20
 
+    # Возвращает 0-5 если осталось 0-5 дней оплаченнго режима или меенее, и None если текущий режим не оплаченный
+    # или дней осталось другое количество. Используется чтобы напомнить юзерам что скоро придет пора плаить.
+    # Шоб они платили заранее. В диалоге внесения учета.
+    def get5DaysPaidLeft(self):
+        paidMode = self.getPayModeCodeAndDescr()[0] == UserProfile.PAY_MODE_PAID
+        if not paidMode:
+            return None
+        daysLeft = (self.getPaidByDate() - datetime.date.today()).days
+        if daysLeft > 5:
+            return None
+        return daysLeft
+
+
 
 # Счет
 class Account(models.Model):
@@ -353,6 +366,7 @@ class EventLog(models.Model):
     EVENT_VISIT_CATEGORIES = (34, "Заход на страницу категорий")
     EVENT_REORDER_ACCOUNTS = (35, "Изменен порядок счетов")
     EVENT_REORDER_CATEGORIES = (36, "Изменен порядок категорий")
+    EVENT_5DAYS_PAID_LEFT_MESSAGE = (37, 'Отослана страница с сообщением "5 и менее дней оплаты осталось"')
 
     user = models.ForeignKey(django.contrib.auth.models.User)
     datetime = models.DateTimeField(auto_now_add=True)

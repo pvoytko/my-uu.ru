@@ -270,6 +270,11 @@ def lk_uch(request):
     if not showAddUchetDialog:
         uuTrackEventDynamic(request.user, my_uu.models.EventLog.EVENT_PAYMENT_NEED_DIALOG)
 
+    # Определяем надо ли показать юзеру сообщение что осталось менее 5 дней
+    get5DaysPaidLeft = request.user.get_profile().get5DaysPaidLeft()
+    if get5DaysPaidLeft:
+        uuTrackEventDynamic(request.user, my_uu.models.EventLog.EVENT_5DAYS_PAID_LEFT_MESSAGE)
+
     return render(request, 'lk_uch.html', {
         'uchetRecordsJson': json.dumps(_getUchetRecordsList(request.user.get_profile().getUchetRecordsInViewPeriod()), cls=DjangoJSONEncoder),
         'uTypeList': my_uu.models.UType.objects.all().order_by('id'),
@@ -280,7 +285,8 @@ def lk_uch(request):
         'viewPeriodSetJson': json.dumps(my_uu.models.UserProfile.VIEW_PERIOD_CODE_CHOICES, cls=DjangoJSONEncoder),
         'viewPeriodMonthSetJson': json.dumps((request.user.get_profile().getUchetMonthSet()), cls=DjangoJSONEncoder),
         'viewPeriodCodeJson': json.dumps(request.user.get_profile().view_period_code),
-        'showAddUchetDialog': 1 if showAddUchetDialog else 0 # 1 или 0 - т.к. JS не понимает True / False
+        'showAddUchetDialog': 1 if showAddUchetDialog else 0, # 1 или 0 - т.к. JS не понимает True / False
+        'get5DaysPaidLeft': get5DaysPaidLeft,
     })
 
 
@@ -1243,3 +1249,28 @@ def do_order_ajax(request):
 def adm_test(request):
     if request.POST and request.POST['command'] == 'request':
         return my_uu.utils.sendFeedbackRequest(my_uu.models.User.objects.get(email = 'pvoytko@gmail.com'))
+
+# Это страница со списком выполненных платежей.
+@uuAdmLoginRequired
+@uuRenderWith('adm_pay.html')
+def adm_pay(request):
+
+    pays = my_uu.models.Payment.objects.filter(date_payment__isnull = False).order_by('date_payment')
+    return locals()
+
+
+# Это страница со списком юзеров которые оплатили.
+@uuAdmLoginRequired
+@uuRenderWith('adm_upay.html')
+def adm_upay(request):
+
+    upays = my_uu.models.Payment.objects.filter(date_payment__isnull = False).values(
+        'user__id',
+        'user__email'
+    ).annotate(
+        sum = Sum('sum'),
+        cnt = Count('id'),
+        date_pay_last = Max('date_payment'),
+        date_max = Max('date_to')
+    ).order_by('date_max')
+    return locals()

@@ -58,8 +58,10 @@ urlpatterns = patterns('',
     url(r'^adm/exp/$', 'my_uu.views.adm_exp'),
     url(r'^adm/exp_reg/$', 'my_uu.views.adm_exp_reg'),
     url(r'^adm/test/$', 'my_uu.views.adm_test'),
+    url(r'^adm/pay/$', 'my_uu.views.adm_pay'),
+    url(r'^adm/upay/$', 'my_uu.views.adm_upay'),
 
-    # Отписаться юзеру (без регистрации)
+    # Отписаться юзеру (без авторизации)
     url(r'^unsubscr/(?P<obfuscatedUserId>\d+)/$', 'my_uu.views.unsubscr_view'),
     url(r'^unsubscr/(?P<obfuscatedUserId>\d+)/do/$', 'my_uu.views.unsubscr_do'),
 
