@@ -272,7 +272,7 @@ def lk_uch(request):
 
     # Определяем надо ли показать юзеру сообщение что осталось менее 5 дней
     get5DaysPaidLeft = request.user.get_profile().get5DaysPaidLeft()
-    if get5DaysPaidLeft:
+    if not (get5DaysPaidLeft is None):
         uuTrackEventDynamic(request.user, my_uu.models.EventLog.EVENT_5DAYS_PAID_LEFT_MESSAGE)
 
     return render(request, 'lk_uch.html', {
