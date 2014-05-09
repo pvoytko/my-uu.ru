@@ -15,7 +15,7 @@ class Migration(DataMigration):
             print u.id
             if u.id <= 532:
                 u.manualsteps.datetime_cancel = datetime.datetime(2014, 5, 9, 0, 0, 0)
-                u.save()
+                u.manualsteps.save()
 
     def backwards(self, orm):
         raise RuntimeError('Not implemented')
