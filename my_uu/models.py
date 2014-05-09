@@ -249,6 +249,16 @@ class UserProfile(models.Model):
         return daysLeft
 
 
+# Шаги руководства
+class ManualSteps(models.Model):
+    user = models.OneToOneField(django.contrib.auth.models.User)
+
+    # Если юзер отвечает "Да, хочу получить" в этот момет сюда пишется дата-время
+    datetime_subscribe = models.DateTimeField(null = True)
+
+    # Если юзер отвечает "Нет, не хочу" или отписывается позже то сюда пишется дата-время
+    datetime_cancel = models.DateTimeField(null = True)
+
 
 # Счет
 class Account(models.Model):
@@ -367,6 +377,7 @@ class EventLog(models.Model):
     EVENT_REORDER_ACCOUNTS = (35, "Изменен порядок счетов")
     EVENT_REORDER_CATEGORIES = (36, "Изменен порядок категорий")
     EVENT_5DAYS_PAID_LEFT_MESSAGE = (37, 'Отослана страница с сообщением "5 и менее дней оплаты осталось"')
+    EVENT_SAVE_MANUAL_ANSWER = (38, 'Сохранен ответ по руководству')
 
     user = models.ForeignKey(django.contrib.auth.models.User)
     datetime = models.DateTimeField(auto_now_add=True)

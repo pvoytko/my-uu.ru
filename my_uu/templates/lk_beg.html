@@ -6,6 +6,113 @@
 
 {% block lk_content %}
 
+    <!-- Диалог подписка на рукводство -->
+    <script>
+        function ManualCtrl($scope, $element){
+
+            // Отобразить если с сервера пришло True
+            // А приходит True только если ране не показывалось уже.
+            {% if showManualStepsIfNotDisplayedEarler %}
+                $($element).modal('show');
+            {% endif %}
+
+            $scope.saving = false;
+            $scope.answer = undefined;
+
+            $scope.processAnswer = function(boolYes) {
+
+                // Отправляем на сервер порядок для сохранения
+                $scope.saving = true;
+                var prom = $.post(
+                    "{% url 'my_uu.views.lk_save_manual_answer_ajax' %}",
+                    JSON.stringify(boolYes)
+                ).done(function(){
+                    $scope.$apply(function($scope){
+                        $scope.saving = false;
+                        $scope.answer = boolYes;
+                    });
+                }).error(function(obj, err, textCode){
+                    $scope.saving = false;
+                    uuJqReqFail(textCode, 'Ваш ответ НЕ сохранен, Вы НЕ получите руководства.');
+                });
+            }
+
+            $scope.closeDlg = function() {
+                $($element).modal('hide');
+            }
+        }
+    </script>
+    <div class="modal hide" data-keyboard="true" ng-controller="ManualCtrl" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+                    <h4>Получите пошаговое руководство</h4>
+                </div>
+                <div class="modal-body">
+
+                    <div style="position: relative;">
+                        <div ng-style="{'visibility': (answer === undefined) && (!saving) ? 'visible' : 'hidden' }">
+                            <p>
+                                Вы зарегистрированы. Через минуту Вы сможете ознакомиться с сервисом.
+                            </p>
+                            <p>
+                                Сейчас предлагаем Вам серию шагов на емейл, следуя которым, Вы:
+                            </p>
+                            <ul>
+                                <li>Научитесь работать с сервисом
+                                <li>Научитесь правильно вести учет
+                                <li>Избежите типовых ошибок при учете
+                                <li>Сформируете у себя эту полезную привычку
+                                <li>В итоге: обретёте контроль над расходами, составите бюджет</li>
+                            </ul>
+                            <p>
+                                Бесплатно. Отписаться можно в любой момент. Выберите ответ.
+                            </p>
+                        </div>
+                        <div class="alert alert-info"  style="position: absolute; top: 0px;" ng-show="saving">
+                            <strong>Ваш ответ сохраняется, ждите 15 секунд...</strong>
+                        </div>
+                        <div ng-if="answer !== undefined" style="position: absolute; top: 0px;">
+                            <p>
+                                Ваш ответ сохранен.
+                            </p>
+                            <div ng-show="answer === true">
+                                <p>
+                                    В ближайшее время к Вам на емейл придет первое сообщение с темой
+                                    <pre>[my-uu.ru] Пошаговое руководство</pre>
+                                </p>
+                            </div>
+                            <p>
+                                Сейчас Вы можете познакомиться с сервисом.
+                            </p>
+                        </div>
+                    </div>
+
+                </div>
+                <div class="modal-footer" ng-if="answer === undefined">
+                    <button type="button" ng-click="processAnswer(true)" class="btn btn-large btn-success pull-right">Да, хочу получить</button>
+                    <button type="button" ng-click="processAnswer(false)" class="btn pull-left btn-large btn-danger" style="margin-right: 15px;">Нет, не хочу</button>
+                </div>
+                <div class="modal-footer" ng-if="answer !== undefined" style="text-align: center;">
+                    <button type="button" ng-click="closeDlg()" class="btn btn-large btn-info">Закрыть</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <p style="margin: 10px 0;"><strong>
+        Посмотрите таблицы ниже.
+    </strong></p>
+
+    <p style="margin: 10px 0;"><strong>
+        Такие таблицы, но с Вашими данными, Вы увидите в этом сервисе, если начнете вести учет.
+    </strong></p>
+
+    <p style="margin: 10px 0;"><strong>
+        Ценность от ведения учета заключена именно в них.
+    </strong></p>
+
     <p style="margin: 10px 0;"><strong>
         Посмотрите таблицу "Расходы по категориям".
     </strong></p>
@@ -18,37 +125,33 @@
     <img src="{{STATIC_URL}}img/screen-2014_02-02.png" width="80%" style="padding: 20px; background-color: lightblue;"/>
 
     <p style="margin: 10px 0;"><strong>
-        Такие таблицы Вы увидите в этом сервисе, если начнете вести учет.
-    </strong></p>
-
-    <p style="margin: 10px 0;"><strong>
-        Вся ценность от ведения учета заключена именно в них. Такие же таблицы, но с Вашими данными, помогут Вам:
+        Такие таблицы помогут Вам:
     </strong></p>
 
     <p style="margin: 10px 0;"><strong>
         1. Знать правду о себе:
     </strong></p>
     <ul>
-        <li>Видеть куда «деваются» деньги, очевидно на 100%.</li>
-        <li>Видеть ошибочные траты, покупки (и исправлять ошибки в будущем). Ошибки "не забудутся".</li>
-        <li>Видеть сколько денег есть сейчас (принять правильное решение о покупке сейчас).</li>
-        <li>Видеть сумму долгов сейчас (свои и себе).</li>
-        <li>Видеть как меняются траты по какой-то категории при изменении (смена жилья, смена магазина закупа продуктов).</li>
-        <li>Видеть сколько денег в месяц нужно на текущую жизнь.</li>
+        <li>Видеть куда «деваются» деньги, очевидно на 100% = контроль расходов.</li>
+        <li>Видеть ошибочные траты и покупки = нет лишних расходов.</li>
+        <li>Видеть сколько денег есть сейчас = принять правильные решения о покупках.</li>
+        <li>Видеть сумму долгов сейчас, свои и себе = долги на контроле и не забудутся.</li>
+        <li>Видеть как смена жилья, питания, другие жизненные события сказывается на величину расходов.</li>
+        <li>Видеть сколько точно денег нужно в месяц на текущую жизнь.</li>
     </ul>
     <p style="margin: 10px 0;"><strong>
         2. Экономить время и деньги:
     </strong></p>
     <ul>
-        <li>Видеть с чего начать экономию (с самых затратных категорий).</li>
+        <li>Видеть наиболее затратные категории, начинать экономию с них.</li>
         <li>Придумывать идеи по экономии, моментально оценивать их выгодность.</li>
         <li>Внедрять идеи по экономии и отслеживать эффект.</li>
-        <li>Увидеть, почему появляются новые долги, понять, как рассчитаться с ними.</li>
-        <li>Избежать образования новых долгов (долги - это лишние траты времени, денег, энергии).</li>
+        <li>Видеть, почему появляются новые долги, понять, как рассчитаться с ними.</li>
+        <li>Избежать образования новых долгов, а значит экономить время, деньги, энергию.</li>
         <li>Зарабатывать столько, сколько нужно, не тратить лишнее время на работу.</li>
     </ul>
     <p style="margin: 10px 0;"><strong>
-        3. Мотивироваться на действия, точнее планировать, больше зарабатывать:
+        3. Точнее планировать, мотивироваться больше зарабатывать:
     </strong></p>
     <ul>
         <li>Позволяет составить бюджет (план трат) на следующий месяц или год.</li>
@@ -56,7 +159,7 @@
         <li>Мотивироваться на действия для увеличение дохода (видно сколько не хватает на "крупное желание").</li>
     </ul>
     <p style="margin: 10px 0;"><strong>
-        Хотите этого? Если ДА, тогда Вам нужно сейчас сделать следующее:
+        Пошаговый алгоритм ведения учета:
     </strong></p>
     <ol>
         <li>Запишите сейчас расходы за сегодня на вкладке «Учет»: 3 мин.</li>

@@ -23,6 +23,21 @@ import datetime
 import my_uu.models
 import my_uu.utils
 
+# http://djangosnippets.org/snippets/1022/
+def uuRenderWith(template):
+    def render_with_decorator(view_func):
+        def wrapper(*args, **kwargs):
+            request = args[0]
+            context = view_func(*args, **kwargs)
+            return render_to_response(
+                template,
+                context,
+                context_instance=RequestContext(request),
+            )
+        return wrapper
+    return render_with_decorator
+
+
 def _main_imp(request, templateName):
 
     # Если юзер уже прошел аутентификацию посылаем его в ЛК
@@ -98,8 +113,9 @@ def register_user_ajax(request):
             resp.setError(u'Пользователь с таким адресом эл. почты уже зарегистрирован в сервисе. ')
             return resp.buildHttpJsonResponse()
 
-    # Для всех юзеров обязательно создаем профиль (доп. набор полей к джанговской модели юзера)
+    # Для всех юзеров обязательно создаем профиль (доп. набор полей к джанговской модели юзера) и шаги руководства
     profile = my_uu.models.UserProfile.objects.get_or_create(user=u)
+    manualSteps = my_uu.models.ManualSteps.objects.get_or_create(user = u)
 
     # Устанавливаем HTTP Referer для юзера
     import urllib
@@ -231,8 +247,11 @@ def uuTrackEventDynamic(user, eventConstant):
 # Начало
 @uu_login_required
 @uuTrackEventDecor(my_uu.models.EventLog.EVENT_VISIT_BEGIN)
+@uuRenderWith('lk_beg.html')
 def lk_beg(request):
-    return render(request, 'lk_beg.html')
+    ms = request.user.manualsteps
+    showManualStepsIfNotDisplayedEarler = ms.datetime_subscribe is None and ms.datetime_cancel is None
+    return locals()
 
 
 # Преобразует Django-model в список словарьей чтобы можно было JSON выполнить.
@@ -977,21 +996,6 @@ def lk_improove_ajax(request):
     return JsonResponseWithStatusOk()
 
 
-# http://djangosnippets.org/snippets/1022/
-def uuRenderWith(template):
-    def render_with_decorator(view_func):
-        def wrapper(*args, **kwargs):
-            request = args[0]
-            context = view_func(*args, **kwargs)
-            return render_to_response(
-                template,
-                context,
-                context_instance=RequestContext(request),
-            )
-        return wrapper
-    return render_with_decorator
-
-
 # Страница Анализ личного кабиета
 @uuAdmLoginRequired
 @uuRenderWith('adm_act.html')
@@ -1274,3 +1278,21 @@ def adm_upay(request):
         date_max = Max('date_to')
     ).order_by('date_max')
     return locals()
+
+
+# Страница оплаты
+@uu_login_required
+@uuTrackEventDecor(my_uu.models.EventLog.EVENT_SAVE_MANUAL_ANSWER)
+def lk_save_manual_answer_ajax(request):
+    boolYes = json.loads(request.body)
+
+    # Сохраняем ответ в БД
+    ms = request.user.manualsteps
+    dtn = datetime.datetime.now()
+    if boolYes:
+        ms.datetime_subscribe = dtn
+    else:
+        ms.datetime_cancel = dtn
+    ms.save()
+
+    return JsonResponseWithStatusOk()

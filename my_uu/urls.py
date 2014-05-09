@@ -53,6 +53,9 @@ urlpatterns = patterns('',
     url(r'^zpayment_result_url/$', 'my_uu.views.zpayment_result_url'),
     url(r'^do_order_ajax/$', 'my_uu.views.do_order_ajax'),
 
+    # Личный кабинет руководство
+    url(r'^lk/lk_save_manual_answer_ajax/$', 'my_uu.views.lk_save_manual_answer_ajax'),
+
     # Административная часть (Павел Войтко)
     url(r'^adm/act/$', 'my_uu.views.adm_act'),
     url(r'^adm/exp/$', 'my_uu.views.adm_exp'),
