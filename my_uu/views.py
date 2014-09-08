@@ -376,7 +376,7 @@ class AnaWeekIterator(object):
 
     @staticmethod
     def _getWeekNum(date):
-        return date.isocalendar()[1]
+        return (date.isocalendar()[1], date.year)
 
 
     def getWeekIndexForDate(self, date):
