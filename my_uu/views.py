@@ -525,9 +525,9 @@ def ajax_lk_ana(request):
             for c in categoryList:
                 if c.name.find(' - ') >= 0:
                     i = c.name.index(' - ')
-                    gr = c.name[0:i]
+                    gr = u'[' + c.name[0:i] + ']'
                 else:
-                    gr = u'Нет группы'
+                    gr = u'[Нет группы]'
                 if gr not in grList:
                     grList.append(gr)
             return grList
@@ -540,9 +540,9 @@ def ajax_lk_ana(request):
             for c in categoryList:
                 if c.name.find(' - ') >= 0:
                     i = c.name.index(' - ')
-                    gr = c.name[0:i]
+                    gr = u'[' + c.name[0:i] + ']'
                 else:
-                    gr = u'Нет группы'
+                    gr = u'[Нет группы]'
                 if gr == catOrGroup:
                     catFilterList.append(c.name)
             return uchet.filter(category__name__in = catFilterList)
