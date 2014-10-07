@@ -28,6 +28,7 @@ urlpatterns = patterns('',
 
     # Личный кабинет анализ
     url(r'^lk/ana/$', 'my_uu.views.lk_ana'),
+    url(r'^ajax_lk_ana/$', 'my_uu.views.ajax_lk_ana'),
 
     # Личный кабинет счета и категории
     url(r'^lk/acc/$', 'my_uu.views.lk_acc'),

@@ -16,7 +16,63 @@
 {% block lk_content %}
 
     <script>
-        function AnaController($scope){
+
+
+        /* Класс объединяет в себе код, предназначенный для обращения на сервер, загрузке ответа с сервера,
+           и установке флага успешности загрузки: успешно загрузили или была ошибка.
+        */
+        function FromServerLoader(serverApiUrl, $http, postData){
+
+            var self = this;
+
+            // Метод начала загрузки
+            this.load = function(serverApiUrl, $http, postData){
+                self.api = undefined;
+                self._isSuccessFlag = false;
+                self._isErrorFlag = false;
+                self._serverErrorCode = 0;
+                var httpMethod = function(url){
+                    if (postData){
+                        return $http.post(url, postData);
+                    }
+                    else{
+                        return $http.get(url);
+                    }
+                };
+                httpMethod(serverApiUrl).
+                    success(function(data) {
+                        self.api = data;
+                        self._isSuccessFlag = true;
+                    }).error(function(data, code){
+                        self._isErrorFlag = true;
+
+                        // Если отпал инет или отменена загрузка (клик по ссылке) или упал сервер то код будет 0
+                        self._serverErrorCode = code;
+                    });
+            }
+            // Выдает true пока ждем ответ от сервера
+            this.isLoading = function(){
+                return (!self._isErrorFlag && ! self._isSuccessFlag);
+            }
+            // Выдает true когда получен 200 ответ от сервера
+            this.isSuccess = function(){
+                return self._isSuccessFlag;
+            }
+            // Выдает true когда ответ от сервера не получен
+            this.isUnknownError = function(){
+                return self._isErrorFlag && (self._serverErrorCode == 0);
+            }
+            // Выдает true когда от сервера получен ответ с кодом ошибки
+            this.isServerError = function(){
+                return self._isErrorFlag && (self._serverErrorCode != 0);
+            }
+
+            // Начальная загрузка
+            this.load(serverApiUrl, $http, postData);
+        }
+
+
+        function AnaController($scope, $http){
 
             $scope.periodCode = 'day';
             $scope.anaType = 'rashod';
@@ -31,11 +87,35 @@
             //     },
             //     ...
             // }
-            $scope.pageData = {{ pageData|safe }};
 
-            $scope.getDataRowList = function(){ return $scope.pageData['dataRows'][$scope.anaType + '-' + $scope.periodCode] };
-            $scope.getTotalRow = function(){ return $scope.pageData['totalRow'][$scope.anaType + '-' + $scope.periodCode]; };
-            $scope.getPeriods = function(){ return $scope.pageData['periods'][$scope.anaType + '-' + $scope.periodCode]; };
+            // Загрузка данных с сервера
+            $scope.load = function(){
+                $scope.loader = new FromServerLoader('/ajax_lk_ana/', $http, {
+                    periodCode: $scope.periodCode,
+                    anaType: $scope.anaType
+                });
+            };
+            $scope.load();
+
+            // Перегрузка данных при изменении
+            $scope.$watch('periodCode', function(newValue, oldValue) { if (newValue != oldValue) { $scope.load(); }; });
+            $scope.$watch('anaType', function(newValue, oldValue) { if (newValue != oldValue) { $scope.load(); }; });
+
+            $scope.getDataRowList = function(){
+                return $scope.loader.api.pageData['dataRows'][$scope.anaType + '-' + $scope.periodCode]
+            };
+            $scope.getTotalRow = function(){
+                return $scope.loader.api.pageData['totalRow'][$scope.anaType + '-' + $scope.periodCode];
+            };
+            $scope.getPeriods = function(){
+                return $scope.loader.api.pageData['periods'][$scope.anaType + '-' + $scope.periodCode];
+            };
+            $scope.getCatCaption = function(){
+                return "Категории"
+            };
+            $scope.getTotCaption = function(){
+                return $scope.anaType == 'rashod' ? "Расходы всего" : "Доходы всего"
+            };
         }
     </script>
 
@@ -58,33 +138,46 @@
 
         </div>
 
-        <!-- Таблица с периодами, категориями, суммами -->
-        <table class="table table-hover table-condensed table-bordered" style="width: auto;" ng-cloak>
-            <thead>
-                <tr>
-                    <th style="background-color: #f0f0f0; width: 200px; text-align: center;">Категория</th>
-                    <th style="background-color: #f0f0f0; width: 92px; text-align: center;" ng-repeat="p in getPeriods()">
-                        {$ p.first $}<br /><span style="font-weight: normal;">{$ p.second $}</span>
-                    </th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr ng-show="getDataRowList().length == 0">
-                    <td colspan="7" style="text-align: center; padding: 50px;">Нет операций для отобржения. Начните вести учет на вкладке "Учет".</td>
-                </tr>
-                <tr ng-repeat="row in getDataRowList()">
-                    <td style="background-color: #f0f0f0; "><div style="text-overflow: ellipsis; white-space: nowrap; overflow: hidden; width: 200px;">{$ row.category $}</div></td>
-                    <td ng-repeat="i in row.data track by $index" style="text-align: right;">{$ i $}</td>
-                </tr>
-                <tr>
-                    <td style="background-color: #f0f0f0; font-weight: bold; text-align: right;">
-                        <span ng-if="anaType == 'rashod'">Расходы всего</span>
-                        <span ng-if="anaType == 'dohod'">Доходы всего</span>
-                    </td>
-                    <td ng-repeat="i in getTotalRow() track by $index" style="background-color: #f0f0f0; text-align: right; font-weight: bold;">{$ i $}</td>
-                </tr>
-            </tbody>
-        </table>
+        <div ng-if="loader.isLoading()" class="alert alert-warning">
+            Загрузка данных с сервера, подождите, пожалуйста, до 30 секунд...
+        </div>
+        <div ng-if="loader.isSuccess()">
+
+            <!-- Таблица с периодами, категориями, суммами -->
+            <table class="table table-hover table-condensed table-bordered" style="width: auto;" ng-cloak>
+                <thead>
+                    <tr>
+                        <th style="background-color: #f0f0f0; width: 200px; text-align: center;">{$ getCatCaption() $}</th>
+                        <th style="background-color: #f0f0f0; width: 92px; text-align: center;" ng-repeat="p in getPeriods()">
+                            {$ p.first $}<br /><span style="font-weight: normal;">{$ p.second $}</span>
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr ng-show="getDataRowList().length == 0">
+                        <td colspan="7" style="text-align: center; padding: 50px;">Нет операций для отобржения. Начните вести учет на вкладке "Учет".</td>
+                    </tr>
+                    <tr ng-repeat="row in getDataRowList()">
+                        <td style="background-color: #f0f0f0; "><div style="text-overflow: ellipsis; white-space: nowrap; overflow: hidden; width: 200px;">{$ row.category $}</div></td>
+                        <td ng-repeat="i in row.data track by $index" style="text-align: right;">{$ i $}</td>
+                    </tr>
+                    <tr>
+                        <td style="background-color: #f0f0f0; font-weight: bold; text-align: right;">
+                            <span>{$ getTotCaption() $}</span>
+                        </td>
+                        <td ng-repeat="i in getTotalRow() track by $index" style="background-color: #f0f0f0; text-align: right; font-weight: bold;">{$ i $}</td>
+                    </tr>
+                </tbody>
+            </table>
+
+        </div>
+        <div ng-if="loader.isUnknownError()" class="alert alert-danger">
+            Нет связи с сервером. Повторите попытку позже, пожалуйста, или обратитесь в службу поддержки.
+        </div>
+        <div ng-if="loader.isServerError()" class="alert alert-danger">
+            Ошибка на сервере. Повторите попытку позже, пожалуйста, или обратитесь в службу поддержки.
+        </div>
+
 
     </div>
 
