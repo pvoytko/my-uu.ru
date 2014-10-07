@@ -138,44 +138,48 @@
 
         </div>
 
-        <div ng-if="loader.isLoading()" class="alert alert-warning">
-            Загрузка данных с сервера, подождите, пожалуйста, до 30 секунд...
-        </div>
-        <div ng-if="loader.isSuccess()">
+        <div ng-cloak>
 
-            <!-- Таблица с периодами, категориями, суммами -->
-            <table class="table table-hover table-condensed table-bordered" style="width: auto;" ng-cloak>
-                <thead>
-                    <tr>
-                        <th style="background-color: #f0f0f0; width: 200px; text-align: center;">{$ getCatCaption() $}</th>
-                        <th style="background-color: #f0f0f0; width: 92px; text-align: center;" ng-repeat="p in getPeriods()">
-                            {$ p.first $}<br /><span style="font-weight: normal;">{$ p.second $}</span>
-                        </th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr ng-show="getDataRowList().length == 0">
-                        <td colspan="7" style="text-align: center; padding: 50px;">Нет операций для отобржения. Начните вести учет на вкладке "Учет".</td>
-                    </tr>
-                    <tr ng-repeat="row in getDataRowList()">
-                        <td style="background-color: #f0f0f0; "><div style="text-overflow: ellipsis; white-space: nowrap; overflow: hidden; width: 200px;">{$ row.category $}</div></td>
-                        <td ng-repeat="i in row.data track by $index" style="text-align: right;">{$ i $}</td>
-                    </tr>
-                    <tr>
-                        <td style="background-color: #f0f0f0; font-weight: bold; text-align: right;">
-                            <span>{$ getTotCaption() $}</span>
-                        </td>
-                        <td ng-repeat="i in getTotalRow() track by $index" style="background-color: #f0f0f0; text-align: right; font-weight: bold;">{$ i $}</td>
-                    </tr>
-                </tbody>
-            </table>
+            <div ng-if="loader.isLoading()" class="alert alert-warning">
+                Загрузка данных с сервера, подождите, пожалуйста, до 30 секунд...
+            </div>
+            <div ng-if="loader.isSuccess()">
 
-        </div>
-        <div ng-if="loader.isUnknownError()" class="alert alert-danger">
-            Нет связи с сервером. Повторите попытку позже, пожалуйста, или обратитесь в службу поддержки.
-        </div>
-        <div ng-if="loader.isServerError()" class="alert alert-danger">
-            Ошибка на сервере. Повторите попытку позже, пожалуйста, или обратитесь в службу поддержки.
+                <!-- Таблица с периодами, категориями, суммами -->
+                <table class="table table-hover table-condensed table-bordered" style="width: auto;" ng-cloak>
+                    <thead>
+                        <tr>
+                            <th style="background-color: #f0f0f0; width: 200px; text-align: center;">{$ getCatCaption() $}</th>
+                            <th style="background-color: #f0f0f0; width: 92px; text-align: center;" ng-repeat="p in getPeriods()">
+                                {$ p.first $}<br /><span style="font-weight: normal;">{$ p.second $}</span>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr ng-show="getDataRowList().length == 0">
+                            <td colspan="7" style="text-align: center; padding: 50px;">Нет операций для отобржения. Начните вести учет на вкладке "Учет".</td>
+                        </tr>
+                        <tr ng-repeat="row in getDataRowList()">
+                            <td style="background-color: #f0f0f0; "><div style="text-overflow: ellipsis; white-space: nowrap; overflow: hidden; width: 200px;">{$ row.category $}</div></td>
+                            <td ng-repeat="i in row.data track by $index" style="text-align: right;">{$ i $}</td>
+                        </tr>
+                        <tr>
+                            <td style="background-color: #f0f0f0; font-weight: bold; text-align: right;">
+                                <span>{$ getTotCaption() $}</span>
+                            </td>
+                            <td ng-repeat="i in getTotalRow() track by $index" style="background-color: #f0f0f0; text-align: right; font-weight: bold;">{$ i $}</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+            </div>
+            <div ng-if="loader.isUnknownError()" class="alert alert-danger">
+                Нет связи с сервером. Повторите попытку позже, пожалуйста, или обратитесь в службу поддержки.
+            </div>
+            <div ng-if="loader.isServerError()" class="alert alert-danger">
+                Ошибка на сервере. Повторите попытку позже, пожалуйста, или обратитесь в службу поддержки.
+            </div>
+
         </div>
 
 
