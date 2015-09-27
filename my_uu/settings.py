@@ -9,10 +9,48 @@ IS_DEVELOPER_COMP = os.path.dirname(os.path.abspath(__file__)) == "D:\\GitRepos\
 # Тут хранится корневая папка проекта как юникод-строка. Важно юникод. Чтоб не было проблем с русскими буквами.
 PROJECT_DIR = os.path.join(os.path.dirname(unicode(__file__)), "..")
 
-# Блок настроек в зависимости от инстанса сайта включаем те или иные его части
+# ============
+# Тут включаются настройки, специфичные для каждой копии сайта
+# ============
+
+# Путь до папки копии к примеру /home/webapp/installab.com_8001
+INSTANCE_ROOT = PROJECT_DIR
+
+# Далее перечислены все флаги, с помощью которых выбирается то или иное поведение различных копий сайтов.
+#
+# INSTANCE_SPECIFIC_DJANGO_DEBUG
+#     В какое значение установить DEBUG переменную Джанго (желтые страницы с ошибками 500).
+#     True - показывать желтые страницы (для копий программистов)
+#     False - не показывать (вместо этого показаь 500.html шаблон) - для боевой копии
+#
+
+# Все копии программистов. Что значает эта секция см. комменты чуть выше.
+if INSTANCE_ROOT.startswith('/var/www/voyt_myuu_810'):
+    INSTANCE_SPECIFIC_DJANGO_DEBUG = True
+
+# Боевая копия
+elif INSTANCE_ROOT == '/home/users2/p/pvoytko/domains/my-uu.ru':
+    INSTANCE_SPECIFIC_DJANGO_DEBUG = False
+
+# Если тут возник эксепшен, значит предпринята попытка запустить новую копию сайта.
+# Для этой новой копии сайта надо прописать настройки, специфичные для этой копии, по аналогии с секциями выше.
+# Детальное описание каждой настройки и ее значений см. чуть выше
+else:
+    print(u'Попытка запустить новую копию сайта. ')
+    print(u'Укажите настройки для новой копии сайта в файле settings.py')
+    print(u"Путь до копии сайта: " + INSTANCE_ROOT)
+    print(u'Путь до settings.py' + __file__)
+    raise RuntimeError("See above.")
+
+# ============
+# Конец
+# ============
+
+
+#  Блок настроек в зависимости от инстанса сайта включаем те или иные его части
 UU_EMAIL_BACKEND_TYPE = 'filebased' if IS_DEVELOPER_COMP else 'jino'
 
-DEBUG = IS_DEVELOPER_COMP
+DEBUG = INSTANCE_SPECIFIC_DJANGO_DEBUG
 TEMPLATE_DEBUG = DEBUG
 
 ADMINS = (
