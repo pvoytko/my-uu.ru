@@ -15,7 +15,7 @@ from django.conf import settings
 from django import forms
 import utils
 import simplejson
-
+import calendar
 
 import json
 import datetime
@@ -417,6 +417,239 @@ def lk_ana(request):
     return render(request, 'lk_ana.html')
 
 
+# Получая список словарей, сортирует их по одному или нескольким полям.
+# Пример использования
+# resultList - список входных данных, например
+#      date                        client_code_name        sum
+#      01.06.2016                LESC_2                1000
+#      01.07.2016                LESC_        2                2000
+#      01.06.2016                LESC_1                3000
+#      01.07.2016                LESC_1                1000
+# Вызываем
+#      # Сортируем входной список по полям date в прямом
+#      # и затем по полю client_code_name в обратном порядке
+#      resultList = soryByFields(resultList, ['date', '-client_code_name'])
+# На выходе будет
+#      date                        client_code_name        sum
+#      01.06.2016                LESC_2                1000
+#      01.06.2016                LESC_1                3000
+#      01.07.2016                LESC_        2                2000
+#      01.07.2016                LESC_1                1000
+def sortByFields(iterable, sortFields):
+   def getSortFuncByFields(fields):
+       def srtFunc(a, b):
+           for f in fields:
+               isInverse = f.startswith('-')
+               cleanFieldName = f[1:] if isInverse else f
+               r = cmp(a[cleanFieldName], b[cleanFieldName])
+               if isInverse:
+                   r = -r
+               if r != 0:
+                   break
+           return r
+       return srtFunc
+   data2 = sorted(iterable, getSortFuncByFields(sortFields))
+   return data2
+
+
+# Получая список словарей, группирует их по полям (одному или нескольким),
+# выполня агрегацию (sum, min, max) для заданных полей (одного или нескольких)
+# Входной список д.б. предварительно отсортирован по полям по которым группируем
+# иначе непредсказуемый результат. Для сортировки см. функцию sortByFields
+# Пример использования
+# resultList - список входных данных, например такой
+#      date                        client_code_name        sum
+#      01.06.2016                LESC                        1000
+#      01.06.2016                LESC                        2000
+#      01.06.2016                LESC                        3000
+#      01.07.2016                LESC                        1000
+# Вызываем
+#      # Группируем по полю date, а поле sum суммируем
+#      resultList = groupByFields(resultList, ['date', ], {'sum': lambda a,b: a+b})
+# На выходе будет
+#      date                        client_code_name        sum
+#      01.06.2016                LESC                        6000
+#      01.07.2016                LESC                        1000
+# Что произошло
+#      пройти по всем словаряем списка resultList и для каждого нового значения 'date'
+#      включить этот словарь на выход, а столбец 'sum' образовать как
+#      сумма всех полей sum из всех словарей с одним полем date
+# Внимание! agregates аргумент не работает пока как надо, только суммирует всегда (см. код функции).
+# Надо доработать функцию.
+def groupByFields(iterableWithDicts, groupFields, agregates):
+   r = []
+   prevItem = None
+   for i in iterableWithDicts:
+
+       # Для первого элемента - просто добавляем его на выход
+       if not r:
+           r.append(i)
+           prevItem = i
+           continue
+
+       # Определяем именилось ли одно из группрующий полей
+       isGroupChanged = False
+       for f in groupFields:
+           if prevItem[f]!=i[f]:
+               isGroupChanged = True
+
+       # Если группа изменилась, то добавить новый элемент
+       if isGroupChanged:
+           prevItem = i
+           r.append(i)
+
+       # Иначе - выполнить агрегацию по каждому из полей
+       else:
+           for ak, av in agregates.iteritems():
+               prevItem[ak] = prevItem[ak] + i[ak]
+
+   return r
+
+
+# Преобразуем данные из вида списка в вид сводной таблицы
+# rowField = строка или список. Если список, то попадут все уникалные по переданным названиям полей.
+# colField = аналогично rowField
+# rowsTotalHeader строка заголовок итогового столбца, если None то заголовок пустой
+# rowsTotalFunc функция получающая на вход список значений строки и возвращающая значние для итогового столбца если None то итогового столбца нет
+# rowsValues - если указаны значения, то берутся для строк
+# colsValues - см. rowsValues, тлько для столбцов.
+# colsTotalHeader - аналогично как и для строк.
+# colsTotalFunc - аналогично как и для строк.
+# Возвращает словарь из значений
+#     isEmpty - True - False - есть ли данные
+#     rows - заголовки строк
+#     columns - заголовки столбцов
+#     values - значения
+def convertTableDataToPivotDate(
+        tableData,
+        rowField,
+        colField,
+        valField,
+        sortRowsFunc = None,
+        sortColsFunc = None,
+        rowsValues = None,
+        colsValues = None,
+        rowsTotalHeader = None,
+        rowsTotalFunc = None,
+        colsTotalHeader = None,
+        colsTotalFunc = None
+    ):
+    this = {}
+    this['rows'] = []
+    if rowsValues:
+        this['rows'] = rowsValues
+    this['columns'] = []
+    if colsValues:
+        this['columns'] = colsValues
+    this['values'] = {}
+
+    def getOneOrSeveralFields(record, fieldOrFields):
+        if isinstance(fieldOrFields, basestring):
+            return record[fieldOrFields]
+        else:
+            res = {}
+            for f in fieldOrFields:
+                res[f] = record[f]
+            return res
+
+    from templatetags.get_by_key import getHashable
+
+    for record in tableData:
+        prog = getOneOrSeveralFields(record, rowField)
+        wd = getOneOrSeveralFields(record, colField)
+        if prog not in this['rows']:
+            this['rows'].append(prog)
+            if sortRowsFunc:
+                this['rows'] = sortRowsFunc(this['rows'])
+        if wd not in this['columns']:
+            this['columns'].append(wd)
+            if sortColsFunc:
+                this['columns'] = sortColsFunc(this['columns'])
+        if getHashable(prog) not in this['values']:
+            this['values'][getHashable(prog)] = {}
+        this['values'][getHashable(prog)][getHashable(wd)] = record[valField]
+    this['isEmpty'] = not this['rows'] or not this['columns']
+
+    # Итого в строке
+    this['rowsTotalHeader'] = u''
+    if rowsTotalHeader:
+        this['rowsTotalHeader'] = rowsTotalHeader
+    this['rowsTotalValues'] = None
+    if rowsTotalFunc:
+        this['rowsTotalValues'] = {}
+        for prog in this['rows']:
+            if prog in this['values']:
+                this['rowsTotalValues'][prog] = rowsTotalFunc(this['values'][prog])
+
+    # Итого под столбцом
+    this['colsTotalHeader'] = u''
+    if colsTotalHeader:
+        this['colsTotalHeader'] = colsTotalHeader
+    this['colsTotalValues'] = None
+    if colsTotalFunc:
+        this['colsTotalValues'] = {}
+        for col in this['columns']:
+            colValues = []
+
+            # Сначала формируем список, в котором столько элементов сколько строк,
+            # каждый элемент - это значение из этого столбца и этой строки или None если его нет
+            for r in this['rows']:
+                cellValue = None
+                if getHashable(r) in this['values']:
+                    if getHashable(col) in this['values'][getHashable(r)]:
+                        cellValue = this['values'][getHashable(r)][getHashable(col)]
+                colValues.append(cellValue)
+
+            # Суммируем значения
+            this['colsTotalValues'][col] = colsTotalFunc(colValues)
+
+    return this
+
+
+# Источник http://stackoverflow.com/questions/4130922/how-to-increment-datetime-by-custom-months-in-python-without-using-library
+# Добавляет заданное количство месяцев к дате.
+def addMonths(sourcedate, months):
+    month = sourcedate.month - 1 + months
+    year = int(sourcedate.year + month / 12 )
+    month = month % 12 + 1
+    day = min(sourcedate.day,calendar.monthrange(year,month)[1])
+    return datetime.date(year,month,day)
+
+
+# Возвращает число дней в квартале, к которому относится переданная дата.
+# Суммирует число дней каждогоесяца, из которых состоит квартал.
+def getDaysInQuart(dt):
+    q = getQuartNumber(dt)
+    m1, m2, m3 = getMonthsForQuart(q)
+    m1ld = addMonths(dt.replace(day=1, month=m1), 1) - datetime.timedelta(days=1)
+    m2ld = addMonths(dt.replace(day=1, month=m1), 1) - datetime.timedelta(days=1)
+    m3ld = addMonths(dt.replace(day=1, month=m1), 1) - datetime.timedelta(days=1)
+    m1dc = m1ld.day
+    m2dc = m2ld.day
+    m3dc = m3ld.day
+    return m1dc + m2dc + m3dc
+
+
+# квартал вида IV - 20015 из даты
+def formatQuartStr(dt):
+    return u"{0} - {1}".format([u"I", u"II", u"III", u"IV", ][getQuartNumber(dt)-1], dt.year)
+
+# возвращает номер квартала для даты. Т.е. возвращает одно из чисел: 1 2 3 4
+def getQuartNumber(dt):
+    return divmod(dt.month-1, 3)[0]+1
+
+
+# возвращает номерм есяцев для квартала - 1 2 3 для 1 квартала, 10 11 12 для 4-го.
+def getMonthsForQuart(q):
+    return 3*(q-1) + 1, 3*(q-1) + 2, 3*(q-1) + 3,
+
+
+def getQuartFirstDate(dt):
+    qn = getQuartNumber(dt)
+    m1, m2, m3 = getMonthsForQuart(qn)
+    return dt.replace(day=1, month=m1)
+
+
 @uu_login_required
 def ajax_lk_ana(request):
 
@@ -631,7 +864,130 @@ def ajax_lk_ana(request):
         pageData['dataRows'][anaType + '-week'] = l2[type]
         pageData['totalRow'][anaType + '-week'] = totalRow[type]
 
-    def addMonthAnaDataToPageData(pageData, anaType, groups):
+    def addPeriodAnaDataToPageData(pageData, anaType, groups, result_suffix, periodsList, periodsHeaders):
+
+        # Строка суммы
+        t = {}
+        d = {}
+        type = { 'rashod': my_uu.models.UType.RASHOD, 'dohod': my_uu.models.UType.DOHOD }[anaType]
+
+        t[type] = [0] * len(periodsHeaders)
+
+        # Для каждой категории
+        d[type] = []
+        for (i, catOrGroup) in enumerate(getCatOrGroupList(categoryList, groups)):
+
+            # Получаем суммы по месяцам (только для расходов)
+            sumForDays = filterUchetByCategoryOrGroup(request.user.uchet_set.filter(utype = type), categoryList, catOrGroup, groups)
+            sumForDays = sumForDays.extra(select={'month': 'extract( month from date )', 'year': 'extract( year from date )'}).values('year', 'month').annotate(sum = Sum('sum')).order_by('year', 'month')
+
+            # Строка с данными для категории
+            rowData = [0] * len(periodsHeaders)
+            for dbVal in sumForDays:
+                perVal = (dbVal['year'], dbVal['month'])
+                if perVal in periodsList:
+                    periodIndex = periodsList.index(perVal)
+                    rowData[periodIndex] += float(dbVal['sum'])
+                    t[type][periodIndex] += float(dbVal['sum'])
+
+            # Добавлям строку с категорией только если есть ненулевые данные
+            if any(rowData):
+                d[type].append(dict(category = catOrGroup, data = formatMoneyRow(rowData)))
+
+        t[type] = formatMoneyRow(t[type])
+
+        # Итог работы функции
+        # periods:
+        #     {anaType}-{period}:
+        #         first: ssss, second sssss # заголовки таблицы
+        #         first: ssss, second sssss
+        # totalRow:
+        #     {anaType}-{period}:
+        #         ssss, # значения итоговой строки, по одному на каждый столбец
+        #         ssss,
+        #         ssss,
+        # dataRows:
+        #     {anaType}-{period}:
+        #         {category}: ssss # название категории
+        #         {data}: [ssss, ssss, ] значения строки, по одному на каждый столбец
+        pageData['periods'][anaType + '-' + result_suffix] = periodsHeaders
+        pageData['dataRows'][anaType + '-' + result_suffix] = d[type]
+        pageData['totalRow'][anaType + '-' + result_suffix] = t[type]
+
+    def addPeriodAnaDataToPageData2(pageData, anaType, result_suffix, periodsHeaders, data_start_date, period_value_func):
+
+        # Фильтруем нужные строки
+        type = { 'rashod': my_uu.models.UType.RASHOD, 'dohod': my_uu.models.UType.DOHOD }[anaType]
+        uchet_qs = request.user.uchet_set.filter(utype = type)
+        uchet_qs = uchet_qs.filter(date__gte = data_start_date)
+
+        # Преобразуем к формату словарей
+        uchet_list = uchet_qs.values('date', 'sum', 'category__name').order_by('date')
+
+        # Добавляем поле месяца для сортировки и группировки по нему
+        for u in uchet_list:
+            u['period_value_sort'] = period_value_func(u['date'])
+            del u['date']
+
+        # Группируем по полям
+        uchet_list = sortByFields(uchet_list, ['period_value_sort', 'category__name'])
+        uchet_list = groupByFields(uchet_list, ['period_value_sort', 'category__name'], {'sum': lambda a,b: a+b})
+        for u in uchet_list:
+            print u, 55555
+
+        # Преобразуем к формату pivotTable
+        pivot_table = convertTableDataToPivotDate(
+            uchet_list,
+            'category__name',
+            'period_value_sort',
+            'sum',
+            colsTotalFunc=lambda ll: sum([l for l in ll if l])
+        )
+
+        # Форматируем
+        for u in uchet_list:
+            u['sum_str'] = my_uu.utils.formatMoneyValue(u['sum'])
+
+        # Теперь надо сформировать список из категорий, в порядке нужном для пользователя,
+        # только те, по которым есть данные (остальные убираем).
+        categoryList = list(request.user.category_set.values_list('name', flat=True).order_by('position', 'id'))
+        for c in reversed(categoryList):
+            if c not in pivot_table['rows']:
+                categoryList.remove(c)
+
+        # Преобразуем к выходному формату:
+        # periods:
+        #     {anaType}-{period}:
+        #         first: ssss, second sssss # заголовки таблицы
+        #         first: ssss, second sssss
+        # totalRow:
+        #     {anaType}-{period}:
+        #         ssss, # значения итоговой строки, по одному на каждый столбец
+        #         ssss,
+        #         ssss,
+        # dataRows:
+        #     {anaType}-{period}:
+        #         {category}: ssss # название категории
+        #         {data}: [ssss, ssss, ] значения строки, по одному на каждый столбец
+        pageData['periods'][anaType + '-' + result_suffix] = periodsHeaders
+        pageData['dataRows'][anaType + '-' + result_suffix] = []
+        def getFromDictDictOrEmpty(dicti, key1, key2, empty_val):
+            if key1 not in dicti:
+                return empty_val
+            elem1 = dicti[key1]
+            if key2 not in elem1:
+                return empty_val
+            return my_uu.utils.formatMoneyValue(elem1[key2])
+        for r in categoryList:
+            pageData['dataRows'][anaType + '-' + result_suffix].append({
+                'category': r,
+                'data': [getFromDictDictOrEmpty(pivot_table['values'], r, k, '0 р.') for k in pivot_table['columns']]
+            })
+        pageData['totalRow'][anaType + '-' + result_suffix] = [
+            my_uu.utils.formatMoneyValue(pivot_table['colsTotalValues'][k]) for k in pivot_table['columns']
+        ]
+
+    def addMonthAnaDataToPageData(pageData, anaType):
 
         # Создаем масив месяцев от текущего назад 5 месяцав (всего отображается 6).
         monthsData = [0] * 6
@@ -653,40 +1009,50 @@ def ajax_lk_ana(request):
         monthNames = [u'Январь', u'Февраль', u'Март', u'Апрель', u'Май', u'Июнь', u'Июль', u'Август', u'Сентябрь', u'Октябрь', u'Ноябрь', u'Декабрь']
         periodsHeaders = [dict(first = monthNames[i[1]-1], second = i[0]) for i in periodsList]
 
-        # Строка суммы
-        t = {}
-        d = {}
-        type = { 'rashod': my_uu.models.UType.RASHOD, 'dohod': my_uu.models.UType.DOHOD }[anaType]
+        return addPeriodAnaDataToPageData2(
+            pageData,
+            anaType,
+            'month',
 
-        t[type] = [0] * len(periodsList)
+            # Заголовки месяцев
+            periodsHeaders,
 
-        # Для каждой категории
-        d[type] = []
-        for (i, catOrGroup) in enumerate(getCatOrGroupList(categoryList, groups)):
+            # Дата, с которой берутся данные для построения отчета
+            data_start_date = datetime.date(2015, 4, 1),
 
-            # Получаем суммы по месяцам (только для расходов)
-            sumForDays = filterUchetByCategoryOrGroup(request.user.uchet_set.filter(utype = type), categoryList, catOrGroup, groups)
-            sumForDays = sumForDays.extra(select={'month': 'extract( month from date )', 'year': 'extract( year from date )'}).values('year', 'month').annotate(sum = Sum('sum')).order_by('year', 'month')
+            # Функция, вычиляющая месяц из даты (для отнесения записей по месяцам)
+            period_value_func = lambda dt: dt.replace(day=1)
+        )
 
-            # Строка с данными для категории
-            rowData = [0] * len(periodsList)
-            for dbVal in sumForDays:
-                perVal = (dbVal['year'], dbVal['month'])
-                if perVal in periodsList:
-                    periodIndex = periodsList.index(perVal)
-                    rowData[periodIndex] += float(dbVal['sum'])
-                    t[type][periodIndex] += float(dbVal['sum'])
+    def addQuartAnaDataToPageData(pageData, anaType):
 
-            # Добавлям строку с категорией только если есть ненулевые данные
-            if any(rowData):
-                d[type].append(dict(category = catOrGroup, data = formatMoneyRow(rowData)))
+        # Названия заголовков
+        periodsHeaders = []
 
-        t[type] = formatMoneyRow(t[type])
+        # Сколь квартолов включая теукщий будет в очтете
+        q_count = 4
 
-        # Итог работы функции
-        pageData['periods'][anaType + '-month'] = periodsHeaders
-        pageData['dataRows'][anaType + '-month'] = d[type]
-        pageData['totalRow'][anaType + '-month'] = t[type]
+        # Начальные дата самого первого квартала с которого строится отчет
+        q_start_date = getQuartFirstDate(datetime.date.today())
+
+        while q_count > 0:
+            periodsHeaders.insert(0, {'first': formatQuartStr(q_start_date), 'second': ''})
+            q_count -= 1
+            if q_count > 0:
+                q_start_date = addMonths(q_start_date, -3)
+
+        return addPeriodAnaDataToPageData2(
+            pageData,
+            anaType,
+            'quart',
+            periodsHeaders,
+
+            # Дата, с которой берутся данные для построения отчета
+            data_start_date = q_start_date,
+
+            # Функция, вычиляющая квартал из даты (для отнесения записей по месяцам)
+            period_value_func = getQuartFirstDate
+        )
 
     pageData = {
         'periods': {},
@@ -704,7 +1070,9 @@ def ajax_lk_ana(request):
     if periodCode == 'week':
         addWeekAnaDataToPageData(pageData, anaType, groups)
     if periodCode == 'month':
-        addMonthAnaDataToPageData(pageData, anaType, groups)
+        addMonthAnaDataToPageData(pageData, anaType)
+    if periodCode == 'quart':
+        addQuartAnaDataToPageData(pageData, anaType)
 
     return JsonResponse(request, {
         'pageData': pageData,
