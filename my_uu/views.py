@@ -692,66 +692,6 @@ def ajax_lk_ana(request):
     def formatDayOfWeek(date):
         return [u'Пн', u'Вт', u'Ср', u'Чт', u'Пт', u'Сб', u'Вс'][date.weekday()]
 
-    def addDayAnaDataToPageData(pageData, anaType):
-
-        # Тут мы храним даты по которым готовим таблицу.
-        # Храним их для того чтобы быстро опредлить индекс столбца к которому надо отнести сумму по дате.
-        anaDates = []
-
-        # Формируем заголовки таблицы - от екущей даты до 5-ти дневной давности (всего 6 столбцов)
-        # 21 апр Пн, 20 апр Вс, 19 апр Сб, ...
-        today = datetime.date.today()
-        periodsHeaders = []
-        for delta in range(0, 6):
-            d = today - datetime.timedelta(days = 5-delta)
-            periodsHeaders.append( { 'first': formatDayAndMonth(d), 'second': formatDayOfWeek(d) } )
-            anaDates.append(d)
-
-        # Тут хранится список объектов, 1 объект на одну строку в таблице. В каждом объекте - название категории и данные.
-        pageData['dataRows']['rashod-day'] = []
-        pageData['dataRows']['dohod-day'] = []
-
-        # Тут хранится итоговая строка - список из 6 чисел, сначала заполняем нуляем, а потом к ней плюсуем.
-        pageData['totalRow']['rashod-day'] = [0] * len(periodsHeaders)
-        pageData['totalRow']['dohod-day'] = [0] * len(periodsHeaders)
-
-        # Заполняем таблицу.
-        typeI = { 'rashod': my_uu.models.UType.RASHOD, 'dohod': my_uu.models.UType.DOHOD }[anaType]
-
-        # Для каждой категории
-        for (i, cat) in enumerate(categoryList):
-
-            # Сюда будем заносить суммы по дням для текущей категории
-            sumForDaysRow = [0] * 6
-
-            # Получаем суммы по дням (только для расходов) в нашем диапазоне
-            sumForDays = request.user.uchet_set.filter(category = cat, utype = typeI)
-            sumForDays = sumForDays.values('date').distinct()
-            sumForDays = sumForDays.annotate(sum = Sum('sum'))
-            sumForDays = sumForDays.filter(date__gte = (today - datetime.timedelta(days = 5)), date__lte = today)
-
-            # Если ни одной суммы для этой категории, то такую категорию пропускаем
-            # А если есть сумма для нее - то добавляем.
-            if sumForDays.count() > 0:
-
-                # Тут задача скопировать QS в строку на возврат.
-                for s in sumForDays:
-                    if s['date'] in anaDates:
-                        i = anaDates.index(s['date'])
-                        sumForDaysRow[i] += float(s['sum'])
-                        pageData['totalRow'][anaType + '-day'][i] += float(s['sum'])
-
-                # Сохраняем на возврат строку для категории
-                pageData['dataRows'][anaType + '-day'].append({
-                    'category': cat.name,
-                    'data': formatMoneyRow(sumForDaysRow)
-                })
-
-        # Итог работы функции
-        pageData['periods'][anaType + '-day'] = periodsHeaders
-        # pageData['dataRows'][anaType + '-day'] заполнили выше
-        pageData['totalRow'][anaType + '-day'] = formatMoneyRow(pageData['totalRow'][anaType + '-day'])
-
     def getCatOrGroupList(categoryList, groups):
         if groups:
             grList = []
@@ -783,138 +723,36 @@ def ajax_lk_ana(request):
             return uchet.filter(category__name__in = [catOrGroup, ])
 
 
-    def addWeekAnaDataToPageData(pageData, anaType, groups):
+    # format_header_from_val_func = Функция, применяемая к первой дате периода, возвращает словарь first second для оторажения в заголовке
+    # period_count = Число периодов для отображения
+    # get_first_period_date_func Функция, применяемая к дате, получает первый день требуемого периода
+    # dec_period_func = Функция, применяемая к дате, уменьшает ее на один требуемый период
+    def addPeriodAnaDataToPageData(
+        pageData,
+        anaType,
+        result_suffix,
+        format_header_from_val_func,
+        period_count,
+        get_first_period_date_func,
+        dec_period_func,
+    ):
 
-        # Максимальные и минимальные даты которые есть в учете для этого юзера
-        minMaxDate = request.user.uchet_set.aggregate(min_date = Min('date'), max_date = Max('date'))
+        # Сколь периодов включая теукщий будет в очтете
+        q_count = period_count
 
-        # Список периодов, заголовки столбцов
-        periodsList = getWeekPeriodsList(datetime.datetime.now())
-        periodsHeaders = [dict( first = u'Неделя ' + str(d.isocalendar()[1]), second = getDatesForWeek(d) ) for d in periodsList]
+        # Дата, с которой берутся данные для построения отчета тут будет. Но сначала - дата начала ткущего периода.
+        data_start_date = get_first_period_date_func(datetime.date.today())
 
-        # Тут мы получаем таблицу данных для расходов и доходов и суммирующую строку
-        l2 = {}
-        totalRow = {}
-        type = { 'rashod': my_uu.models.UType.RASHOD, 'dohod': my_uu.models.UType.DOHOD }[anaType]
-
-        # Результат
-        l = []
-
-        # Если есть хотя бы одна запись учета, то формируем содержание списка на выдачу
-        if minMaxDate['min_date'] != None:
-
-            assert minMaxDate['max_date'] != None, u'Если минимальня дата не None, то и максимальная должна быть не None.'
-
-            # Для каждой категории
-            for (i, item) in enumerate(getCatOrGroupList(categoryList, groups)):
-
-                # Получаем суммы по дням (только для расходов)
-                sumForDays = filterUchetByCategoryOrGroup(request.user.uchet_set.filter(utype = type), categoryList, item, groups)
-                sumForDays = sumForDays.values('date').distinct()
-                sumForDays = sumForDays.annotate(sum = Sum('sum'))
-
-                # Если ни одной суммы для этой категории, то такую категорию пропускаем
-                if sumForDays.count() > 0:
-
-                    # Номера недель (или ЧНДК)
-                    rangeIter = AnaWeekIterator(datetime.datetime.now())
-
-                    # Формируем список со значениями. Число элементов в списке = число заголовков.
-                    from collections import OrderedDict
-                    d = OrderedDict()
-                    d['category'] = item
-                    for c, w in enumerate(rangeIter):
-                        d[c] = 0
-
-                    # Сейчас проходим по всем дням и суммам и плюсуем эти суммы к неделям
-                    skipCategory = True
-                    for sumForDay in sumForDays:
-                        weekIndex = rangeIter.getWeekIndexForDate(sumForDay['date'])
-                        if weekIndex is not None:
-                            d[weekIndex] += sumForDay['sum']
-                            skipCategory = False
-
-                    # Сохраняем результат
-                    if not skipCategory:
-                        l.append(d)
-
-        l2[type] = []
-        totalRow[type] = [0] * len(periodsList)
-        for li in l:
-            l2row = {}
-            l2row['category'] = li['category']
-            l2row['data'] = []
-            dataCellIndex = -1
-            for k in sorted(li.keys()):
-                if k != 'category':
-                    dataCellIndex += 1
-                    l2row['data'].append(float(li[k]))
-
-                    # Подсчитываем суммирующую строку
-                    totalRow[type][dataCellIndex] += float(li[k])
-
-            l2row['data'] = formatMoneyRow(l2row['data'])
-
-            l2[type].append(l2row)
-
-        totalRow[type] = formatMoneyRow(totalRow[type])
-
-        # Итог работы функции
-        pageData['periods'][anaType + '-week'] = periodsHeaders
-        pageData['dataRows'][anaType + '-week'] = l2[type]
-        pageData['totalRow'][anaType + '-week'] = totalRow[type]
-
-    def addPeriodAnaDataToPageData(pageData, anaType, groups, result_suffix, periodsList, periodsHeaders):
-
-        # Строка суммы
-        t = {}
-        d = {}
-        type = { 'rashod': my_uu.models.UType.RASHOD, 'dohod': my_uu.models.UType.DOHOD }[anaType]
-
-        t[type] = [0] * len(periodsHeaders)
-
-        # Для каждой категории
-        d[type] = []
-        for (i, catOrGroup) in enumerate(getCatOrGroupList(categoryList, groups)):
-
-            # Получаем суммы по месяцам (только для расходов)
-            sumForDays = filterUchetByCategoryOrGroup(request.user.uchet_set.filter(utype = type), categoryList, catOrGroup, groups)
-            sumForDays = sumForDays.extra(select={'month': 'extract( month from date )', 'year': 'extract( year from date )'}).values('year', 'month').annotate(sum = Sum('sum')).order_by('year', 'month')
-
-            # Строка с данными для категории
-            rowData = [0] * len(periodsHeaders)
-            for dbVal in sumForDays:
-                perVal = (dbVal['year'], dbVal['month'])
-                if perVal in periodsList:
-                    periodIndex = periodsList.index(perVal)
-                    rowData[periodIndex] += float(dbVal['sum'])
-                    t[type][periodIndex] += float(dbVal['sum'])
-
-            # Добавлям строку с категорией только если есть ненулевые данные
-            if any(rowData):
-                d[type].append(dict(category = catOrGroup, data = formatMoneyRow(rowData)))
-
-        t[type] = formatMoneyRow(t[type])
-
-        # Итог работы функции
-        # periods:
-        #     {anaType}-{period}:
-        #         first: ssss, second sssss # заголовки таблицы
-        #         first: ssss, second sssss
-        # totalRow:
-        #     {anaType}-{period}:
-        #         ssss, # значения итоговой строки, по одному на каждый столбец
-        #         ssss,
-        #         ssss,
-        # dataRows:
-        #     {anaType}-{period}:
-        #         {category}: ssss # название категории
-        #         {data}: [ssss, ssss, ] значения строки, по одному на каждый столбец
-        pageData['periods'][anaType + '-' + result_suffix] = periodsHeaders
-        pageData['dataRows'][anaType + '-' + result_suffix] = d[type]
-        pageData['totalRow'][anaType + '-' + result_suffix] = t[type]
-
-    def addPeriodAnaDataToPageData2(pageData, anaType, result_suffix, periodsHeaders, data_start_date, period_value_func):
+        # Первые даты всех периодов для которых строится отчет
+        # Названия заголовков
+        periods_start_dates = []
+        periodsHeaders = []
+        while q_count > 0:
+            periodsHeaders.insert(0, format_header_from_val_func(data_start_date))
+            periods_start_dates.insert(0, data_start_date)
+            q_count -= 1
+            if q_count > 0:
+                data_start_date = dec_period_func(data_start_date)
 
         # Фильтруем нужные строки
         type = { 'rashod': my_uu.models.UType.RASHOD, 'dohod': my_uu.models.UType.DOHOD }[anaType]
@@ -926,14 +764,12 @@ def ajax_lk_ana(request):
 
         # Добавляем поле месяца для сортировки и группировки по нему
         for u in uchet_list:
-            u['period_value_sort'] = period_value_func(u['date'])
+            u['period_value_sort'] = get_first_period_date_func(u['date'])
             del u['date']
 
         # Группируем по полям
         uchet_list = sortByFields(uchet_list, ['period_value_sort', 'category__name'])
         uchet_list = groupByFields(uchet_list, ['period_value_sort', 'category__name'], {'sum': lambda a,b: a+b})
-        for u in uchet_list:
-            print u, 55555
 
         # Преобразуем к формату pivotTable
         pivot_table = convertTableDataToPivotDate(
@@ -978,80 +814,78 @@ def ajax_lk_ana(request):
             if key2 not in elem1:
                 return empty_val
             return my_uu.utils.formatMoneyValue(elem1[key2])
+        def getFromDictDictOrEmpty(dicti, key1, key2, empty_val):
+            if key1 not in dicti:
+                return empty_val
+            elem1 = dicti[key1]
+            if key2 not in elem1:
+                return empty_val
+            return my_uu.utils.formatMoneyValue(elem1[key2])
         for r in categoryList:
             pageData['dataRows'][anaType + '-' + result_suffix].append({
                 'category': r,
-                'data': [getFromDictDictOrEmpty(pivot_table['values'], r, k, '0 р.') for k in pivot_table['columns']]
+                'data': [getFromDictDictOrEmpty(pivot_table['values'], r, k, '0 р.') for k in periods_start_dates]
             })
+        def getValFormattedOrZero(dictionary, key):
+            if key in dictionary:
+                return my_uu.utils.formatMoneyValue(dictionary[key])
+            else:
+                return my_uu.utils.formatMoneyValue(0)
         pageData['totalRow'][anaType + '-' + result_suffix] = [
-            my_uu.utils.formatMoneyValue(pivot_table['colsTotalValues'][k]) for k in pivot_table['columns']
+            getValFormattedOrZero(pivot_table['colsTotalValues'], k) for k in periods_start_dates
         ]
+
+    def addDayAnaDataToPageData(pageData, anaType):
+
+        return addPeriodAnaDataToPageData(
+            pageData,
+            anaType,
+            'day',
+            format_header_from_val_func = lambda dt: { 'first': formatDayAndMonth(dt), 'second': formatDayOfWeek(dt) },
+            period_count = 6,
+            get_first_period_date_func = lambda dt: dt,
+            dec_period_func = lambda dt: dt - datetime.timedelta(days=1),
+        )
+
+    def addWeekAnaDataToPageData(pageData, anaType, groups):
+
+        def formatWeekHeader(d):
+            return dict( first = u'Неделя ' + str(d.isocalendar()[1]), second = getDatesForWeek(d) )
+
+        return addPeriodAnaDataToPageData(
+            pageData,
+            anaType,
+            'week',
+            format_header_from_val_func = formatWeekHeader,
+            period_count = 6,
+            get_first_period_date_func = lambda dt: dt - datetime.timedelta(days=dt.weekday()),
+            dec_period_func = lambda dt: dt - datetime.timedelta(days=7),
+        )
 
     def addMonthAnaDataToPageData(pageData, anaType):
 
-        # Создаем масив месяцев от текущего назад 5 месяцав (всего отображается 6).
-        monthsData = [0] * 6
-        curYear = datetime.datetime.now().year
-        curMonth = datetime.datetime.now().month
-        periodsList = []
-        periodsCounter = 0
-        while periodsCounter < 6:
-            periodsList.insert(0, (curYear, curMonth))
-            curMonth -= 1
-            if curMonth == 0:
-                curMonth = 12
-                curYear -= 1
-            periodsCounter += 1
-
-        # Теперь в periodsList что-то вроде
-        # (2014, 1), (2013, 12), (2013, 11), (2013, 10), (2013, 9), (2013, 8)
-        # Создаем на основе этого списка заголовки таблицы анализа
         monthNames = [u'Январь', u'Февраль', u'Март', u'Апрель', u'Май', u'Июнь', u'Июль', u'Август', u'Сентябрь', u'Октябрь', u'Ноябрь', u'Декабрь']
-        periodsHeaders = [dict(first = monthNames[i[1]-1], second = i[0]) for i in periodsList]
 
-        return addPeriodAnaDataToPageData2(
+        return addPeriodAnaDataToPageData(
             pageData,
             anaType,
             'month',
-
-            # Заголовки месяцев
-            periodsHeaders,
-
-            # Дата, с которой берутся данные для построения отчета
-            data_start_date = datetime.date(2015, 4, 1),
-
-            # Функция, вычиляющая месяц из даты (для отнесения записей по месяцам)
-            period_value_func = lambda dt: dt.replace(day=1)
+            format_header_from_val_func = lambda dt: dict(first = monthNames[dt.month-1], second = dt.year),
+            period_count = 6,
+            get_first_period_date_func = lambda dt: dt.replace(day=1),
+            dec_period_func = lambda dt: addMonths(dt, -1),
         )
 
     def addQuartAnaDataToPageData(pageData, anaType):
 
-        # Названия заголовков
-        periodsHeaders = []
-
-        # Сколь квартолов включая теукщий будет в очтете
-        q_count = 4
-
-        # Начальные дата самого первого квартала с которого строится отчет
-        q_start_date = getQuartFirstDate(datetime.date.today())
-
-        while q_count > 0:
-            periodsHeaders.insert(0, {'first': formatQuartStr(q_start_date), 'second': ''})
-            q_count -= 1
-            if q_count > 0:
-                q_start_date = addMonths(q_start_date, -3)
-
-        return addPeriodAnaDataToPageData2(
+        return addPeriodAnaDataToPageData(
             pageData,
             anaType,
             'quart',
-            periodsHeaders,
-
-            # Дата, с которой берутся данные для построения отчета
-            data_start_date = q_start_date,
-
-            # Функция, вычиляющая квартал из даты (для отнесения записей по месяцам)
-            period_value_func = getQuartFirstDate
+            format_header_from_val_func = lambda q_start_date: {'first': formatQuartStr(q_start_date), 'second': ''},
+            period_count = 4,
+            get_first_period_date_func = getQuartFirstDate,
+            dec_period_func = lambda dt: addMonths(dt, -3),
         )
 
     pageData = {
