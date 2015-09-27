@@ -29,7 +29,7 @@ if INSTANCE_ROOT.startswith('/var/www/voyt_myuu_810'):
     INSTANCE_SPECIFIC_DJANGO_DEBUG = True
 
 # Боевая копия
-elif INSTANCE_ROOT == '/home/users2/p/pvoytko/domains/my-uu.ru':
+elif INSTANCE_ROOT == '/home/users2/p/pvoytko/domains/my-uu.ru/my_uu/..':
     INSTANCE_SPECIFIC_DJANGO_DEBUG = False
 
 # Если тут возник эксепшен, значит предпринята попытка запустить новую копию сайта.
