@@ -883,7 +883,7 @@ def ajax_lk_ana(request):
             anaType,
             'quart',
             format_header_from_val_func = lambda q_start_date: {'first': formatQuartStr(q_start_date), 'second': ''},
-            period_count = 4,
+            period_count = 6,
             get_first_period_date_func = getQuartFirstDate,
             dec_period_func = lambda dt: addMonths(dt, -3),
         )
