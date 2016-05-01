@@ -327,7 +327,7 @@ def lk_uch(request):
         'viewPeriodSetJson': json.dumps(my_uu.models.UserProfile.VIEW_PERIOD_CODE_CHOICES, cls=DjangoJSONEncoder),
         'viewPeriodMonthSetJson': json.dumps((request.user.get_profile().getUchetMonthSet()), cls=DjangoJSONEncoder),
         'viewPeriodCodeJson': json.dumps(request.user.get_profile().view_period_code),
-        'showAddUchetDialog': 1 if showAddUchetDialog else 0, # 1 или 0 - т.к. JS не понимает True / False
+        'showAddUchetDialog': 1 if showAddUchetDialog else 1, # 1 или 0 - т.к. JS не понимает True / False
         'get5DaysPaidLeft': get5DaysPaidLeft,
     })
 

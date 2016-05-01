@@ -4,9 +4,9 @@ project.directive('uuBalance', function(){
         restrict: 'E',
         template:
             '<div style="margin-bottom: 25px;" class="clearfix">' +
-                '<h5 style="margin: 3px 0; color: rgb(39, 100, 133);">' +
+                '<div style="font-weight: bold; margin: 3px 0; color: rgb(39, 100, 133);">' +
                     'Денег на счетах, для сверки <div style="float: right;">Всего: {$ getTotalBalance(accountList) $}</div>' +
-                '</h5>' +
+                '</div>' +
                 '<div class="balance__account_block" ng-repeat="a in accountList">' +
                     '<div class="balance__cell balance__account_name"><div>{$ a.name $}</div></div>' +
                     '<div class="balance__cell balance__account_sum"><div>{$ formatBalance(a.balance) $}</div></div>' +

@@ -181,14 +181,14 @@
     </script>
 
     <!-- Диалог добавления операции учета -->
-    <div id="addRecordDialog" class="modal hide" data-keyboard="true" ng-controller="AddRecordCtrl" tabindex="-1">
+    <div id="addRecordDialog" class="modal" style="display: none;" data-keyboard="true" ng-controller="AddRecordCtrl" tabindex="-1">
         <div class="modal-dialog">
         <div class="modal-content">
         <div class="modal-header">
             <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
-            <h4>Внесение операции учета</h4>
+            <h4 style="margin: 0px;">Внесение операции учета</h4>
         </div>
-        <div class="modal-body" ng-show="showAddUchetDialog">
+        <div class="modal-body" ng-show="showAddUchetDialog" style="padding-bottom: 0px;">
 
             {% ifnotequal get5DaysPaidLeft None %}
                 <div class="alert alert-info">
@@ -199,82 +199,82 @@
             {% endifnotequal %}
 
             <form class="form-horizontal" ng-enter="closeDlg()">
-                <div class="control-group">
-                    <label class="control-label">Операция</label>
-                    <div class="controls" class="btn-group" data-toggle="buttons-radio">
-                      <button type="button" class="btn" ng-class="{active: type==0}" ng-click="type=0">Расход</button>
-                      <button type="button" class="btn" ng-class="{active: type==1}" ng-click="type=1">Доход</button>
-                      <button type="button" class="btn" ng-class="{active: type==2}" ng-click="type=2">Перевод</button>
+                <div class="form-group">
+                    <label class="control-label col-xs-4">Операция</label>
+                    <div class="col-xs-8" class="btn-group" data-toggle="buttons-radio">
+                      <button type="button" class="btn btn-default" ng-class="{active: type==0}" ng-click="type=0">Расход</button>
+                      <button type="button" class="btn btn-default" ng-class="{active: type==1}" ng-click="type=1">Доход</button>
+                      <button type="button" class="btn btn-default" ng-class="{active: type==2}" ng-click="type=2">Перевод</button>
                     </div>
                 </div>
-                <div class="control-group">
-                    <label class="control-label">Дата</label>
-                    <div class="controls">
-                        <input type="text" placeholder="Дата" ng-model="date">
+                <div class="form-group">
+                    <label class="control-label col-xs-4">Дата</label>
+                    <div class="col-xs-8">
+                        <input class="form-control" type="text" placeholder="Дата" ng-model="date">
                     </div>
                 </div>
                 <div ng-switch="type">
-                    <div ng-switch-when="0" class="control-group">
-                        <label class="control-label">Сумма расхода</label>
-                        <div class="controls">
-                            <span style="position: absolute; left: 5px; margin-left: 197px; margin-top: 5px;">–</span>
-                            <input id='sumFocused' type="text" ng-model="$parent.sum" style="padding-left: 15px; width: 96px;">
+                    <div ng-switch-when="0" class="form-group">
+                        <label class="control-label col-xs-4">Сумма расхода</label>
+                        <div class="col-xs-8">
+                            <span style="position: absolute; left: 5px; margin-left: 15px; margin-top: 6px;">–</span>
+                            <span style="position: absolute; left: 105px; margin-left: 15px; margin-top: 6px;">р.</span>
+                            <input class="form-control" id='sumFocused' type="text" ng-model="$parent.sum" style="padding-left: 15px; width: 96px;">
+                        </div>
+                    </div>
+                    <div ng-switch-when="1" class="form-group">
+                        <label class="control-label col-xs-4">Сумма дохода</label>
+                        <div class="col-xs-8">
+                            <input class="form-control" id='sumFocused' type="text" ng-model="$parent.sum" style="width: 106px;">
                             <span class="help-inline">р.</span>
                         </div>
                     </div>
-                    <div ng-switch-when="1" class="control-group">
-                        <label class="control-label">Сумма дохода</label>
-                        <div class="controls">
-                            <input id='sumFocused' type="text" ng-model="$parent.sum" style="width: 106px;">
-                            <span class="help-inline">р.</span>
-                        </div>
-                    </div>
-                    <div ng-switch-when="2" class="control-group">
-                        <label class="control-label">Сумма перевода</label>
-                        <div class="controls">
-                            <input id='sumFocused' type="text" ng-model="$parent.sum" style="width: 106px;">
+                    <div ng-switch-when="2" class="form-group">
+                        <label class="control-label col-xs-4">Сумма перевода</label>
+                        <div class="col-xs-8">
+                            <input class="form-control" id='sumFocused' type="text" ng-model="$parent.sum" style="width: 106px;">
                             <span class="help-inline">р.</span>
                         </div>
                     </div>
                 </div>
                 <div ng-switch="type" >
                     <div ng-switch-default>
-                        <div class="control-group">
-                            <label class="control-label">Счет</label>
-                            <div class="controls">
-                                <select ng-model="$parent.account" ng-options="a.name as a.name for a in $parent.accounts">
+                        <div class="form-group">
+                            <label class="control-label col-xs-4">Счет</label>
+                            <div class="col-xs-8">
+                                <select class="form-control" style="width: 310px;" ng-model="$parent.account" ng-options="a.name as a.name for a in $parent.accounts">
                                 </select>
                             </div>
                         </div>
-                        <div class="control-group">
-                            <label class="control-label">Категория</label>
-                            <div class="controls">
-                                <select ng-model="$parent.category" ng-options="c.name as c.name for c in $parent.categories">
+                        <div class="form-group">
+                            <label class="control-label col-xs-4">Категория</label>
+                            <div class="col-xs-8">
+                                <select class="form-control" style="width: 310px;" ng-model="$parent.category" ng-options="c.name as c.name for c in $parent.categories">
                                 </select>
                             </div>
                         </div>
                     </div>
                     <div ng-switch-when="2">
-                        <div class="control-group">
-                            <label class="control-label">Счет откуда</label>
-                            <div class="controls">
-                                <select ng-model="$parent.account" ng-options="a.name as a.name for a in $parent.accounts">
+                        <div class="form-group">
+                            <label class="control-label col-xs-4">Счет откуда</label>
+                            <div class="col-xs-8">
+                                <select class="form-control" style="width: 310px;" ng-model="$parent.account" ng-options="a.name as a.name for a in $parent.accounts">
                                 </select>
                             </div>
                         </div>
-                        <div class="control-group">
-                            <label class="control-label">Счет куда</label>
-                            <div class="controls">
-                                <select ng-model="$parent.account_to" ng-options="a.name as a.name for a in $parent.accounts">
+                        <div class="form-group">
+                            <label class="control-label col-xs-4">Счет куда</label>
+                            <div class="col-xs-8">
+                                <select class="form-control" style="width: 310px;" ng-model="$parent.account_to" ng-options="a.name as a.name for a in $parent.accounts">
                                 </select>
                             </div>
                         </div>
                     </div>
                 </div>
-                <div class="control-group">
-                    <label class="control-label">Комментарий</label>
-                    <div class="controls">
-                        <input type="text" placeholder="Комментарий" ng-model="comment">
+                <div class="form-group">
+                    <label class="control-label col-xs-4">Комментарий</label>
+                    <div class="col-xs-8">
+                        <input style="width: 310px;" type="text" class="form-control" placeholder="Комментарий" ng-model="comment">
                     </div>
                 </div>
             </form>
@@ -283,9 +283,9 @@
                 {$ error $}
             </div>
         </div>
-        <div class="modal-footer" ng-show="showAddUchetDialog">
-            <button ng-click="closeDlg()" class="btn btn-large btn-info pull-right">Внести (Enter)</button>
-            <button href="#" class="btn pull-right" style="margin-top: 5px; margin-right: 15px;" data-dismiss="modal">Отмена (Esc)</button>
+        <div class="modal-footer" ng-show="showAddUchetDialog" style="margin-top: 0px;">
+            <button ng-click="closeDlg()" class="btn btn-lg btn-info pull-right">Внести (Enter)</button>
+            <button href="#" class="btn btn-default pull-right" style="margin-top: 5px; margin-right: 15px;" data-dismiss="modal">Отмена (Esc)</button>
         </div>
 
         {# Далее идет тело и подвал диалога для случая когда нужна оплата - показывается сообщение оплатить #}
@@ -307,12 +307,12 @@
                 В "Оплаченном" режиме работы какие-либо ограничения отсутствуют.
             </p>
             <p>
-                Для оплаты пройдите на страницу <a href="{% url 'my_uu.views.lk_pay' %}"><strong>"Оплата"</strong></a>.
+                Для оплаты пройдите на страницу <a href="{% url 'my_uu.views.lk_pay' %}" style="text-decoration: underline;"><strong>"Оплата"</strong></a>.
             </p>
 
         </div>
-        <div class="modal-footer" ng-show="!showAddUchetDialog">
-            <button href="#" class="btn" style="margin-top: 5px;" data-dismiss="modal">Закрыть</button>
+        <div class="modal-footer" ng-show="!showAddUchetDialog" style="margin-top: 0px; padding-top: 10px;">
+            <button href="#" class="btn btn-default btn-lg" style="margin-top: 5px;" data-dismiss="modal">Закрыть</button>
         </div>
     </div>
     </div>
@@ -647,12 +647,42 @@
 
             function GridCtrl($scope, $http){
 
-                // Список возможных значений периодов для оторажения.
+                // Последнипе 3 дня, 30 дней
                 $scope.viewPeriodSet = {{ viewPeriodSetJson | safe }};
+
+                // Все месяца за которые есть учет.
                 $scope.viewPeriodMonthSet = {{ viewPeriodMonthSetJson | safe }};
+
+                // Хз что такое, раньше коммент был такой "Список возможных значений периодов для оторажения."
                 $scope.viewPeriodCode = {{ viewPeriodCodeJson | safe }};
 
+                // Возвращает все года, что есть в массиве viewPeriodMonthSet, в виде списка строк.
+                // Пример - 2013, 2014, 2015 - или пустой список.
+                $scope.gcGetYears = function(){
+                    res = new Array();
+                    for(var i=0;i<$scope.viewPeriodMonthSet.length;++i){
+                        var year_str = $scope.viewPeriodMonthSet[i][0].substr(0, 4);
+                        if (res.indexOf(year_str) == -1){
+                            res.push(year_str);
+                        }
+                    }
+                    return res;
+                }
+
+
+                // Возвращает только те эелменты из массива viewPeriodMonthSet которые соответствуют переданному году
+                $scope.gcGetMonthsForYear = function(year_str){
+                    var res = $.grep($scope.viewPeriodMonthSet, function(item, index){
+
+                        // item содержит объект вида ["2015-02", "февраль 2015", $$hashKey: "00U"]
+                        return item[0].substr(0, 4) == year_str;
+                    });
+                    return res;
+                }
+
                 /* Делает поиск текста в списке по значению. Названа в честь функции ВПР в Ексель. */
+                {# Сравнивает переданный код. Список - это тюпл из двух. Код в первом элементе. Значение во втором. #}
+                {# При совпадкнии кодов - возвращает значение. #}
                 $scope.vpr = function(code, list){
                     for(var i=0;i<list.length;++i){
                         if (list[i][0] == code)
@@ -1077,18 +1107,100 @@
             <div style="position: fixed; background-color: white; z-index: 101; width: 860px; top: 110px; height: 40px;">
 
             </div>
-            <div style="margin-top: 0px; position: fixed; top: 114px; z-index: 101;">
+            <div style="margin-top: 0px; position: fixed; top: 110px; z-index: 101;">
                 Отображать операции за:
+
+                {# Источник - http://stackoverflow.com/questions/18023493/bootstrap-3-dropdown-sub-menu-missing #}
+                <style>
+                    .dropdown-submenu {
+                        position:relative;
+                    }
+                    .dropdown-submenu>.dropdown-menu {
+                        top:0;
+                        left:100%;
+                        margin-top:-6px;
+                        margin-left:-1px;
+                        -webkit-border-radius:0 6px 6px 6px;
+                        -moz-border-radius:0 6px 6px 6px;
+                        border-radius:0 6px 6px 6px;
+                    }
+                    .dropdown-submenu:hover>.dropdown-menu {
+                        display:block;
+                    }
+                    .dropdown-submenu>a:after {
+                        display:block;
+                        content:" ";
+                        float:right;
+                        width:0;
+                        height:0;
+                        border-color:transparent;
+                        border-style:solid;
+                        border-width:5px 0 5px 5px;
+                        border-left-color:#cccccc;
+                        margin-top:5px;
+                        margin-right:-10px;
+                    }
+                    .dropdown-submenu:hover>a:after {
+                        border-left-color:#ffffff;
+                    }
+                    .dropdown-submenu.pull-left {
+                        float:none;
+                    }
+                    .dropdown-submenu.pull-left>.dropdown-menu {
+                        left:-100%;
+                        margin-left:10px;
+                        -webkit-border-radius:6px 0 6px 6px;
+                        -moz-border-radius:6px 0 6px 6px;
+                        border-radius:6px 0 6px 6px;
+                    }
+
+                    {# Без этого стиля лишний трехмерный эффект на пункте выпадающего меню с кнопки выбора периододв #}
+                    .btn-group.open .dropdown-submenu .dropdown-toggle {
+                        -webkit-box-shadow: unset;
+                        box-shadow: unset;
+                    }
+
+                </style>
                 <div class="btn-group">
                     <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">
                         {$ vpr(viewPeriodCode, viewPeriodSet.concat(viewPeriodMonthSet)) $}
                         <span class="caret"></span>
                     </button>
                     <ul class="dropdown-menu">
-                        <li style="cursor: pointer;" ng-repeat="p in viewPeriodMonthSet"><a ng-click="$parent.viewPeriodCode = p[0]" ng-style="{ 'font-weight': viewPeriodCode == p[0] ? 'bold' : 'normal' }">{$ p[1] $}</a></li>
-                        <li class="disabled" ng-if="viewPeriodMonthSet.length == 0" role="presentation"><a>Отображение по месяцам<br />станет доступно когда<br /> появятся операции учета.</a></li>
-                        <li role="presentation" class="divider"></li>
-                        <li style="cursor: pointer;" ng-repeat="p in viewPeriodSet"><a ng-click="$parent.viewPeriodCode = p[0]" ng-style="{ 'font-weight': viewPeriodCode == p[0] ? 'bold' : 'normal' }">{$ p[1] $}</a></li>
+                        <li class="menu-item dropdown dropdown-submenu">
+                            <li class="menu-item dropdown dropdown-submenu" ng-repeat="y in gcGetYears()">
+                                <a
+                                        href="#"
+                                        class="dropdown-toggle"
+                                        data-toggle="dropdown"
+                                        ng-style="{ 'font-weight': viewPeriodCode.substr(0, 4) == y ? 'bold' : 'normal' }">
+                                    {$ y $}
+                                </a>
+                                <ul class="dropdown-menu">
+                                    <li ng-repeat="p in gcGetMonthsForYear(y)">
+                                        <a
+                                                ng-click="$parent.$parent.viewPeriodCode = p[0]"
+                                                ng-style="{ 'font-weight': viewPeriodCode == p[0] ? 'bold' : 'normal' }"
+                                                href="#">
+                                            {$ p[1] $}
+                                        </a>
+                                    </li>
+                                </ul>
+                            </li>
+                            <li class="disabled" ng-if="viewPeriodMonthSet.length == 0" role="presentation">
+                                <a>Отображение по месяцам<br />станет доступно когда<br /> появятся операции учета.</a>
+                            </li>
+                            <li role="presentation" class="divider"></li>
+                            <li
+                                    style="cursor: pointer;"
+                                    ng-repeat="p in viewPeriodSet">
+                                <a
+                                        ng-click="$parent.viewPeriodCode = p[0]"
+                                        ng-style="{ 'font-weight': viewPeriodCode == p[0] ? 'bold' : 'normal' }">
+                                    {$ p[1] $}
+                                </a>
+                            </li>
+                        </li>
                     </ul>
                 </div>
             </div>

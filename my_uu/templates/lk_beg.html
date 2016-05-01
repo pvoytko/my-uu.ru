@@ -42,7 +42,7 @@
             }
         }
     </script>
-    <div class="modal hide" data-keyboard="true" ng-controller="ManualCtrl" tabindex="-1">
+    <div class="modal" styel="display: none;" data-keyboard="true" ng-controller="ManualCtrl" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
@@ -91,11 +91,11 @@
 
                 </div>
                 <div class="modal-footer" ng-if="answer === undefined">
-                    <button type="button" ng-click="processAnswer(true)" class="btn btn-large btn-success pull-right">Да, хочу получить</button>
-                    <button type="button" ng-click="processAnswer(false)" class="btn pull-left btn-large btn-danger" style="margin-right: 15px;">Нет, не хочу</button>
+                    <button type="button" ng-click="processAnswer(true)" class="btn btn-lg btn-success pull-right">Да, хочу получить</button>
+                    <button type="button" ng-click="processAnswer(false)" class="btn pull-left btn-lg btn-danger" style="margin-right: 15px;">Нет, не хочу</button>
                 </div>
                 <div class="modal-footer" ng-if="answer !== undefined" style="text-align: center;">
-                    <button type="button" ng-click="closeDlg()" class="btn btn-large btn-info">Закрыть</button>
+                    <button type="button" ng-click="closeDlg()" class="btn btn-lg btn-info">Закрыть</button>
                 </div>
             </div>
         </div>
@@ -117,12 +117,12 @@
         Посмотрите таблицу "Расходы по категориям".
     </strong></p>
 
-    <img src="{{STATIC_URL}}img/screen-2014_02-01.png" width="80%" style="padding: 20px; background-color: lightblue;"/>
+    <img src="{{STATIC_URL}}img/screen-2014_02-01.png" width="80%" style="padding: 20px; background-color: lightblue; box-sizing: content-box;"/>
 
     <p style="margin: 10px 0;"><strong>
         Посмотрите таблицу "Денег на счетах".
     </strong></p>
-    <img src="{{STATIC_URL}}img/screen-2014_02-02.png" width="80%" style="padding: 20px; background-color: lightblue;"/>
+    <img src="{{STATIC_URL}}img/screen-2014_02-02.png" width="80%" style="padding: 20px; background-color: lightblue; box-sizing: content-box;"/>
 
     <p style="margin: 10px 0;"><strong>
         Такие таблицы помогут Вам:
@@ -168,6 +168,6 @@
         <li>В ближайшие выходные откройтке страницу "Анализ". Смотрите. И к Вам сами придут идеи.</li>
         <li>Примените пришедшие идеи по экономии денег, по устранению ошибочных трат, по добавлению новых категорий.</li>
     </ol>
-    <a href="/lk/" class="btn btn-success btn-large" style="margin-bottom: 20px;">Записать расходы за сегодня</a>
+    <a href="/lk/" class="btn btn-success btn-lg" style="margin-bottom: 20px;">Записать расходы за сегодня</a>
 
 {% endblock %}

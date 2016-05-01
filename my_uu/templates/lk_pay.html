@@ -18,7 +18,7 @@
 
     <h4>Режимы работы с сервисом</h4>
     <div class="row">
-        <div class="span8">
+        <div class="col-xs-8">
             <table class="table table-condensed table-hover">
                 <thead>
                     <th width="60%"></th>
@@ -45,13 +45,13 @@
             </table>
         </div>
     </div>
-    <ul>
-        <li>Количество дней учета – это количество дней, по которым в сервисе внесена хотя бы одна операция учета.
-    </ul>
+    <p style="margin-bottom: 20px;">
+        Количество дней учета – это количество дней, по которым в сервисе внесена хотя бы одна операция учета.
+    </p>
     <h4>Ваш текущий режим работы</h4>
-    <ul>
-        <li>{{ payModeDescription }}
-    </ul>
+    <p style="margin-bottom: 20px;">
+        {{ payModeDescription }}
+    </p>
 
     <script>
         function PaymentCtrl($scope, $http){
@@ -121,10 +121,10 @@
     <form ng-controller="PaymentCtrl">
         <p>Выберите оплачиваемый период использования сервиса:</p>
         <p>
-            <button type="button" class="btn" ng-class="{active: period=='days30'}" ng-click="period='days30'">30</button>
-            <button type="button" class="btn" ng-class="{active: period=='days60'}" ng-click="period='days60'">60</button>
-            <button type="button" class="btn" ng-class="{active: period=='days90'}" ng-click="period='days90'">90</button>
-            <button type="button" class="btn" ng-class="{active: period=='days120'}" ng-click="period='days120'">120</button>
+            <button type="button" class="btn btn-default" ng-class="{active: period=='days30'}" ng-click="period='days30'">30</button>
+            <button type="button" class="btn btn-default" ng-class="{active: period=='days60'}" ng-click="period='days60'">60</button>
+            <button type="button" class="btn btn-default" ng-class="{active: period=='days90'}" ng-click="period='days90'">90</button>
+            <button type="button" class="btn btn-default" ng-class="{active: period=='days120'}" ng-click="period='days120'">120</button>
             <span>дней</span>
         </p>
         <p>Цена составит:</p>
@@ -201,10 +201,10 @@
             Подготовка оплаты, ждите до 15 секунд...
         </div>
         <div class="row" style="margin-top: 20px;">
-            <div class="span2">
-                <a ng-click="doOrderAndRedirect($event)" class="btn btn-success btn-large" style="margin-bottom: 20px;">Оплатить</a>
+            <div class="col-xs-2">
+                <a ng-click="doOrderAndRedirect($event)" class="btn btn-success btn-lg" style="margin-bottom: 20px;">Оплатить</a>
             </div>
-            <div class="span9">
+            <div class="col-xs-9">
                 <p>
                     Нажав "Оплатить", Вы попадете на страницу выбора способа оплаты в платежном сервисе Z-PAYMENT. Там выберите удобный способ, оплатите и следуйте далее, пока не попадете снова на эту страницу.
                 </p>

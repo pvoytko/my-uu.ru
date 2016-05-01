@@ -155,32 +155,39 @@
     <div id="change-dialog-modal" style="display: none; padding-top: 20px; z-index: 110;" ng-controller="ChangeDlgCtrl">
 
         <form class="form-horizontal form-condensed" ng-enter="updateOnServerAndClose()" ng-esc="close()">
-            <div class="control-group">
-                <label class="control-label">Название счета</label>
-                <div class="controls">
-                    <input type="text" ng-model="model.name" class="span5">
+            <div class="form-group">
+                <label class="control-label col-xs-4">Название счета</label>
+                <div class="col-xs-8">
+                    <input type="text" ng-model="model.name" class="form-control">
                 </div>
             </div>
-            <div class="control-group">
-                <label class="control-label">Начальный остаток</label>
-                <div class="controls">
-                    <input type="text" class="span2" ng-model="model.balance_start">
-                    <span class="help-inline">р.</span>
-                    <span class="help-inline">Заполните один раз, когда начинаете учет, чтобы текущий остаток денег на счете согласно учета прировнять к фактическому.</span>
+            <div class="form-group">
+                <label class="control-label col-xs-4">Начальный остаток, в рублях</label>
+                <div class="col-xs-8">
+                    <div>
+                        <input type="text" class="form-control" style="width: 110px;" ng-model="model.balance_start">
+                    </div>
+                    <div>
+                        <span class="help-inline">Заполните один раз, когда начинаете учет, чтобы текущий остаток денег на счете согласно учета прировнять к фактическому.</span>
+                    </div>
                 </div>
             </div>
-            <div class="control-group">
-                <label class="control-label">Текущий остаток</label>
-                <div class="controls">
+            <div class="form-group">
+                <label class="control-label col-xs-4">Текущий остаток</label>
+                <div class="col-xs-8">
                     <div style="font-size: 14px; padding-top: 5px; height: 20px;">{$ getBalanceCurrentCalculated() $}</div>
                 </div>
             </div>
-            <div class="control-group">
-                <label class="control-label">Видим</label>
-                <div class="controls">
-                    <button type="button" class="btn" ng-class="{active: model.visible}" ng-click="model.visible=true">да</button>
-                    <button type="button" class="btn" ng-class="{active: !model.visible}" ng-click="model.visible=false">нет</button>
-                    <span class="help-inline">Показывать ли этот счет в списке при внесении операций учета и в списке на вкладке "Учет". Скрывайте старые больше ненужные счета.</span>
+            <div class="form-group">
+                <label class="control-label col-xs-4">Видим</label>
+                <div class="col-xs-8">
+                    <div>
+                        <button type="button" class="btn btn-default" ng-class="{active: model.visible}" ng-click="model.visible=true">да</button>
+                        <button type="button" class="btn btn-default" ng-class="{active: !model.visible}" ng-click="model.visible=false">нет</button>
+                    </div>
+                    <div>
+                        <span class="help-inline">Показывать ли этот счет в списке при внесении операций учета и в списке на вкладке "Учет". Скрывайте старые больше ненужные счета.</span>
+                    </div>
                 </div>
             </div>
         </form>
@@ -192,9 +199,11 @@
         </div>
 
         <div class="row" style="margin-bottom: 5px;">
-            <button class="btn btn-success pull-right" ng-click="updateOnServerAndClose()" ng-disabled="loading">Сохранить (Enter)</button>
-            <button class="btn pull-right" style="margin-right: 15px;" ng-click="close()">Отмена (Esc)</button>
-            <button class="btn btn-danger pull-right" ng-click="deleteOnServerAndClose()" style="margin-right: 15px;" ng-if="resultHolderObject" ng-disabled="loading">Удалить</button>
+            <div class="col-xs-12">
+                <button class="btn btn-success pull-right" ng-click="updateOnServerAndClose()" ng-disabled="loading">Сохранить (Enter)</button>
+                <button class="btn pull-right btn-default" style="margin-right: 15px;" ng-click="close()">Отмена (Esc)</button>
+                <button class="btn btn-danger pull-right" ng-click="deleteOnServerAndClose()" style="margin-right: 15px;" ng-if="resultHolderObject" ng-disabled="loading">Удалить</button>
+            </div>
         </div>
     </div>
 
@@ -251,11 +260,13 @@
                 background-color: #eeeeee;
                 border: 1px solid darkgrey;
                 border-radius: 5px;
-                height: 20px;
-                width: 20px;
+                height: 22px;
+                width: 22px;
                 text-align: center;
                 color: darkgrey;
                 font-weight: bold;
+                margin-top: -1px;
+                margin-bottom: -1px;
             }
 
             /* При наведении и при тяге сроки рамка плашки краснеет */

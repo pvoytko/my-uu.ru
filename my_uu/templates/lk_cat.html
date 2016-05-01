@@ -142,18 +142,20 @@
     <div id="change-dialog-modal" style="display: none; padding-top: 20px; z-index: 110;" ng-controller="ChangeDlgCtrl">
 
         <form class="form-horizontal form-condensed" ng-enter="updateOnServerAndClose()" ng-esc="close()">
-            <div class="control-group">
-                <label class="control-label">Название категории</label>
-                <div class="controls">
-                    <input type="text" ng-model="model.name" class="span5">
+            <div class="form-group">
+                <label class="control-label col-xs-4">Название категории</label>
+                <div class="col-xs-8">
+                    <input type="text" ng-model="model.name" class="form-control">
                 </div>
             </div>
-            <div class="control-group">
-                <label class="control-label">Видима</label>
-                <div class="controls">
-                    <button type="button" class="btn" ng-class="{active: model.visible}" ng-click="model.visible=true">да</button>
-                    <button type="button" class="btn" ng-class="{active: !model.visible}" ng-click="model.visible=false">нет</button>
-                    <span class="help-inline">Показывать ли эту категорию в списке при внесении операций учета. Скрывайте старые больше ненужные категории.</span>
+            <div class="form-group">
+                <label class="control-label col-xs-4">Видима</label>
+                <div class="col-xs-8">
+                    <div>
+                        <button type="button" class="btn btn-default" ng-class="{active: model.visible}" ng-click="model.visible=true">да</button>
+                        <button type="button" class="btn btn-default" ng-class="{active: !model.visible}" ng-click="model.visible=false">нет</button>
+                    </div>
+                    <div class="help-block">Показывать ли эту категорию в списке при внесении операций учета. Скрывайте старые больше ненужные категории.</div>
                 </div>
             </div>
         </form>
@@ -165,9 +167,11 @@
         </div>
 
         <div class="row" style="margin-bottom: 5px;">
-            <button class="btn btn-success pull-right" ng-click="updateOnServerAndClose()" ng-disabled="loading">Сохранить (Enter)</button>
-            <button class="btn pull-right" style="margin-right: 15px;" ng-click="close()">Отмена (Esc)</button>
-            <button class="btn btn-danger pull-right" ng-click="deleteOnServerAndClose()" style="margin-right: 15px;" ng-if="resultHolderObject" ng-disabled="loading">Удалить</button>
+            <div class="col-xs-12">
+                <button class="btn btn-success pull-right" ng-click="updateOnServerAndClose()" ng-disabled="loading">Сохранить (Enter)</button>
+                <button class="btn pull-right btn-default" style="margin-right: 15px;" ng-click="close()">Отмена (Esc)</button>
+                <button class="btn btn-danger pull-right" ng-click="deleteOnServerAndClose()" style="margin-right: 15px;" ng-if="resultHolderObject" ng-disabled="loading">Удалить</button>
+            </div>
         </div>
     </div>
 
@@ -222,11 +226,13 @@
                 background-color: #eeeeee;
                 border: 1px solid darkgrey;
                 border-radius: 5px;
-                height: 20px;
-                width: 20px;
+                height: 22px;
+                width: 22px;
                 text-align: center;
                 color: darkgrey;
                 font-weight: bold;
+                margin-top: -1px;
+                margin-bottom: -1px;
             }
 
             /* При наведении и при тяге сроки рамка плашки краснеет */

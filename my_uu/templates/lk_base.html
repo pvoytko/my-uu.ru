@@ -10,13 +10,12 @@
     <link rel="stylesheet" href="http://code.jquery.com/ui/1.10.3/themes/redmond/jquery-ui.css" />
 
     <!-- Bootstrap 2 -->
-    <link href="{{ STATIC_URL }}libs/bootstrap/css/bootstrap.min.css" rel="stylesheet" media="screen">
-    <script src="{{ STATIC_URL }}libs/bootstrap/js/bootstrap.min.js"></script>
-<!-- Bootstrap 3
+{#    <link href="{{ STATIC_URL }}libs/bootstrap/css/bootstrap.min.css" rel="stylesheet" media="screen">#}
+{#    <script src="{{ STATIC_URL }}libs/bootstrap/js/bootstrap.min.js"></script>#}
+
     <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap.min.css">
     <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap-theme.min.css">
     <script src="//netdna.bootstrapcdn.com/bootstrap/3.0.0/js/bootstrap.min.js"></script>
--->
 
     <!-- Angular -->
     <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.2.9/angular.min.js"></script>
@@ -38,6 +37,16 @@
 
     <!-- Вспомогательные разные функции -->
     <script src="{{ STATIC_URL }}js/uu_utils.js"></script>
+
+    <style>
+        {# Без этого стиля слишком высокие пункты главного меню на всех страницаз и узкие #}
+        .nav>li>a {
+            padding: 5px 12px;
+            position: relative;
+            top: 2px;
+        }
+    </style>
+
 
 
     {% block add_to_head %}
@@ -61,12 +70,12 @@
 
         <ul class="nav nav-pills" style="position: fixed; visibility: block; top: 73px; z-index: 101;">
             <li{% block beg_active %}{% endblock %}><a href="/lk/beg/">Начало</a></li>
-            <li style="width: 2px; background-color: rgb(212, 224, 236);float: left; display: list-item; height: 16px; margin: 9px 3px">&nbsp;</li>
+            <li style="width: 2px; background-color: rgb(212, 224, 236);float: left; display: list-item; height: 16px; margin: 9px 3px; margin-left: 5px; margin-right: 1px;">&nbsp;</li>
             <li{% block acc_active %}{% endblock %}><a href="/lk/acc/">Счета</a></li>
             <li{% block cat_active %}{% endblock %}><a href="/lk/cat/">Категории</a></li>
             <li{% block uch_active %}{% endblock %}><a href="/lk/">Учет</a></li>
             <li{% block ana_active %}{% endblock %}><a href="/lk/ana/">Анализ</a></li>
-            <li style="width: 2px; background-color: rgb(212, 224, 236);float: left; display: list-item; height: 16px; margin: 9px 3px">&nbsp;</li>
+            <li style="width: 2px; background-color: rgb(212, 224, 236);float: left; display: list-item; height: 16px; margin: 9px 3px; margin-left: 5px; margin-right: 1px;">&nbsp;</li>
             <li{% block imp_active %}{% endblock %}><a href="/lk/imp/">Импорт</a></li>
             <li{% block exp_active %}{% endblock %}><a href="/lk/exp/">Экспорт</a></li>
 
@@ -90,8 +99,8 @@
                 right: 0;
                 bottom: 50%;
                 margin-bottom: -15px;
-                width: 120px;
-                height: 52px;
+                width: 132px;
+                height: 68px;
                 padding: 5px;
                 background-color: lavender;
                 border: 1px solid lightblue;
@@ -108,7 +117,7 @@
             }
         </style>
         <div class="improove__panel">
-            <button class="btn improove__btn" id="improove">Вопрос или <br>предложение</button>
+            <button class="btn improove__btn btn-default" id="improove">Вопрос или <br>предложение</button>
         </div>
 
         <div id="improove-dialog-modal" style="display: none; padding-top: 20px; padding-right: 30px; padding-left: 15px;" ng-controller="ImprooveCtrl">

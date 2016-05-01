@@ -6,11 +6,12 @@
     font-weight: bold;
     font-family: 'lucida sans unicode', 'lucida grande', sans-serif;
     background-color: #e9eb84;
-    padding: 7px;
     margin-top: 16px;
     position: relative;
     left: -6px;
     display: inline-block;
+    line-height: 34px;
+    padding: 0px 7px;
 }
 
 
