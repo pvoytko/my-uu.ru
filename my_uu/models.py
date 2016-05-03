@@ -4,6 +4,7 @@ import django.contrib.auth.models
 from django.contrib.auth.models import User
 import datetime
 import utils
+import plogic
 
 
 # Платеж. Создается в момент инициации оплаты в адрес Робокассы, тогда хранит только ID (= номер счета)
@@ -67,32 +68,6 @@ class UserProfile(models.Model):
     )
     view_period_code = models.CharField(max_length=10, default='last3')
 
-    # Фильтрует записи учета согласно выбранному фильтру дат
-    def _filterUchetByViewPeriod(self, uchetRecords):
-
-        import datetime
-        import dateutil.relativedelta
-
-        # Спец. значения
-        if self.view_period_code in (UserProfile.VIEW_PERIOD_CODE_LAST3, UserProfile.VIEW_PERIOD_CODE_LAST30):
-            lastIndex = 3 if self.view_period_code == UserProfile.VIEW_PERIOD_CODE_LAST3 else 30
-            lastDates = list(uchetRecords.values_list('date', flat=True).distinct().order_by('-date')[0:lastIndex])
-
-            # Тут важно возвращать не пустой список а пустой квери сет, т.к. к нему применяются ордер бай потом и пр.
-            # а если пустой список будем возвращать то эксепшен там получим.
-            if len(lastDates) == 0:
-                return uchetRecords
-
-            return uchetRecords.filter(date__gte = lastDates[-1])
-
-        # Месяц
-        else:
-            year, month = self.view_period_code.split('-')
-            year, month = int(year), int(month)
-            d1 = datetime.date(year, month, 1)
-            d2 = d1 + dateutil.relativedelta.relativedelta(months=1) - datetime.timedelta(days=1)
-            return uchetRecords.filter(date__gte = d1, date__lte = d2)
-
     # Возвращает список списков из 2 элементов: код месяца (YYYY-MM) и русскоязычное "январь 2014"
     # Это для поля view_period_code
     def getUchetMonthSet(self):
@@ -104,13 +79,6 @@ class UserProfile(models.Model):
                 ]
             return months[d.month-1] + " " + str(d.year)
         return [["{0}-{1:02}".format(m.year, m.month), verboseMonth(m)] for m in months]
-
-    # Возвращает UchetRecords для этого юзера причем только из периода view_period_code
-    # Используется для получения записей учета для отображения на главной.
-    # Все показывать, если их много, то долго. Потому по периодам приходится разделить.
-    def getUchetRecordsInViewPeriod(self):
-        urecs = Uchet.objects.filter(user=self.user)
-        return self._filterUchetByViewPeriod(urecs).order_by('date', '-utype', 'id')
 
     # Вычисляет дату по которую у юзера оплачено.
     # На основании информации о платежах из базы.

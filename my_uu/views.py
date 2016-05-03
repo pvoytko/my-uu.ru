@@ -320,12 +320,14 @@ def lk_uch(request, period = None, account_id = None, category_id = None):
         uuTrackEventDynamic(request.user, my_uu.models.EventLog.EVENT_5DAYS_PAID_LEFT_MESSAGE)
 
     # ID выбранного account_id и category_id для фильтра или None
-    account_id, category_id = plogic.getAccountIdAndCategoryIdFromUchetPageUrl(request.path)
+    period_id, account_id, category_id = plogic.getAccountIdAndCategoryIdFromUchetPageUrl(request.path)
 
     # QS записей учета для отображения в таблице при открытии страницы
     # фильтруем согласно выбранного счета и категории
-    uchet_records = _getUchetRecordsList(request.user.userprofile.getUchetRecordsInViewPeriod())
-    uchet_records = plogic.filterUchetRecordsByAccountAndCategory(uchet_records, account_id, category_id)
+    uchet_records = _getUchetRecordsList(plogic.getUserUchetRecords(request.user))
+    uchet_records = plogic.filterUchetRecordsByPeriodAndAccountAndCategory(
+        uchet_records, period_id, account_id, category_id
+    )
 
     return render(request, 'lk_uch.html', {
         'uchetRecordsJson': json.dumps(list(uchet_records), cls=DjangoJSONEncoder),
@@ -336,7 +338,6 @@ def lk_uch(request, period = None, account_id = None, category_id = None):
         'categoryListJson': json.dumps(_getCategoryList(request), cls=DjangoJSONEncoder),
         'viewPeriodSetJson': json.dumps(my_uu.models.UserProfile.VIEW_PERIOD_CODE_CHOICES, cls=DjangoJSONEncoder),
         'viewPeriodMonthSetJson': json.dumps((request.user.userprofile.getUchetMonthSet()), cls=DjangoJSONEncoder),
-        'viewPeriodCodeJson': json.dumps(request.user.userprofile.view_period_code),
         'showAddUchetDialog': 1 if showAddUchetDialog else 1, # 1 или 0 - т.к. JS не понимает True / False
         'get5DaysPaidLeft': get5DaysPaidLeft,
 
@@ -344,6 +345,9 @@ def lk_uch(request, period = None, account_id = None, category_id = None):
         # преобразование к целому нужно т.к. сравнние с id не работает иначе.
         'lku_filtered_account_id': account_id,
         'lku_filtered_category_id': category_id,
+
+        # Текущий просматриваемый период
+        'lku_filtered_period_id': period_id,
     })
 
 
@@ -1085,30 +1089,6 @@ def lk_delete_uchet_ajax(request):
     rowId = rowForDelete['serverRowId']
     my_uu.models.Uchet.objects.get(id= rowId).delete()
     return JsonResponseWithStatusOk(accountBalanceList = _getAccountBalanceList(request))
-
-
-# Загрузить данные учета за период
-# вызывается при выборе периода на странице учета
-@uu_login_required
-def lk_load_uchet_ajax(request):
-
-    # Сохраняем период за который юзер запросил просмотр
-    userProfile = request.user.userprofile
-    userProfile.view_period_code = json.loads(request.body)['viewPeriodCode']
-    userProfile.save()
-
-    # Возвращаем записи за этот период
-    uchetRecords = _getUchetRecordsList(userProfile.getUchetRecordsInViewPeriod())
-
-    # Получаем счет и категорию выбранные на странице (из ее урл).
-    import urlparse
-    ref_split = urlparse.urlsplit(request.META['HTTP_REFERER'])
-    ref_path = ref_split[2]
-    account_id, category_id = plogic.getAccountIdAndCategoryIdFromUchetPageUrl(ref_path)
-
-    # фильруем и возвращаем
-    uchetRecords = plogic.filterUchetRecordsByAccountAndCategory(uchetRecords, account_id, category_id)
-    return JsonResponseWithStatusOk(uchetRecords = list(uchetRecords))
 
 
 class MyUUUIException(BaseException):
