@@ -666,7 +666,7 @@
                 $scope.gcGetYears = function(){
                     res = new Array();
                     for(var i=0;i<$scope.viewPeriodMonthSet.length;++i){
-                        var year_str = $scope.viewPeriodMonthSet[i][0].substr(0, 4);
+                        var year_str = $scope.viewPeriodMonthSet[i][0].substr(1, 4);
                         if (res.indexOf(year_str) == -1){
                             res.push(year_str);
                         }
@@ -679,8 +679,8 @@
                 $scope.gcGetMonthsForYear = function(year_str){
                     var res = $.grep($scope.viewPeriodMonthSet, function(item, index){
 
-                        // item содержит объект вида ["2015-02", "февраль 2015", $$hashKey: "00U"]
-                        return item[0].substr(0, 4) == year_str;
+                        // item содержит объект вида ["m2015-02", "февраль 2015", $$hashKey: "00U"]
+                        return item[0].substr(1, 4) == year_str;
                     });
                     return res;
                 }
@@ -1198,7 +1198,7 @@
                                             href="#"
                                             class="dropdown-toggle"
                                             data-toggle="dropdown"
-                                            ng-style="{ 'font-weight': viewPeriodCode.substr(0, 4) == y ? 'bold' : 'normal' }">
+                                            ng-style="{ 'font-weight': viewPeriodCode.substr(1, 4) == y ? 'bold' : 'normal' }">
                                         {$ y $}
                                     </a>
                                     <ul class="dropdown-menu">

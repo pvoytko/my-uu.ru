@@ -119,6 +119,17 @@
         }
     </script>
 
+    <style>
+
+        {# Стиль ссылки с суммы в таблице анализа #}
+        .lka_sum_link{
+            color: black;
+        }
+        .lka_sum_link:hover{
+            color: red;
+        }
+    </style>
+
     <div ng-controller="AnaController">
 
         <!-- Выбор группировки -->
@@ -162,7 +173,11 @@
                         </tr>
                         <tr ng-repeat="row in getDataRowList()">
                             <td style="background-color: #f0f0f0; "><div style="text-overflow: ellipsis; white-space: nowrap; overflow: hidden; width: 200px;">{$ row.category $}</div></td>
-                            <td ng-repeat="i in row.data track by $index" style="text-align: right;">{$ i $}</td>
+                            <td ng-repeat="i in row.lka_cell_data track by $index" style="text-align: right;">
+                                <a href="/lk/{$ i.lka_cell_period $}/None/{$ row.lka_category_id $}/" class="lka_sum_link">
+                                    {$ i.lka_cell_val $}
+                                </a>
+                            </td>
                         </tr>
                         <tr>
                             <td style="background-color: #f0f0f0; font-weight: bold; text-align: right;">

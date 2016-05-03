@@ -322,6 +322,18 @@ def lk_uch(request, period = None, account_id = None, category_id = None):
     # ID выбранного account_id и category_id для фильтра или None
     period_id, account_id, category_id = plogic.getAccountIdAndCategoryIdFromUchetPageUrl(request.path)
 
+    # Если период - по дням или неделям или кварталам, для такого периода нет значений в списке фильтров
+    # поэтому добавляем значениям.
+    addFilterPeriodChoices = []
+    if period_id[0] in ('d', 'q', 'w'):
+        caps = {
+            'd': u'день',
+            'w': u'неделя',
+            'q': u'квартал',
+        }
+        period_str = u"{0} {1}".format(caps[period_id[0]], period_id[1:])
+        addFilterPeriodChoices.append((period_id, period_str))
+
     # QS записей учета для отображения в таблице при открытии страницы
     # фильтруем согласно выбранного счета и категории
     uchet_records = _getUchetRecordsList(plogic.getUserUchetRecords(request.user))
@@ -336,7 +348,7 @@ def lk_uch(request, period = None, account_id = None, category_id = None):
         'categoryList': my_uu.models.Category.objects.filter(user=request.user, visible=True).order_by('position', 'id'),
         'accountBalanceListJson': json.dumps(_getAccountBalanceList(request), cls=DjangoJSONEncoder),
         'categoryListJson': json.dumps(_getCategoryList(request), cls=DjangoJSONEncoder),
-        'viewPeriodSetJson': json.dumps(my_uu.models.UserProfile.VIEW_PERIOD_CODE_CHOICES, cls=DjangoJSONEncoder),
+        'viewPeriodSetJson': json.dumps(list(my_uu.models.UserProfile.VIEW_PERIOD_CODE_CHOICES) + addFilterPeriodChoices, cls=DjangoJSONEncoder),
         'viewPeriodMonthSetJson': json.dumps((request.user.userprofile.getUchetMonthSet()), cls=DjangoJSONEncoder),
         'showAddUchetDialog': 1 if showAddUchetDialog else 1, # 1 или 0 - т.к. JS не понимает True / False
         'get5DaysPaidLeft': get5DaysPaidLeft,
@@ -527,9 +539,15 @@ def groupByFields(iterableWithDicts, groupFields, agregates):
 
 # Преобразуем данные из вида списка в вид сводной таблицы
 # rowField = строка или список. Если список, то попадут все уникалные по переданным названиям полей.
-# colField = аналогично rowField
+#             Название поля во входной таблице, в котором содержатся значения, которые в сводной
+#             таблице должны попасть в строки.
+# colField = аналогично rowField, только для столбцов.
+# valField - название поля во входных строках, в котором значение для отображения в сводной таблице
+# sortRowsFunc - может быть None. функция, на вход которой поступают заголовки всех строк, и она должна вернуть их в отсортированном нужном виде образом
+# sortColsFunc - см. sortRowsFunc, только эта функция для столбцов.
 # rowsTotalHeader строка заголовок итогового столбца, если None то заголовок пустой
-# rowsTotalFunc функция получающая на вход список значений строки и возвращающая значние для итогового столбца если None то итогового столбца нет
+# rowsTotalFunc функция получающая на вход список значений строки
+#             и возвращающая значние для итогового столбца если None то итогового столбца нет
 # rowsValues - если указаны значения, то берутся для строк
 # colsValues - см. rowsValues, тлько для столбцов.
 # colsTotalHeader - аналогично как и для строк.
@@ -538,7 +556,7 @@ def groupByFields(iterableWithDicts, groupFields, agregates):
 #     isEmpty - True - False - есть ли данные
 #     rows - заголовки строк
 #     columns - заголовки столбцов
-#     values - значения
+#     values - словарь словарей (значения, сначала строки, потом столбцы)
 def convertTableDataToPivotDate(
         tableData,
         rowField,
@@ -589,6 +607,14 @@ def convertTableDataToPivotDate(
         this['values'][getHashable(prog)][getHashable(wd)] = record[valField]
     this['isEmpty'] = not this['rows'] or not this['columns']
 
+    # Теперь проходим по всем строкам и столбцам и если по ним нет данных - то создаем пустые словари
+    # Если этого не сделать, то при попытке получить из такой строки get_by_key значение в HTML - вылезет ошибка
+    # что у None нет get_item метода.
+    if rowsValues:
+        for r in rowsValues:
+            if r not in this['values']:
+                this['values'][r] = {}
+
     # Итого в строке
     this['rowsTotalHeader'] = u''
     if rowsTotalHeader:
@@ -614,16 +640,14 @@ def convertTableDataToPivotDate(
             # каждый элемент - это значение из этого столбца и этой строки или None если его нет
             for r in this['rows']:
                 cellValue = None
-                if getHashable(r) in this['values']:
-                    if getHashable(col) in this['values'][getHashable(r)]:
-                        cellValue = this['values'][getHashable(r)][getHashable(col)]
+                if (getHashable(r) in this['values']) and (getHashable(col) in this['values'][getHashable(r)]):
+                    cellValue = this['values'][getHashable(r)][getHashable(col)]
                 colValues.append(cellValue)
 
             # Суммируем значения
             this['colsTotalValues'][col] = colsTotalFunc(colValues)
 
     return this
-
 
 # Источник http://stackoverflow.com/questions/4130922/how-to-increment-datetime-by-custom-months-in-python-without-using-library
 # Добавляет заданное количство месяцев к дате.
@@ -805,9 +829,9 @@ def ajax_lk_ana(request):
 
         # Теперь надо сформировать список из категорий, в порядке нужном для пользователя,
         # только те, по которым есть данные (остальные убираем).
-        categoryList = list(request.user.category_set.values_list('name', flat=True).order_by('position', 'id'))
+        categoryList = list(request.user.category_set.values('name', 'id').order_by('position', 'id'))
         for c in reversed(categoryList):
-            if c not in pivot_table['rows']:
+            if c['name'] not in pivot_table['rows']:
                 categoryList.remove(c)
 
         # Преобразуем к выходному формату:
@@ -826,24 +850,32 @@ def ajax_lk_ana(request):
         #         {data}: [ssss, ssss, ] значения строки, по одному на каждый столбец
         pageData['periods'][anaType + '-' + result_suffix] = periodsHeaders
         pageData['dataRows'][anaType + '-' + result_suffix] = []
-        def getFromDictDictOrEmpty(dicti, key1, key2, empty_val):
+        def getFromDictDictOrEmpty(dicti, key1, key2, empty_val, periodCode):
+
+            # получая на вход дату и период (день, неделя, месяц, квартал) - на их основе вычисляет id периода)
+            # примеры
+            #     "Неделя 14 2016" (урл - w2016-14)
+            #     или
+            #     "24 апр Вс 2016" (d2016.12.01)
+            #     или
+            #     "Февраль 2016" (2013-02)
+            #     или
+            #     "I - 2016" (q2013-1)
+            period_id = plogic.convertPeriodCodeAndStartDateToPeriodId(periodCode, key2)
+
             if key1 not in dicti:
-                return empty_val
+                return {'lka_cell_val': empty_val, 'lka_cell_period': period_id}
             elem1 = dicti[key1]
             if key2 not in elem1:
-                return empty_val
-            return my_uu.utils.formatMoneyValue(elem1[key2])
-        def getFromDictDictOrEmpty(dicti, key1, key2, empty_val):
-            if key1 not in dicti:
-                return empty_val
-            elem1 = dicti[key1]
-            if key2 not in elem1:
-                return empty_val
-            return my_uu.utils.formatMoneyValue(elem1[key2])
+                return {'lka_cell_val': empty_val, 'lka_cell_period': period_id}
+            return {'lka_cell_val': my_uu.utils.formatMoneyValue(elem1[key2]), 'lka_cell_period': period_id}
         for r in categoryList:
             pageData['dataRows'][anaType + '-' + result_suffix].append({
-                'category': r,
-                'data': [getFromDictDictOrEmpty(pivot_table['values'], r, k, '0 р.') for k in periods_start_dates]
+                'category': r['name'],
+                'lka_category_id': r['id'],
+                'lka_cell_data': [getFromDictDictOrEmpty(
+                    pivot_table['values'], r['name'], k, '0 р.', periodCode
+                ) for k in periods_start_dates]
             })
         def getValFormattedOrZero(dictionary, key):
             if key in dictionary:
@@ -869,7 +901,7 @@ def ajax_lk_ana(request):
     def addWeekAnaDataToPageData(pageData, anaType, groups):
 
         def formatWeekHeader(d):
-            return dict( first = u'Неделя ' + str(d.isocalendar()[1]), second = getDatesForWeek(d) )
+            return dict( first = u'Неделя ' + str(plogic.getWeekNumberOfYear(d)), second = getDatesForWeek(d) )
 
         return addPeriodAnaDataToPageData(
             pageData,

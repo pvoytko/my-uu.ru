@@ -2,6 +2,8 @@
 # Django settings for my_uu project.
 
 import os
+import datetime
+
 
 # Разработческая машина (не боевая)
 IS_DEVELOPER_COMP = os.path.dirname(os.path.abspath(__file__)) == "D:\\GitRepos\\my-uu.ru\\my_uu"
@@ -23,14 +25,19 @@ INSTANCE_ROOT = PROJECT_DIR
 #     True - показывать желтые страницы (для копий программистов)
 #     False - не показывать (вместо этого показаь 500.html шаблон) - для боевой копии
 #
+# INSTANCE_SPECIFIC_PAID_FOR_DATE
+#     Возврвщает по какую дату оплачено. Используется в режиме отладки на дебаг-копии.
+#
 
 # Все копии программистов. Что значает эта секция см. комменты чуть выше.
 if INSTANCE_ROOT.startswith('/var/www/voyt_myuu_810'):
     INSTANCE_SPECIFIC_DJANGO_DEBUG = True
+    INSTANCE_SPECIFIC_PAID_FOR_DATE = datetime.date.today()
 
 # Боевая копия
 elif INSTANCE_ROOT == '/home/users2/p/pvoytko/domains/my-uu.ru/my_uu/..':
     INSTANCE_SPECIFIC_DJANGO_DEBUG = False
+    INSTANCE_SPECIFIC_PAID_FOR_DATE = None
 
 # Если тут возник эксепшен, значит предпринята попытка запустить новую копию сайта.
 # Для этой новой копии сайта надо прописать настройки, специфичные для этой копии, по аналогии с секциями выше.

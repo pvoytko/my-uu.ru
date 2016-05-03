@@ -37,13 +37,13 @@ def getAccountIdAndCategoryIdFromUchetPageUrl(request_path):
 
 # Фильтрует записи учета согласно выбранному фильтру дат
 # Получает кверисет и код периода.
-# 2014-02 и т.п., last3, last30,
+# Примеры кодов периода - см. convertPeriodCodeAndStartDateToPeriodId а так же, last3, last30
 def filterUchetByViewPeriod(uchetRecords, period_id):
 
     import datetime
     import dateutil.relativedelta
 
-    # Спец. значения
+    # Последние 3 дня, 30 дней
     if period_id in (models.UserProfile.VIEW_PERIOD_CODE_LAST3, models.UserProfile.VIEW_PERIOD_CODE_LAST30):
         lastIndex = 3 if period_id == models.UserProfile.VIEW_PERIOD_CODE_LAST3 else 30
         lastDates = list(uchetRecords.values_list('date', flat=True).distinct().order_by('-date')[0:lastIndex])
@@ -55,13 +55,45 @@ def filterUchetByViewPeriod(uchetRecords, period_id):
 
         return uchetRecords.filter(date__gte = lastDates[-1])
 
+    # День
+    elif period_id.startswith('d'):
+        date_parsed = datetime.datetime.strptime(period_id[1:], '%d.%m.%Y').date()
+        return uchetRecords.filter(date = date_parsed)
+
+    # Неделя
+    elif period_id.startswith('w'):
+        year, week = period_id[1:].split('-')
+        year, week = int(year), int(week)
+
+        # Сегодня 4 мая 2016
+        # Это 18 неделя если использовать функцию getWeekNumberOfYear
+        # Если использовать strptime то для 18-й недли возвращет дату 2016-05-02 00:00:00 т.е. 2 мая, то что надо
+
+        # ИСточник - http://stackoverflow.com/questions/17087314/get-date-from-week-number
+        d1 = datetime.datetime.strptime('{y}-{w}-0'.format(y = year, w = week), "%Y-%U-%w")
+        d2 = d1 + datetime.timedelta(days=6)
+        return uchetRecords.filter(date__gte = d1, date__lte = d2)
+
     # Месяц
-    else:
-        year, month = period_id.split('-')
+    elif period_id.startswith('m'):
+        year, month = period_id[1:].split('-')
         year, month = int(year), int(month)
         d1 = datetime.date(year, month, 1)
         d2 = d1 + dateutil.relativedelta.relativedelta(months=1) - datetime.timedelta(days=1)
         return uchetRecords.filter(date__gte = d1, date__lte = d2)
+
+    # Квартал
+    elif period_id.startswith('q'):
+        year, quart = period_id[1:].split('-')
+        year, quart = int(year), int(quart)
+        d1 = datetime.date(year, (quart-1)*3 + 1, 1)
+        d2 = datetime.date(year, (quart)*3 + 1, 1) - datetime.timedelta(days=1)
+        return uchetRecords.filter(date__gte = d1, date__lte = d2)
+
+    raise RuntimeError(u'Ошибка. Неподдерживаемый ID периода "{id}"'.format(id = period_id))
+
+
+
 
 
 # Возвращает все UchetRecords для этого юзера
@@ -70,3 +102,32 @@ def getUserUchetRecords(user):
     urecs = models.Uchet.objects.filter(user=user).order_by('date', '-utype', 'id')
     return urecs
 
+
+# Получая дату, возвращает номер недели.
+def getWeekNumberOfYear(date):
+    return date.isocalendar()[1]
+
+
+# получая на вход дату и код периода (quart, week, month, day) - на их основе вычисляет id периода)
+# примеры
+#     "Неделя 14 2016" (урл - w2016-14)
+#     или
+#     "24 апр Вс 2016" (d2016.12.01)
+#     или
+#     "Февраль 2016" (m2013-02)
+#     или
+#     "I - 2016" (q2013-1)
+def convertPeriodCodeAndStartDateToPeriodId(period_code, start_date):
+
+    import views
+
+    if period_code == u'day':
+        return start_date.strftime('d%d.%m.%Y')
+    elif period_code == u'week':
+        return "w{0}-{1}".format(start_date.strftime('%Y'), getWeekNumberOfYear(start_date))
+    elif period_code == u'month':
+        return "m{0}-{1:02}".format(start_date.year, start_date.month)
+    elif period_code == u'quart':
+        return "q{0}-{1}".format(start_date.year, views.getQuartNumber(start_date))
+
+    raise RuntimeError(u'Неизвестный код периода')

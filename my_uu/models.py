@@ -78,7 +78,7 @@ class UserProfile(models.Model):
                 u'июль', u'август', u'сентябрь', u'октябрь', u'ноябрь', u'декабрь'
                 ]
             return months[d.month-1] + " " + str(d.year)
-        return [["{0}-{1:02}".format(m.year, m.month), verboseMonth(m)] for m in months]
+        return [["m{0}-{1:02}".format(m.year, m.month), verboseMonth(m)] for m in months]
 
     # Вычисляет дату по которую у юзера оплачено.
     # На основании информации о платежах из базы.
@@ -86,6 +86,12 @@ class UserProfile(models.Model):
     # Гарантируется что дата возвращаемая этим методом больше или равна сегодняшней.
     # Это используется при проверке оплачена ли сейчас работа, если этот метод вернул дату - да, если None - нет.
     def getPaidByDate(self):
+
+        import django.conf
+
+        # Если для текущей копии задана дата по которую оплачено (для отладки на прог-копии) - ее и возвращем.
+        if django.conf.settings.INSTANCE_SPECIFIC_PAID_FOR_DATE:
+            return django.conf.settings.INSTANCE_SPECIFIC_PAID_FOR_DATE
 
         # Для этого находим все платежи в базе этого пользователя.
         # Сортируем по дате по которую оплачено.
