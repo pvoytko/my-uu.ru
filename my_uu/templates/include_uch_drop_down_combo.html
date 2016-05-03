@@ -1,0 +1,66 @@
+{# Выпадающий список на странице учета - фильтр по счету или категории #}
+{# Параметры #}
+{#     id = id Элемента контрола, используется в реализации, должен быть уникальным. #}
+{#     cap = метка к списку #}
+{#     list = список объектов с полями id и name для отображения в выпадающем списке #}
+{#     cur_id = ID объекта name которого отобразить текущим (жирным и выбанным на кнопке) #}
+{#     list_to_right = Если true то выпдаюащий список выронять по правому краю (используется для категорий) #}
+{#                     чтоб за экран не вылазили                                                            #}
+{#     path_part_index = Индекс части пути в урл, в которую подставлять ID выбранного эллемента             #}
+{#             Пример: /lk/period/acc/cat/ Для счетов используется 2, для категорий 3.                      #}
+{#             Тогда ID выбранного элементп подставится в эту часть. Например, для счетов, ID выбранного    #}
+{#             5 и path_part_index равен 2, тогда урл получится /lk/period/5/cat/                           #}
+
+        {# тут делается подсветка фоном если этот пункт выбран #}
+        <div style="margin-left: 10px; padding: 2px 5px 2px 0px; display: inline-block; {% if cur_id != None %}background-color: #FFDA95; border-radius: 6px;{% endif %}">
+
+            <span style="margin-left: 10px; margin-right: 5px;">{{ cap }}</span>
+
+            <select class="selectpicker" id="{{ id }}">
+                <option value='None' data-content="{% if 'None' == cur_id %}<strong>-- Все --</strong>{% else %}-- Все --{% endif %}">
+                </option>
+                {% for a in list %}
+                    <option value='{{ a.id }}' data-content="{% if a.id == cur_id %}<strong>{{ a.name }}</strong>{% else %}{{ a.name }}{% endif %}">
+                    </option>
+                {% endfor %}
+            </select>
+
+        </div>
+
+        <script type="text/javascript">
+
+            // jQuery плугин список
+            var sb_elem = $('#{{ id }}');
+            sb_elem.selectpicker({
+                width: 165
+            });
+
+            // Выбор текущего
+            sb_elem.val('{{ cur_id }}');
+            sb_elem.selectpicker('refresh')
+
+            // при изменении выбранного элемента в комбобоксе - открыть страницу с другим урл
+            sb_elem.on('change', function(){
+                var selected_val = $('#{{ id }}').find("option:selected").val();
+                if ({{ path_part_index }} == 2){
+                    goToUchUrl(undefined, selected_val, undefined)
+                } else if ({{ path_part_index }} == 3) {
+                    goToUchUrl(undefined, undefined, selected_val)
+                } else {
+                    alert('Ошибка программирования 2.');
+                };
+            });
+
+            // при показе выпадающего списка - переместить его так, чтобы он был выровнен поправу.
+            // Используется для категорий, чтоб за экран не вызалижи
+            {% if list_to_right %}
+                sb_elem.on('shown.bs.select', function(ev){
+
+                    // Находим элемент внешний контейнер выпадающего списка.
+                    // и пперемещеем его левее так, чтобы правая граница была по правой границе селекта.
+                    var el = sb_elem.parent().find('.dropdown-menu.open');
+                    el.css('left', '-' + (el.width() - 165) + 'px');
+                });
+            {% endif %}
+
+        </script>

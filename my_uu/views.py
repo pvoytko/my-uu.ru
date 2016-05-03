@@ -22,6 +22,8 @@ import datetime
 
 import my_uu.models
 import my_uu.utils
+import plogic
+
 
 def extractAngularPostData(request, *keys):
     postData = simplejson.loads(request.body)
@@ -146,8 +148,8 @@ def register_user_ajax(request):
 
         # Эта сервия преобразований приводит к юникодной строке в которой русские буквы
         inpHttpRef = urllib.unquote(request.COOKIES['uu_ref']).decode('utf8')
-        u.get_profile().http_referer = urllib.unquote(str(inpHttpRef)).decode('utf-8')
-        u.get_profile().save()
+        u.userprofile.http_referer = urllib.unquote(str(inpHttpRef)).decode('utf-8')
+        u.userprofile.save()
 
     # Для нового юзера надо создать счет и категорию
     my_uu.models.Category.objects.create(name = u'Не указана категория', user = u).save()
@@ -279,7 +281,7 @@ def lk_beg(request):
 
 # Преобразует Django-model в список словарьей чтобы можно было JSON выполнить.
 def _getUchetRecordsList(uchetRecords):
-    return list(uchetRecords.values('id', 'date', 'utype__name', 'sum', 'account__name', 'category__name', 'comment'))
+    return uchetRecords.values('id', 'date', 'utype__name', 'sum', 'account__name', 'category__name', 'comment')
 
 
 def _getAccountBalanceList(request):
@@ -305,30 +307,43 @@ def _getCategoryList(request):
 # Главная страница личного кабиета
 @uu_login_required
 @uuTrackEventDecor(my_uu.models.EventLog.EVENT_VISIT_UCH)
-def lk_uch(request):
+def lk_uch(request, period = None, account_id = None, category_id = None):
 
     # Определяем надо ли показать юзеру сообщение что нужна оплата, и если надо, отслеживем событие.
-    showAddUchetDialog = request.user.get_profile().showAddUchetDialog()
+    showAddUchetDialog = request.user.userprofile.showAddUchetDialog()
     if not showAddUchetDialog:
         uuTrackEventDynamic(request.user, my_uu.models.EventLog.EVENT_PAYMENT_NEED_DIALOG)
 
     # Определяем надо ли показать юзеру сообщение что осталось менее 5 дней
-    get5DaysPaidLeft = request.user.get_profile().get5DaysPaidLeft()
+    get5DaysPaidLeft = request.user.userprofile.get5DaysPaidLeft()
     if not (get5DaysPaidLeft is None):
         uuTrackEventDynamic(request.user, my_uu.models.EventLog.EVENT_5DAYS_PAID_LEFT_MESSAGE)
 
+    # ID выбранного account_id и category_id для фильтра или None
+    account_id, category_id = plogic.getAccountIdAndCategoryIdFromUchetPageUrl(request.path)
+
+    # QS записей учета для отображения в таблице при открытии страницы
+    # фильтруем согласно выбранного счета и категории
+    uchet_records = _getUchetRecordsList(request.user.userprofile.getUchetRecordsInViewPeriod())
+    uchet_records = plogic.filterUchetRecordsByAccountAndCategory(uchet_records, account_id, category_id)
+
     return render(request, 'lk_uch.html', {
-        'uchetRecordsJson': json.dumps(_getUchetRecordsList(request.user.get_profile().getUchetRecordsInViewPeriod()), cls=DjangoJSONEncoder),
+        'uchetRecordsJson': json.dumps(list(uchet_records), cls=DjangoJSONEncoder),
         'uTypeList': my_uu.models.UType.objects.all().order_by('id'),
         'accountList': my_uu.models.Account.objects.filter(user=request.user, visible=True).order_by('position', 'id'),
         'categoryList': my_uu.models.Category.objects.filter(user=request.user, visible=True).order_by('position', 'id'),
         'accountBalanceListJson': json.dumps(_getAccountBalanceList(request), cls=DjangoJSONEncoder),
         'categoryListJson': json.dumps(_getCategoryList(request), cls=DjangoJSONEncoder),
         'viewPeriodSetJson': json.dumps(my_uu.models.UserProfile.VIEW_PERIOD_CODE_CHOICES, cls=DjangoJSONEncoder),
-        'viewPeriodMonthSetJson': json.dumps((request.user.get_profile().getUchetMonthSet()), cls=DjangoJSONEncoder),
-        'viewPeriodCodeJson': json.dumps(request.user.get_profile().view_period_code),
+        'viewPeriodMonthSetJson': json.dumps((request.user.userprofile.getUchetMonthSet()), cls=DjangoJSONEncoder),
+        'viewPeriodCodeJson': json.dumps(request.user.userprofile.view_period_code),
         'showAddUchetDialog': 1 if showAddUchetDialog else 1, # 1 или 0 - т.к. JS не понимает True / False
         'get5DaysPaidLeft': get5DaysPaidLeft,
+
+        # ID счета, который был выбран в фильтре в списке счетов, и передан в параметре УРЛ
+        # преобразование к целому нужно т.к. сравнние с id не работает иначе.
+        'lku_filtered_account_id': account_id,
+        'lku_filtered_category_id': category_id,
     })
 
 
@@ -1003,7 +1018,7 @@ def lk_save_uchet_ajax(request):
     # за старую дату а потом изменять за новую тем самым обойдет ограничение. Чтобы этого хака не было, да и
     # т.к. так проще реализовать, я запрещаю и редактирование и создание. Т.е. если у пользователя дохера записей
     # более 40, то он не сможет их даже редачить в бесплатном режиме.
-    if request.user.get_profile().errorOnSaveUchet():
+    if request.user.userprofile.errorOnSaveUchet():
         raise RuntimeError('Попытка сохранить/отредактировать запись в режиме когда эта возможность ограничена и для снятия огранчения нужно оплатить')
 
     rowsForUpdateAndInsert = json.loads(request.POST['rows_json'])
@@ -1073,17 +1088,27 @@ def lk_delete_uchet_ajax(request):
 
 
 # Загрузить данные учета за период
+# вызывается при выборе периода на странице учета
 @uu_login_required
 def lk_load_uchet_ajax(request):
 
     # Сохраняем период за который юзер запросил просмотр
-    userProfile = request.user.get_profile()
+    userProfile = request.user.userprofile
     userProfile.view_period_code = json.loads(request.body)['viewPeriodCode']
     userProfile.save()
 
     # Возвращаем записи за этот период
     uchetRecords = _getUchetRecordsList(userProfile.getUchetRecordsInViewPeriod())
-    return JsonResponseWithStatusOk(uchetRecords = uchetRecords)
+
+    # Получаем счет и категорию выбранные на странице (из ее урл).
+    import urlparse
+    ref_split = urlparse.urlsplit(request.META['HTTP_REFERER'])
+    ref_path = ref_split[2]
+    account_id, category_id = plogic.getAccountIdAndCategoryIdFromUchetPageUrl(ref_path)
+
+    # фильруем и возвращаем
+    uchetRecords = plogic.filterUchetRecordsByAccountAndCategory(uchetRecords, account_id, category_id)
+    return JsonResponseWithStatusOk(uchetRecords = list(uchetRecords))
 
 
 class MyUUUIException(BaseException):
@@ -1380,7 +1405,7 @@ def feedback_request_ajax(request):
 @uuTrackEventDecor(my_uu.models.EventLog.EVENT_VISIT_PAY)
 def lk_pay(request):
     return render(request, 'lk_pay.html', {
-        'payModeDescription': request.user.get_profile().getPayModeDescription(),
+        'payModeDescription': request.user.userprofile.getPayModeDescription(),
         'payments': request.user.payment_set.all().filter(date_payment__isnull = False).order_by('date_payment')
     })
 
@@ -1404,7 +1429,7 @@ def confirmPayment(invId, sumSeller, zpTypeCode, eventConstant):
     # Сохраняем дату с которой по которую платеж действует.
     # Дата с которой = след. день за днем по который уже оплачено или сегодня если активных оплат нет.
     # Дата по которую = дата с которой + кол-во дней - 1.
-    pay_to = p.user.get_profile().getPaidByDate()
+    pay_to = p.user.userprofile.getPaidByDate()
     today = datetime.date.today()
     p.date_from = today if (pay_to is None) else pay_to + datetime.timedelta(days=1)
     p.date_to = p.date_from + datetime.timedelta(days = p.days - 1)

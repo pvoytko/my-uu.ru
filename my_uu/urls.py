@@ -22,6 +22,7 @@ urlpatterns = patterns('',
 
     # Личный кабинет учет
     url(r'^lk/$', 'my_uu.views.lk_uch'),
+    url(r'^lk/(?P<period>[^/]+)/(?P<account_id>[^/]+)/(?P<category_id>[^/]+)/$', 'my_uu.views.lk_uch'),
     url(r'^lk/save_uchet_ajax/$', 'my_uu.views.lk_save_uchet_ajax'),
     url(r'^lk/delete_uchet_ajax/$', 'my_uu.views.lk_delete_uchet_ajax'),
     url(r'^lk/load_uchet_ajax/$', 'my_uu.views.lk_load_uchet_ajax'),

@@ -14,7 +14,7 @@ function uuFormatCurrency(currencyValue, digitsAfterPoint) {
 // Полчая на вход ID грида подменяет в нем строки на русскоязычные
 function uuLocalizeJqxGrid(jqxGridElemId) {
     var localizationobj = {};
-    localizationobj.emptydatastring = "Для добавления операций учета кликните кнопку «Внести» ниже или нажмите клавишу «Insert» на клавиатуре.  ";
+    localizationobj.emptydatastring = "Не найдено операций учета для отображения. Для добавления кликните кнопку «Внести» ниже (или «Ins» на клавиатуре).  ";
     localizationobj.loadtext = "Загрузка...";
     $("#" + jqxGridElemId).jqxGrid('localizestrings', localizationobj);
 }
