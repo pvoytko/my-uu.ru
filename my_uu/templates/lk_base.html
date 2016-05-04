@@ -48,6 +48,23 @@
     </style>
 
 
+    <script>
+
+        {# А это спец. тултипы на странице анализа #}
+        function SiliTooltipCtrl2($scope, $element){
+            // Всплывающая подсказка.
+            $(function () {
+                // Если текст корткий, то подсказка не нужна.
+                var is_need = ($element[0].offsetWidth < $element[0].scrollWidth) || ($element.attr('title'))? true: false;
+                var text = $element.attr('title') ? $element.attr('title') : $element.text();
+                if (is_need){
+                    // Внутренний текст одобавляем подчеркивание.
+                    $element.find('span').attr('style', 'border-bottom: 1px dashed;');
+                    $element.tooltip({ placement: "top", title: text, });
+                }
+            });
+        }
+    </script>
 
     {% block add_to_head %}
 

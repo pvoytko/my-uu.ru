@@ -1086,39 +1086,12 @@
         </script>
         <script>
 
+
             // ПЕреход на страницу учета с указанными периодом, счетом, категорией.
             // Если они не указаны (undefined), тогда взять их из УРЛ. Если в урл их нет,
             // тогда они будут undef.
             function goToUchUrl(period, acc, cat){
-                // Изначально undef
-                var parts = new Array('lk', 'None', 'None', 'None');
-
-                // Если естьв урл, берем из урл.
-                // урл вида /lk/period/acc/cat/
-                var parts_url = window.location.pathname.split('/');
-                if (parts_url.length == 6){
-                    parts[1] = parts_url[2];
-                    parts[2] = parts_url[3];
-                    parts[3] = parts_url[4];
-
-                // урл вида /lk/ - ничего не делаем.
-                } else if (parts_url.length == 3){
-
-                // других урл для старницы учяета быть не дожно.
-                } else {
-                    alert('Ошибка программирования 1.');
-                };
-
-                // Если они указаны в аргументе, берем их оттуда.
-                parts[1] = period ? period : parts[1];
-                parts[2] = acc ? acc : parts[2];
-                parts[3] = cat ? cat : parts[3];
-
-                // Итог
-                var new_url = '/' + parts.join('/') + '/';
-
-                // Переход
-                window.location.href = new_url;
+                return goToUchOrAnaUrl(period, acc, cat, false);
             }
 
         </script>

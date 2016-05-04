@@ -131,3 +131,16 @@ def convertPeriodCodeAndStartDateToPeriodId(period_code, start_date):
         return "q{0}-{1}".format(start_date.year, views.getQuartNumber(start_date))
 
     raise RuntimeError(u'Неизвестный код периода')
+
+
+# Для группировки в анализе - преобразовать имя категории к имени группы.
+# "Еда -- Столовая" станет "[Еда]"
+# "Жилье" станет "[Жилье]"
+def convertCategoryNameToGroupNameIfGrouping(cat_name, is_grouping):
+    if is_grouping:
+
+        if '--' in cat_name:
+            cat_name = cat_name.split('--', 1)[0].strip()
+
+        return u"[{0}]".format(cat_name)
+    return cat_name

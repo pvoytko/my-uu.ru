@@ -444,8 +444,29 @@ class AnaWeekIterator(object):
 # Страница Анализ личного кабиета
 @uu_login_required
 @uuTrackEventDecor(my_uu.models.EventLog.EVENT_VISIT_ANA)
-def lk_ana(request):
-    return render(request, 'lk_ana.html')
+def lk_ana(request, type = None, period = None, group = None):
+
+    if type is None:
+        type = 'rashod'
+
+    if period is None:
+        period = 'day'
+
+    if group is None:
+        group = False
+    else:
+        if group == 'group':
+            group = True
+        elif group == 'nogroup':
+            group = False
+        else:
+            raise RuntimeError(u'Неподдерживаемое значение.')
+
+    return render(request, 'lk_ana.html', {
+        'lka_period': period,
+        'lka_type': type,
+        'lka_is_grouping': group,
+    })
 
 
 # Получая список словарей, сортирует их по одному или нескольким полям.
@@ -770,6 +791,7 @@ def ajax_lk_ana(request):
     # period_count = Число периодов для отображения
     # get_first_period_date_func Функция, применяемая к дате, получает первый день требуемого периода
     # dec_period_func = Функция, применяемая к дате, уменьшает ее на один требуемый период
+    # is_groups_on = True если надо вместо категорий вывести группы
     def addPeriodAnaDataToPageData(
         pageData,
         anaType,
@@ -778,6 +800,7 @@ def ajax_lk_ana(request):
         period_count,
         get_first_period_date_func,
         dec_period_func,
+        is_groups_on,
     ):
 
         # Сколь периодов включая теукщий будет в очтете
@@ -805,6 +828,10 @@ def ajax_lk_ana(request):
         # Преобразуем к формату словарей
         uchet_list = uchet_qs.values('date', 'sum', 'category__name').order_by('date')
 
+        # если включена группировка, тогда замена названия категорий на названия групп.
+        for u in uchet_list:
+            u['category__name'] = plogic.convertCategoryNameToGroupNameIfGrouping(u['category__name'], is_groups_on)
+
         # Добавляем поле месяца для сортировки и группировки по нему
         for u in uchet_list:
             u['period_value_sort'] = get_first_period_date_func(u['date'])
@@ -829,10 +856,15 @@ def ajax_lk_ana(request):
 
         # Теперь надо сформировать список из категорий, в порядке нужном для пользователя,
         # только те, по которым есть данные (остальные убираем).
+        # Если несколько категорий при группировке преобразовались в одну, то на выходе дожна быть только одна.
         categoryList = list(request.user.category_set.values('name', 'id').order_by('position', 'id'))
+        categoryNames = set()
         for c in reversed(categoryList):
-            if c['name'] not in pivot_table['rows']:
+            c['name'] = plogic.convertCategoryNameToGroupNameIfGrouping(c['name'], is_groups_on)
+            if c['name'] not in pivot_table['rows'] or c['name'] in categoryNames:
                 categoryList.remove(c)
+            else:
+                categoryNames.add(c['name'])
 
         # Преобразуем к выходному формату:
         # periods:
@@ -886,7 +918,7 @@ def ajax_lk_ana(request):
             getValFormattedOrZero(pivot_table['colsTotalValues'], k) for k in periods_start_dates
         ]
 
-    def addDayAnaDataToPageData(pageData, anaType):
+    def addDayAnaDataToPageData(pageData, anaType, is_groups_on):
 
         return addPeriodAnaDataToPageData(
             pageData,
@@ -896,9 +928,10 @@ def ajax_lk_ana(request):
             period_count = 6,
             get_first_period_date_func = lambda dt: dt,
             dec_period_func = lambda dt: dt - datetime.timedelta(days=1),
+            is_groups_on = is_groups_on,
         )
 
-    def addWeekAnaDataToPageData(pageData, anaType, groups):
+    def addWeekAnaDataToPageData(pageData, anaType, is_groups_on):
 
         def formatWeekHeader(d):
             return dict( first = u'Неделя ' + str(plogic.getWeekNumberOfYear(d)), second = getDatesForWeek(d) )
@@ -911,9 +944,10 @@ def ajax_lk_ana(request):
             period_count = 6,
             get_first_period_date_func = lambda dt: dt - datetime.timedelta(days=dt.weekday()),
             dec_period_func = lambda dt: dt - datetime.timedelta(days=7),
+            is_groups_on = is_groups_on,
         )
 
-    def addMonthAnaDataToPageData(pageData, anaType):
+    def addMonthAnaDataToPageData(pageData, anaType, is_groups_on):
 
         monthNames = [u'Январь', u'Февраль', u'Март', u'Апрель', u'Май', u'Июнь', u'Июль', u'Август', u'Сентябрь', u'Октябрь', u'Ноябрь', u'Декабрь']
 
@@ -925,9 +959,10 @@ def ajax_lk_ana(request):
             period_count = 6,
             get_first_period_date_func = lambda dt: dt.replace(day=1),
             dec_period_func = lambda dt: addMonths(dt, -1),
+            is_groups_on = is_groups_on,
         )
 
-    def addQuartAnaDataToPageData(pageData, anaType):
+    def addQuartAnaDataToPageData(pageData, anaType, is_groups_on):
 
         return addPeriodAnaDataToPageData(
             pageData,
@@ -937,6 +972,7 @@ def ajax_lk_ana(request):
             period_count = 6,
             get_first_period_date_func = getQuartFirstDate,
             dec_period_func = lambda dt: addMonths(dt, -3),
+            is_groups_on = is_groups_on,
         )
 
     pageData = {
@@ -945,19 +981,17 @@ def ajax_lk_ana(request):
         'totalRow': {}
     }
 
-    anaType, periodCode = extractAngularPostData(request, 'anaType', 'periodCode')
-    groups = '?g' in request.META['HTTP_REFERER']
-    print groups
+    anaType, periodCode, is_groups_on = extractAngularPostData(request, 'anaType', 'periodCode', 'lkax_is_grouping')
 
 
     if periodCode == 'day':
-        addDayAnaDataToPageData(pageData, anaType)
+        addDayAnaDataToPageData(pageData, anaType, is_groups_on)
     if periodCode == 'week':
-        addWeekAnaDataToPageData(pageData, anaType, groups)
+        addWeekAnaDataToPageData(pageData, anaType, is_groups_on)
     if periodCode == 'month':
-        addMonthAnaDataToPageData(pageData, anaType)
+        addMonthAnaDataToPageData(pageData, anaType, is_groups_on)
     if periodCode == 'quart':
-        addQuartAnaDataToPageData(pageData, anaType)
+        addQuartAnaDataToPageData(pageData, anaType, is_groups_on)
 
     return JsonResponse(request, {
         'pageData': pageData,
