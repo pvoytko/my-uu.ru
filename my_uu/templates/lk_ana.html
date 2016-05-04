@@ -204,7 +204,9 @@
                     <thead>
                         <tr>
                             <th style="background-color: #f0f0f0; width: 200px; text-align: center;">{$ getCatCaption() $}</th>
-                            <th style="background-color: #f0f0f0; width: 92px; text-align: center;" ng-repeat="p in getPeriods()">
+
+                            {# ширина 101 подобрана чтобы недели входили, например, неделя 13 2016 года - длинный текст #}
+                            <th style="background-color: #f0f0f0; width: 101px; text-align: center;" ng-repeat="p in getPeriods()">
                                 {$ p.first $}<br /><span style="font-weight: normal;">{$ p.second $}</span>
                             </th>
                         </tr>
