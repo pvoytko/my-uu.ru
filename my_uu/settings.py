@@ -37,7 +37,7 @@ if INSTANCE_ROOT.startswith('/var/www/pvoy_myuu_8') :
 
 # Боевая копия
 elif INSTANCE_ROOT == '/var/www/pvoy_myuu':
-    INSTANCE_SPECIFIC_DJANGO_DEBUG = False
+    INSTANCE_SPECIFIC_DJANGO_DEBUG = True
     INSTANCE_SPECIFIC_PAID_FOR_DATE = None
 
 # Если тут возник эксепшен, значит предпринята попытка запустить новую копию сайта.
