@@ -1,7 +1,4 @@
 .idea
-
 *.pyc
-
+*.log
 /emails
-
-venv
