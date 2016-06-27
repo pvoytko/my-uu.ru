@@ -9,7 +9,8 @@ import datetime
 IS_DEVELOPER_COMP = os.path.dirname(os.path.abspath(__file__)) == "D:\\GitRepos\\my-uu.ru\\my_uu"
 
 # Тут хранится корневая папка проекта как юникод-строка. Важно юникод. Чтоб не было проблем с русскими буквами.
-PROJECT_DIR = os.path.join(os.path.dirname(unicode(__file__)), "..")
+PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(unicode(__file__))))
+
 
 # ============
 # Тут включаются настройки, специфичные для каждой копии сайта
@@ -30,12 +31,12 @@ INSTANCE_ROOT = PROJECT_DIR
 #
 
 # Все копии программистов. Что значает эта секция см. комменты чуть выше.
-if INSTANCE_ROOT.startswith('/var/www/voyt_myuu_810'):
+if INSTANCE_ROOT.startswith('/var/www/pvoy_myuu_8') :
     INSTANCE_SPECIFIC_DJANGO_DEBUG = True
     INSTANCE_SPECIFIC_PAID_FOR_DATE = datetime.date.today()
 
 # Боевая копия
-elif INSTANCE_ROOT == '/home/users2/p/pvoytko/domains/my-uu.ru/my_uu/..':
+elif INSTANCE_ROOT == '/var/www/pvoy_myuu':
     INSTANCE_SPECIFIC_DJANGO_DEBUG = False
     INSTANCE_SPECIFIC_PAID_FOR_DATE = None
 
