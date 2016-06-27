@@ -224,12 +224,23 @@ LOGGING = {
             'level': 'ERROR',
             'filters': ['require_debug_false'],
             'class': 'django.utils.log.AdminEmailHandler'
-        }
+        },
+        # Эта секция обеспечивает вывод в консоль ошибок (удобно при отладке)
+        'console':{
+            'level':'DEBUG',
+            'class':'logging.StreamHandler',
+        },
     },
     'loggers': {
         'django.request': {
             'handlers': ['mail_admins'],
             'level': 'ERROR',
+            'propagate': True,
+        },
+        # Эта секция обеспечивает вывод в консоль ошибок (удобно при отладке)
+        'django.request': {
+            'handlers':['console'],
+            'level':'DEBUG',
             'propagate': True,
         },
     }
