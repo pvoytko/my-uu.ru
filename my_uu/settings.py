@@ -158,6 +158,8 @@ STATICFILES_DIRS = (
     os.path.join(APP_ROOT, '../static'),
 )
 
+STATIC_ROOT = os.path.join(PROJECT_DIR, 'static')
+
 # List of finder classes that know how to find static files in
 # various locations.
 STATICFILES_FINDERS = (
@@ -206,6 +208,14 @@ TEMPLATES = [
         },
     },
 ]
+
+
+from django.conf import global_settings
+TEMPLATE_CONTEXT_PROCESSORS = list(global_settings.TEMPLATE_CONTEXT_PROCESSORS) + [
+    'django.core.context_processors.request',
+    'django.core.context_processors.static',
+]
+
 
 INSTALLED_APPS = (
 
