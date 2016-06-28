@@ -3,27 +3,27 @@
 {% block add_to_head %}
 
     <!-- jqxGrid -->
-    <link rel="stylesheet" href="{{ STATIC_URL }}libs/jqwidgets-2.9.0/jqwidgets/styles/jqx.base.css" type="text/css" />
-    <link rel="stylesheet" href="{{ STATIC_URL }}libs/jqwidgets-2.9.0/jqwidgets/styles/jqx.darkblue.css" type="text/css" />
-    <script type="text/javascript" src="{{ STATIC_URL }}libs/jqwidgets-2.9.0/jqwidgets/jqxcore.js"></script>
-    <script type="text/javascript" src="{{ STATIC_URL }}libs/jqwidgets-2.9.0/jqwidgets/jqxdata.js"></script>
-    <script type="text/javascript" src="{{ STATIC_URL }}libs/jqwidgets-2.9.0/jqwidgets/jqxbuttons.js"></script>
-    <script type="text/javascript" src="{{ STATIC_URL }}libs/jqwidgets-2.9.0/jqwidgets/jqxscrollbar.js"></script>
-    <script type="text/javascript" src="{{ STATIC_URL }}libs/jqwidgets-2.9.0/jqwidgets/jqxmenu.js"></script>
-    <script type="text/javascript" src="{{ STATIC_URL }}libs/jqwidgets-2.9.0/jqwidgets/jqxcheckbox.js"></script>
-    <script type="text/javascript" src="{{ STATIC_URL }}libs/jqwidgets-2.9.0/jqwidgets/jqxlistbox.js"></script>
-    <script type="text/javascript" src="{{ STATIC_URL }}libs/jqwidgets-2.9.0/jqwidgets/jqxdropdownlist.js"></script>
-    <script type="text/javascript" src="{{ STATIC_URL }}libs/jqwidgets-2.9.0/jqwidgets/jqxgrid.js"></script>
-    <script type="text/javascript" src="{{ STATIC_URL }}libs/jqwidgets-2.9.0/jqwidgets/jqxgrid.sort.js"></script>
-    <script type="text/javascript" src="{{ STATIC_URL }}libs/jqwidgets-2.9.0/jqwidgets/jqxgrid.pager.js"></script>
-    <script type="text/javascript" src="{{ STATIC_URL }}libs/jqwidgets-2.9.0/jqwidgets/jqxgrid.selection.js"></script>
-    <script type="text/javascript" src="{{ STATIC_URL }}libs/jqwidgets-2.9.0/jqwidgets/jqxgrid.columnsresize.js"></script>
-    <script type="text/javascript" src="{{ STATIC_URL }}libs/jqwidgets-2.9.0/jqwidgets/jqxdata.js"></script>
-    <script type="text/javascript" src="{{ STATIC_URL }}libs/jqwidgets-2.9.0/jqwidgets/jqxgrid.edit.js"></script>
-    <script type="text/javascript" src="{{ STATIC_URL }}libs/jqwidgets-2.9.0/jqwidgets/jqxcombobox.js"></script>
+    <link rel="stylesheet" href="/static/libs/jqwidgets-2.9.0/jqwidgets/styles/jqx.base.css" type="text/css" />
+    <link rel="stylesheet" href="/static/libs/jqwidgets-2.9.0/jqwidgets/styles/jqx.darkblue.css" type="text/css" />
+    <script type="text/javascript" src="/static/libs/jqwidgets-2.9.0/jqwidgets/jqxcore.js"></script>
+    <script type="text/javascript" src="/static/libs/jqwidgets-2.9.0/jqwidgets/jqxdata.js"></script>
+    <script type="text/javascript" src="/static/libs/jqwidgets-2.9.0/jqwidgets/jqxbuttons.js"></script>
+    <script type="text/javascript" src="/static/libs/jqwidgets-2.9.0/jqwidgets/jqxscrollbar.js"></script>
+    <script type="text/javascript" src="/static/libs/jqwidgets-2.9.0/jqwidgets/jqxmenu.js"></script>
+    <script type="text/javascript" src="/static/libs/jqwidgets-2.9.0/jqwidgets/jqxcheckbox.js"></script>
+    <script type="text/javascript" src="/static/libs/jqwidgets-2.9.0/jqwidgets/jqxlistbox.js"></script>
+    <script type="text/javascript" src="/static/libs/jqwidgets-2.9.0/jqwidgets/jqxdropdownlist.js"></script>
+    <script type="text/javascript" src="/static/libs/jqwidgets-2.9.0/jqwidgets/jqxgrid.js"></script>
+    <script type="text/javascript" src="/static/libs/jqwidgets-2.9.0/jqwidgets/jqxgrid.sort.js"></script>
+    <script type="text/javascript" src="/static/libs/jqwidgets-2.9.0/jqwidgets/jqxgrid.pager.js"></script>
+    <script type="text/javascript" src="/static/libs/jqwidgets-2.9.0/jqwidgets/jqxgrid.selection.js"></script>
+    <script type="text/javascript" src="/static/libs/jqwidgets-2.9.0/jqwidgets/jqxgrid.columnsresize.js"></script>
+    <script type="text/javascript" src="/static/libs/jqwidgets-2.9.0/jqwidgets/jqxdata.js"></script>
+    <script type="text/javascript" src="/static/libs/jqwidgets-2.9.0/jqwidgets/jqxgrid.edit.js"></script>
+    <script type="text/javascript" src="/static/libs/jqwidgets-2.9.0/jqwidgets/jqxcombobox.js"></script>
 
     <!-- Ангулар-директива Баланс счетов -->
-    <script src="{{ STATIC_URL }}js/directive_balance.js"></script>
+    <script src="/static/js/directive_balance.js"></script>
 
 
     <style>
@@ -83,7 +83,7 @@
 
         /* Переопределяем курсор над ячейками на excel-евский */
         .jqx-grid-cell {
-            cursor: url("{{ STATIC_URL }}img/excel_cursor.png"), pointer;
+            cursor: url("/static/img/excel_cursor.png"), pointer;
         }
 
         /*

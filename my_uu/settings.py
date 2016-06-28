@@ -63,9 +63,6 @@ else:
 # ============
 
 
-#  Блок настроек в зависимости от инстанса сайта включаем те или иные его части
-# UU_EMAIL_BACKEND_TYPE = 'filebased' if IS_DEVELOPER_COMP else 'jino'
-
 DEBUG = INSTANCE_SPECIFIC_DJANGO_DEBUG
 TEMPLATE_DEBUG = DEBUG
 
@@ -73,12 +70,6 @@ ADMINS = (
     ('Павел Войтко', 'pvoytko@gmail.com'),
 )
 
-# Отправка емейлов
-#EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-#    EMAIL_HOST = 'smtp.jino.ru'
-#    EMAIL_PORT = 587
-#EMAIL_HOST_USER = 'myuu@my-uu.ru'
-#EMAIL_HOST_PASSWORD = 'myuupass'
 
 MANAGERS = ADMINS
 
@@ -158,7 +149,7 @@ STATICFILES_DIRS = (
     os.path.join(APP_ROOT, '../static'),
 )
 
-STATIC_ROOT = os.path.join(PROJECT_DIR, 'static')
+STATIC_ROOT = os.path.join(PROJECT_DIR, 'static2')
 
 # List of finder classes that know how to find static files in
 # various locations.
