@@ -34,18 +34,25 @@ INSTANCE_ROOT = PROJECT_DIR
 #     Нужно для программиста - для добавления новых шаблонов.
 #     True - показывать (используется на прог-копии). False - не надо показывать (на боевой).
 #
+# INSTANCE_SPECIFIC_DJANGO_DEBUG_STATIC
+#     Надо ли в Урл Паттернс Джанги добавить media и static и обслуживать их Джангой
+#     True - да, используется для копии сайта программистов
+#     False - нет, используется для демонстрационной и боевой копии
+#     (там nginx обрабатывает статику и STATIC_URL в этом случае будет такой чтобы указывать на nginx)
 
 # Все копии программистов. Что значает эта секция см. комменты чуть выше.
 if INSTANCE_ROOT.startswith('/var/www/pvoy_myuu_8') :
     INSTANCE_SPECIFIC_DJANGO_DEBUG = True
     INSTANCE_SPECIFIC_PAID_FOR_DATE = datetime.date.today()
     INSTANCE_SPECIFIC_ADD_EMAIL_TEMPLATES = True
+    INSTANCE_SPECIFIC_DJANGO_DEBUG_STATIC = True
 
 # Боевая копия
 elif INSTANCE_ROOT == '/var/www/pvoy_myuu':
     INSTANCE_SPECIFIC_DJANGO_DEBUG = False
     INSTANCE_SPECIFIC_PAID_FOR_DATE = None
     INSTANCE_SPECIFIC_ADD_EMAIL_TEMPLATES = False
+    INSTANCE_SPECIFIC_DJANGO_DEBUG_STATIC = False
 
 # Если тут возник эксепшен, значит предпринята попытка запустить новую копию сайта.
 # Для этой новой копии сайта надо прописать настройки, специфичные для этой копии, по аналогии с секциями выше.
@@ -131,25 +138,23 @@ CSRF_COOKIE_NAME = "XSRF-TOKEN"
 
 APP_ROOT = os.path.dirname(os.path.abspath(__file__))
 
-# Absolute path to the directory static files should be collected to.
-# Don't put anything in this directory yourself; store your static files
-# in apps' "static/" subdirectories and in STATICFILES_DIRS.
-# Example: "/var/www/example.com/static/"
-# STATIC_ROOT = os.path.join(APP_ROOT, '../')
-
-# URL prefix for static files.
-# Example: "http://example.com/static/", "http://static.example.com/"
+# Статику брать из папки /static/ на боевом, а на прог-копии - и папок app/static
+# media Брать из /media/ на боевом, а на прог-копии - из /media/ боевого.
 STATIC_URL = '/static/'
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(PROJECT_DIR, '../pvoy_myuu', 'media')
+if INSTANCE_SPECIFIC_DJANGO_DEBUG_STATIC:
+    STATICFILES_DIRS = (
+        # Тут важно без начального слеша, т.е. нельзя /static/, т.к. os.path.join возвращает
+        # относительный путь а не абсолютный т.е. путь вида "static/" она и вернет и если
+        # начальный слеш то при нахождении статики этот путь уже будет считаться абсолютным и
+        # т.к. его нет в системе и статика находиться не будет.
+        os.path.join(PROJECT_DIR, "static/"),
+    )
+else:
+    STATIC_ROOT = os.path.join(PROJECT_DIR, 'static')
 
-# Additional locations of static files
-STATICFILES_DIRS = (
-    # Put strings here, like "/home/html/static" or "C:/www/django/static".
-    # Always use forward slashes, even on Windows.
-    # Don't forget to use absolute paths, not relative paths.
-    os.path.join(APP_ROOT, '../static'),
-)
 
-STATIC_ROOT = os.path.join(PROJECT_DIR, 'static2')
 
 # List of finder classes that know how to find static files in
 # various locations.
