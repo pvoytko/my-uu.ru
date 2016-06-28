@@ -29,16 +29,23 @@ INSTANCE_ROOT = PROJECT_DIR
 # INSTANCE_SPECIFIC_PAID_FOR_DATE
 #     Возврвщает по какую дату оплачено. Используется в режиме отладки на дебаг-копии.
 #
+# INSTANCE_SPECIFIC_ADD_EMAIL_TEMPLATES
+#     Надо ли отображать кнопку "Добавить емейл-шаблон" и "Удалить" в разделе "Шаблоны сообщений".
+#     Нужно для программиста - для добавления новых шаблонов.
+#     True - показывать (используется на прог-копии). False - не надо показывать (на боевой).
+#
 
 # Все копии программистов. Что значает эта секция см. комменты чуть выше.
 if INSTANCE_ROOT.startswith('/var/www/pvoy_myuu_8') :
     INSTANCE_SPECIFIC_DJANGO_DEBUG = True
     INSTANCE_SPECIFIC_PAID_FOR_DATE = datetime.date.today()
+    INSTANCE_SPECIFIC_ADD_EMAIL_TEMPLATES = True
 
 # Боевая копия
 elif INSTANCE_ROOT == '/var/www/pvoy_myuu':
     INSTANCE_SPECIFIC_DJANGO_DEBUG = False
     INSTANCE_SPECIFIC_PAID_FOR_DATE = None
+    INSTANCE_SPECIFIC_ADD_EMAIL_TEMPLATES = False
 
 # Если тут возник эксепшен, значит предпринята попытка запустить новую копию сайта.
 # Для этой новой копии сайта надо прописать настройки, специфичные для этой копии, по аналогии с секциями выше.
@@ -57,7 +64,7 @@ else:
 
 
 #  Блок настроек в зависимости от инстанса сайта включаем те или иные его части
-UU_EMAIL_BACKEND_TYPE = 'filebased' if IS_DEVELOPER_COMP else 'jino'
+# UU_EMAIL_BACKEND_TYPE = 'filebased' if IS_DEVELOPER_COMP else 'jino'
 
 DEBUG = INSTANCE_SPECIFIC_DJANGO_DEBUG
 TEMPLATE_DEBUG = DEBUG
@@ -67,17 +74,11 @@ ADMINS = (
 )
 
 # Отправка емейлов
-if UU_EMAIL_BACKEND_TYPE == 'filebased':
-    EMAIL_BACKEND = 'django.core.mail.backends.filebased.EmailBackend'
-    EMAIL_FILE_PATH = os.path.join(PROJECT_DIR, 'emails')
-elif UU_EMAIL_BACKEND_TYPE == 'jino':
-    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-    EMAIL_HOST = 'smtp.jino.ru'
-    EMAIL_PORT = 587
-    EMAIL_HOST_USER = 'support@my-uu.ru'
-    EMAIL_HOST_PASSWORD = 'JqhGC9I2'
-else:
-    raise RuntimeError(u'Неподдерживаемое значыение UU_EMAIL_BACKEND_TYPE "{0}".'.format(UU_EMAIL_BACKEND_TYPE))
+#EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+#    EMAIL_HOST = 'smtp.jino.ru'
+#    EMAIL_PORT = 587
+#EMAIL_HOST_USER = 'myuu@my-uu.ru'
+#EMAIL_HOST_PASSWORD = 'myuupass'
 
 MANAGERS = ADMINS
 
@@ -109,7 +110,7 @@ TIME_ZONE = 'Europe/Moscow'
 
 # Language code for this installation. All choices can be found here:
 # http://www.i18nguy.com/unicode/language-identifiers.html
-LANGUAGE_CODE = 'ru-ru'
+LANGUAGE_CODE = 'ru-Ru'
 
 SITE_ID = 1
 
@@ -189,20 +190,43 @@ ROOT_URLCONF = 'my_uu.urls'
 # Python dotted path to the WSGI application used by Django's runserver.
 WSGI_APPLICATION = 'my_uu.wsgi.application'
 
-TEMPLATE_DIRS = (
-    # Put strings here, like "/home/html/django_templates" or "C:/www/django/templates".
-    # Always use forward slashes, even on Windows.
-    # Don't forget to use absolute paths, not relative paths.
-)
+
+TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'DIRS': [],
+        'APP_DIRS': True,
+        'OPTIONS': {
+            'context_processors': [
+                'django.template.context_processors.debug',
+                'django.template.context_processors.request',
+                'django.contrib.auth.context_processors.auth',
+                'django.contrib.messages.context_processors.messages',
+            ],
+        },
+    },
+]
 
 INSTALLED_APPS = (
+
+    # Мой УУ, чтоб шаблоны находились, должно быть до DAB
+    'my_uu',
+    'pvl_send_email',
+
+    # Это dab админка
+    'django_admin_bootstrapped',
+
+    # Страница тестового поста
+    'bootstrapform',
+
+    # django
+    'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.sites',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'my_uu'
 )
 
 
@@ -248,4 +272,16 @@ LOGGING = {
             'propagate': True,
         },
     }
+}
+
+
+
+# Подкраска цветом сообщений в DAB админке.
+# исочник - https://github.com/django-admin-bootstrapped/django-admin-bootstrapped
+from django.contrib import messages
+MESSAGE_TAGS = {
+    messages.SUCCESS: 'alert-success success',
+    messages.WARNING: 'alert-warning warning',
+    messages.ERROR: 'alert-danger error',
+    messages.INFO: 'alert-info error',
 }

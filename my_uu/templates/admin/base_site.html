@@ -1,0 +1,10 @@
+{% extends "admin/base.html" %}
+{% load i18n %}{% load admin_static bootstrapped_goodies_tags %}
+
+{# Заголовок окна и заголовок сайта #}
+{% block title %}{% block page_title %}{% endblock %} | Мой УУ Админка{% endblock %}
+{% block branding %}
+<a class="navbar-brand" href="{% url 'admin:index' %}">Мой УУ Админка</a>
+{% endblock %}
+
+{% block nav-global %}{% endblock %}

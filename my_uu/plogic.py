@@ -141,3 +141,199 @@ def convertCategoryNameToGroupNameIfGrouping(cat_name, is_grouping):
         cat_name = cat_name.split('--', 1)[0].strip()
         return u"[{0}]".format(cat_name)
     return cat_name
+
+
+# возвращает true елси пользователь ранее ввел корректные логин и пароль и сейчас авторизован
+def isAuthorizedUser(request):
+    return request.user.is_authenticated()
+
+
+# возвращает модель пользователя если он авторизвоан а если нет то кинет ошибку 500
+def getAuthorizedUser(request):
+    if not isAuthorizedUser(request):
+        raise RuntimeError(u'Попытка обратится к объекту авторизованного ползователя, '
+                           u'тогда как текущий пользователь не авторизован')
+    return request.user
+
+
+# Функция добавляет декоратор на проверку роли при открытии каждой страницы админки (добавить удалить редактировать ...)
+# для модели. Если роли нет, вернет Forbidden HTTP ответ. Использование:
+#     class MyModelAdmin(admin.ModelAdmin):
+#
+#     # Проверка перед открытием всех страниц что имеется роль админа
+#     get_urls = getDjangoAdminUrlsWithAdminCheck()
+def getDjangoAdminUrlsWithAdminCheck():
+
+    def getUrlsWrapper(model_admin):
+
+        from django.conf.urls import url
+
+        def wrap(view):
+            from functools import update_wrapper
+            @loginRequiredHttp
+            @roleRequiredHttp(models.UROLE_ADMIN)
+            def wrapper(*args, **kwargs):
+                return model_admin.admin_site.admin_view(view)(*args, **kwargs)
+            return update_wrapper(wrapper, view)
+
+        info = model_admin.model._meta.app_label, model_admin.model._meta.model_name
+
+        urlpatterns = [
+            url(r'^$', wrap(model_admin.changelist_view), name='%s_%s_changelist' % info),
+            url(r'^add/$', wrap(model_admin.add_view), name='%s_%s_add' % info),
+            url(r'^(.+)/history/$', wrap(model_admin.history_view), name='%s_%s_history' % info),
+            url(r'^(.+)/delete/$', wrap(model_admin.delete_view), name='%s_%s_delete' % info),
+            url(r'^(.+)/$', wrap(model_admin.change_view), name='%s_%s_change' % info),
+            ]
+        return urlpatterns
+
+    return getUrlsWrapper
+
+
+# Декоратор на проверку что в сессии хранится ID авторизованного юзера
+# Для использования во вью которые форируют HTML-страницы, т.к. возвращает HttpResponse
+def loginRequiredHttp(f):
+    def loginRequiredWrapperFunc(request, *args, **kwargs):
+        if isAuthorizedUser(request):
+            return f(request, *args, **kwargs)
+        else:
+            import django.conf
+            from django.http import HttpResponseRedirect
+        import urllib
+        from django.core.urlresolvers import reverse
+        redir_url = reverse('admin:login') + '?next=' + urllib.quote(request.path + request.META['QUERY_STRING'])
+        return django.http.HttpResponseRedirect(redir_url)
+    return loginRequiredWrapperFunc
+
+
+# Декоратор на проверку что роль нужная, иначе возвращает 503 (для view страниц)
+def roleRequiredHttp(*roles):
+    def roleRequiredHttpDecor(f):
+        def roleRequiredHttpWrapperFunc(request, *args, **kwargs):
+            u = getAuthorizedUser(request)
+            uRole = getUserRole(u)
+
+            # Юзеру с ролью админ всегда разрешено.
+            if uRole in roles or uRole == models.UROLE_ADMIN:
+                return f(request, *args, **kwargs)
+            else:
+                from django.http import HttpResponseForbidden
+                return HttpResponseForbidden("Просмотр не разрешен.")
+        return roleRequiredHttpWrapperFunc
+    return roleRequiredHttpDecor
+
+
+# Аналогичен loginRequiredHttp только делает raise при отутствии,
+# для использования в ajax-вьюхах
+def loginRequiredAssert(f):
+    import functools
+    @functools.wraps(f)
+    def loginRequiredWrapperFunc(request, **kwargs):
+        if isAuthorizedUser(request):
+            return f(request, **kwargs)
+        else:
+            raise RuntimeError(u"Требуется авторизация")
+    return loginRequiredWrapperFunc
+
+
+# возвращает логин авторизованного пользователя, а если не авторизован, кинет ошибку.
+def getAuthorizedUsername(request):
+    u = getAuthorizedUser(request)
+    return getUserUsername(u)
+
+
+# возвращает логин авторизованного пользователя, а если не авторизован, кинет ошибку.
+def getUserUsername(user):
+    return getattr(user, user.USERNAME_FIELD)
+
+
+# возвращает роль авторизованного пользователя
+def getUserRole(user):
+    if getUserUsername(user) == 'pvoytko':
+        return models.UROLE_ADMIN
+    else:
+        return models.UROLE_USER
+
+
+# Получая на вход модель шаблона письма и адрес получателя, эта функция высылает письмо.
+# disable_render=True - блокирет подстановку переменных, высылает плейхолденры.
+# ИСпользуется в разделе тестовой отправки емейла.
+def sendEmailByTemplate(kemailtemplate_model_id, to_address, context, disable_render=False):
+
+    import django.template
+    import django.core.mail
+    import pvl_send_email.models
+
+    # Рендерим шаблон, получаем HTML тело сообщения
+    kemailtemplate_model = pvl_send_email.models.KEmailTemplate.objects.get(id=kemailtemplate_model_id)
+    subj = kemailtemplate_model.ket_subject
+    htmlContent = replaceUlrsWithLinks(kemailtemplate_model.ket_html)
+    if not disable_render:
+        htmlContent = django.template.Template(htmlContent).render(django.template.Context(context))
+
+    # Отправляем HTML тело сообщения и текстовую версию тоже.
+    # Тут отпрваляется две версии, т.к. иначе сервис http://www.mail-tester.com/web-zbUSCp
+    # выдает минус 1 балл. скрин http://pvoytko.ru/jx/5GMrRyngzu
+    # html версия добавляется последней, т.к. вэ том случае она предпочтительная, что
+    # сказано в по этой ссылке http://stackoverflow.com/a/882770/1412586 скрин http://pvoytko.ru/jx/KmXz2OmyEf
+    import html2text
+    text_content = html2text.html2text(htmlContent)
+    msg = django.core.mail.EmailMultiAlternatives(subj, text_content, 'support@my-uu.ru', [to_address])
+    msg.attach_alternative(htmlContent, "text/html")
+    msg.send()
+
+
+# получая текст, форматирует его как HTML (используется при отправке писчем на основе текстового шаблона)
+def replaceUlrsWithLinks(text):
+
+    # Замера урлов на ссылки
+    # word-break:break-all; для того чтобы длиные ссылки
+    # не расширяли страницу а обрезались посредине
+    # скобки.
+    # Для этого перебор всех урлов.
+    # И если урл кончается символов знака препинания его выносим за ссылку.
+    import re
+    urls_pat = re.compile(r"((https?):((//)|(\\\\))+[\w\d:#@%/;$~_?\+-=\\\.&\[\]]*)([)]?)", re.MULTILINE|re.UNICODE|re.IGNORECASE)
+    new_text = u""
+    last_pos = 0
+    for url_mo in re.finditer(urls_pat, text):
+        url = url_mo.group()
+        url_last = u""
+        while url.endswith(')') or url.endswith('.') or url.endswith(':'):
+            url_last += url[-1]
+            url = url[0:-1]
+        a_elem = u'<a style="word-break:break-all;" href="{0}" class="underline" target="_blank">{0}</a>{1}'.format(url, url_last)
+        new_text += text[last_pos:url_mo.start()] + a_elem
+        last_pos = url_mo.end()
+    new_text += text[last_pos:]
+    text = new_text
+
+    # Вставляем br, переводы строки оставляем, т.к. на них ориентируется следующее рег. выражение.
+    # \u2823 - это юникод-символ line separator http://www.fileformat.info/info/unicode/char/2028/index.htm
+    # с какого-то момента Скайп стал их присылать (в сообщениях dJON клиента) например 6193:
+    # http://pvoytko.ru/dj-admin/pvoytko/clientcontact/6193/?_changelist_filters=p%3D1
+    # если их не заменять то строки сливаются.
+    text = text.replace("\n", '<br />\n')
+    text = text.replace(u"\u2028", u'<br />\n')
+
+    # Заменяем пустрые строки. Например, текст может быть таким:
+    # --
+    # Пример списка<br />
+    #      Пример итема<br />
+    #      Пример итема<br />
+    # --
+    # Если такой текст вставить в DIV в HTML, то пробелы до итемов удалятся и он отобразится так:
+    # --
+    # Пример списка<br />
+    # Пример итема<br />
+    # Пример итема<br />
+    # --
+    # Чтобы сохранить пробелы - заменяем все пробелы в количстве 2 и более таким же кол-вом неразрывных пробелов.
+    # А вначале строки заменяем один и более пробел неразрывными.
+    # Не заменяем все пробелы т.к. пробелы между словами пусть остаются разрывными, чтобы нормально строки
+    # отображались.
+    text = re.sub('(\s{2,})', lambda s: '&nbsp;' * len(s.group(1)), text)
+    text = re.sub('^(\s{1,})', lambda s: '&nbsp;' * len(s.group(1)), text)
+
+    return text
+

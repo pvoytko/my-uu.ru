@@ -1,0 +1,17 @@
+{% extends "admin/base_site.html" %}
+{% load bootstrap  %}
+
+{# Заголовок страницы #}
+{% block page_title %}Тестовый емейл{% endblock %}
+{% block breadcrumbs_after_main %}<li>Тестовый емейл</li>{% endblock %}
+
+{% block content %}
+
+    <p>Данная страница предназначена для тестирования отправки емейла с сайта.</p>
+    <p>Введите адрес емейла, выберите шаблон и нажмите "Отправить". </p>
+    <p>Тестовое сообщение заданного шаблона будет выслано на указанный адрес.</p>
+
+    {# Форма целиком с тегом form и кнопкой отправки  #}
+    {% include 'include_sili_form_full.html' with form=pse_form %}
+
+{% endblock %}

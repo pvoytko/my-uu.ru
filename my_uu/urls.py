@@ -2,8 +2,13 @@
 
 from django.conf.urls import patterns, include, url
 from django.conf import settings
+from django.contrib import admin
+
 
 urlpatterns = patterns('',
+
+    # По данному префиксу урлы интерфейса на базе джанго-админки
+    url(r'^mydjadmin/', admin.site.urls),
 
     # Главная сервиса
     url(r'^$', 'my_uu.views.main'),
@@ -77,6 +82,11 @@ urlpatterns = patterns('',
     # Активация магазина в Z-PAYMENT
     url(r'^ZP86478908.HTML$',  'django.views.static.serve', {'document_root': settings.PROJECT_DIR, 'path': '/static/ZP86478908.HTML' }),
 
+    # Тестовая пустая страница
+    url(r'^mydjadmin/mtestempty/$', 'my_uu.views.page_mtestempty'),
+
+    # Тестовый емейл
+    url(r'^mydjadmin/vtestemail/$', 'pvl_send_email.views.page_vtestemail'),
 )
 
 from django.contrib.staticfiles.urls import staticfiles_urlpatterns

@@ -1,0 +1,23 @@
+{% extends "admin/base_seom_outside.html" %}
+{% load i18n %}
+
+{# стандартная страница suit выход изменнеа чтобы скрыть левое меню на ней и шапку #}
+
+{% block page_title %}Выход{% endblock %}
+
+{% block bodyclass %}login{% endblock %}
+
+{% block content-left %}{% endblock %}
+
+{% block container %}
+
+    {% block content %}
+        <div id="content-main" style="width: 300px; margin: 40px auto; ">
+            <strong style="line-height: 1.3em;">Выход успешно выполнен. Благодарим Вас за время, проведённое на этом сайте.</strong>
+            <br>
+            <br>
+            <a style="text-decoration: underline;" href="{% url 'admin:index' %}">Войти снова</a>
+        </div>
+    {% endblock %}
+
+{% endblock %}

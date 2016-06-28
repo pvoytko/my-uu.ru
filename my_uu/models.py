@@ -5,6 +5,13 @@ from django.contrib.auth.models import User
 import datetime
 import utils
 import plogic
+from django.contrib import admin
+
+
+# Роль юзера - либо админ, либо обычный.
+# Возвращается из функции getUserRole.
+UROLE_ADMIN = 'UROLE_ADMIN'
+UROLE_USER = 'UROLE_USER'
 
 
 # Платеж. Создается в момент инициации оплаты в адрес Робокассы, тогда хранит только ID (= номер счета)
@@ -376,3 +383,19 @@ class Unsubscribe(models.Model):
 class FeedbackRequested(models.Model):
     user = models.OneToOneField(django.contrib.auth.models.User)
     datetime = models.DateTimeField(auto_now_add=True)
+
+
+class TestModel(models.Model):
+    tm_cap = models.CharField(max_length=128)
+    tm_cap2 = models.CharField(max_length=128, null=True)
+
+
+class TestModelAdmin(admin.ModelAdmin):
+    list_display = (
+        'tm_cap',
+        'tm_cap2',
+    )
+    list_per_page = 10
+
+
+admin.site.register(TestModel, TestModelAdmin)

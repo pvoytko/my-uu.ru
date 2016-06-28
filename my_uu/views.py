@@ -1627,3 +1627,10 @@ def lk_save_manual_answer_ajax(request):
     ms.save()
 
     return JsonResponseWithStatusOk()
+
+
+# Пустая старница в админке для проверки
+def page_mtestempty(request):
+    return django.http.HttpResponse(u'<div style="position: absolute; top: 50%; left: 50%; '
+                        u'transform: translateX(-50%) translateY(-50%); font-size: 28px;">'
+                        u'Еще не реализовано.</div></div>')
