@@ -249,7 +249,7 @@ def getUserUsername(user):
 
 # возвращает роль авторизованного пользователя
 def getUserRole(user):
-    if getUserUsername(user) == 'pvoytko':
+    if getUserUsername(user) == 'pvoytko@gmail.com':
         return models.UROLE_ADMIN
     else:
         return models.UROLE_USER
@@ -278,7 +278,7 @@ def sendEmailByTemplate(kemailtemplate_model_id, to_address, context, disable_re
     # сказано в по этой ссылке http://stackoverflow.com/a/882770/1412586 скрин http://pvoytko.ru/jx/KmXz2OmyEf
     import html2text
     text_content = html2text.html2text(htmlContent)
-    msg = django.core.mail.EmailMultiAlternatives(subj, text_content, 'support@my-uu.ru', [to_address])
+    msg = django.core.mail.EmailMultiAlternatives(subj, text_content, 'support2@my-uu.ru', [to_address])
     msg.attach_alternative(htmlContent, "text/html")
     msg.send()
 

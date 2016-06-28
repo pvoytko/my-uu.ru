@@ -398,4 +398,14 @@ class TestModelAdmin(admin.ModelAdmin):
     list_per_page = 10
 
 
-admin.site.register(TestModel, TestModelAdmin)
+# Данная функция создана для того чтобы исключить ошибки что забыли указать требование авторизации админа
+# для доступа в админку. С помощью этой функции надо всегда явно указать роль
+# при регистрации интерфейса админки.
+def registerModelAndAdmin(model_class, admin_class):
+
+    # Только с заданной ролью можно входить на эту страницу
+    admin_class.get_urls = plogic.getDjangoAdminUrlsWithAdminCheck()
+    admin.site.register(model_class, admin_class)
+
+
+registerModelAndAdmin(TestModel, TestModelAdmin)
