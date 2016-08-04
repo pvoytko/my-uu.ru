@@ -56,7 +56,9 @@ def _main_imp(request, templateName):
         return HttpResponseRedirect(reverse('my_uu.views.lk_uch'))
 
     # Эта страница используется вместо главной пока
-    return render(request, templateName)
+    return render(request, templateName, {
+        'lpgm_cur_year': datetime.datetime.now().year,
+    })
 
 
 # Главная страница 2.
@@ -1088,8 +1090,9 @@ def lk_save_uchet_ajax(request):
     # за старую дату а потом изменять за новую тем самым обойдет ограничение. Чтобы этого хака не было, да и
     # т.к. так проще реализовать, я запрещаю и редактирование и создание. Т.е. если у пользователя дохера записей
     # более 40, то он не сможет их даже редачить в бесплатном режиме.
-    if request.user.userprofile.errorOnSaveUchet():
-        raise RuntimeError('Попытка сохранить/отредактировать запись в режиме когда эта возможность ограничена и для снятия огранчения нужно оплатить')
+    # if request.user.userprofile.errorOnSaveUchet():
+    #    raise RuntimeError('Попытка сохранить/отредактировать запись в режиме когда эта возможность ограничена и для снятия огранчения нужно оплатить')
+    # Закоментил код 04.08.2016, удаить через квартал.
 
     rowsForUpdateAndInsert = json.loads(request.POST['rows_json'])
 

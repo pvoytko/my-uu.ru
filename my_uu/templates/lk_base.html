@@ -96,11 +96,11 @@
             <li{% block imp_active %}{% endblock %}><a href="/lk/imp/">Импорт</a></li>
             <li{% block exp_active %}{% endblock %}><a href="/lk/exp/">Экспорт</a></li>
 
-            {% if user.userprofile.is20DaysUser %}
-                <li style="width: 2px; background-color: rgb(212, 224, 236);float: left; display: list-item; height: 16px; margin: 9px 3px">&nbsp;</li>
-                <li{% block pay_active %}{% endblock %}><a href="/lk/pay/">Оплата</a></li>
-            {% endif %}
-
+{#            {% if user.userprofile.is20DaysUser %}#}
+{#                <li style="width: 2px; background-color: rgb(212, 224, 236);float: left; display: list-item; height: 16px; margin: 9px 3px">&nbsp;</li>#}
+{#                <li{% block pay_active %}{% endblock %}><a href="/lk/pay/">Оплата</a></li>#}
+{#            {% endif %}#}
+{#            закоментил 04.08.2016, удалить через квартал #}
 
         </ul>
 
