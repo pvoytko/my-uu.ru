@@ -1043,21 +1043,33 @@ def lk_imp_ajax(request):
 @uuTrackEventDecor(my_uu.models.EventLog.EVENT_EXP)
 def lk_exp_csv(request):
 
-    res = u""
-    plainTextContentType = "text/plain; charset=utf-8"
-
+    # получяа модель, воврает строку (одну)
     def uchetToPlainText(u):
+
+        # Тип опреации как строка
         typeStr = {
             my_uu.models.UType.RASHOD: u'Расход',
             my_uu.models.UType.DOHOD: u'Доход',
             my_uu.models.UType.PEREVOD: u'Перевод',
         }[u.utype.id]
-        return u"{0};{1};{2};руб;{3};{4};{5}\n".format(u.date.strftime("%d.%m.%Y"), typeStr, u.sum, u.account.name, u.category.name, u.comment)
+
+        # форматируем и возвращаем
+        return u"{oid};{dtm};{typ};{smm};руб;{acc};{cat};{com}\n".format(
+            oid = u.id,
+            dtm = u.date.strftime("%d.%m.%Y"),
+            typ = typeStr,
+            smm = u.sum,
+            acc = u.account.name,
+            cat = u.category.name,
+            com = u.comment,
+        )
 
     # Проходим все операции
+    res = u""
     for u in request.user.uchet_set.order_by('date').all():
         res += uchetToPlainText(u)
 
+    plainTextContentType = "text/plain; charset=utf-8"
     httpResp = HttpResponse(res, content_type=plainTextContentType)
     return httpResp
 
