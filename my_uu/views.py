@@ -23,6 +23,9 @@ import datetime
 import my_uu.models
 import my_uu.utils
 import plogic
+from django.views.decorators.csrf import csrf_exempt
+import django.http
+import pvl_http.funcs
 
 
 def extractAngularPostData(request, *keys):
@@ -1649,3 +1652,29 @@ def page_mtestempty(request):
     return django.http.HttpResponse(u'<div style="position: absolute; top: 50%; left: 50%; '
                         u'transform: translateX(-50%) translateY(-50%); font-size: 28px;">'
                         u'Еще не реализовано.</div></div>')
+
+
+# АПИ метод удаления записи
+@csrf_exempt
+@pvl_http.funcs.getParamsErrorsDecorator
+def ajax_remove_uchet_record_api(request):
+
+    import django.contrib.auth.hashers
+
+    # Получаем данные из запроса
+    inp_params = pvl_http.funcs.parseJsonRequestBody(request.body)
+    rec_id = pvl_http.funcs.getParamValueFromJson(inp_params, 'arura_record_id')
+    username = pvl_http.funcs.getParamValueFromJson(inp_params, 'arura_username')
+    pswd_raw = pvl_http.funcs.getParamValueFromJson(inp_params, 'arura_password')
+
+    # Проверяем пароль
+    user_model = django.contrib.auth.models.User.objects.get(username = username)
+    is_pass_correct = django.contrib.auth.hashers.check_password(pswd_raw, user_model.password)
+    if not is_pass_correct:
+        raise RuntimeError(u'Ошибка проверки пароля')
+    
+    # Теперь удаляем запись
+    uchet_model = my_uu.models.Uchet.objects.get(id = rec_id, user = user_model)
+    uchet_model.delete()
+
+    return django.http.HttpResponse("OK")
