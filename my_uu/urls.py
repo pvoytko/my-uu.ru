@@ -90,6 +90,9 @@ urlpatterns = patterns('',
 
     # АПИ метод удаления записи
     url(r'^ajax_remove_uchet_record_api/', 'my_uu.views.ajax_remove_uchet_record_api'),
+
+    # АПИ метод добавления записи
+    url(r'^ajax_add_uchet_record_api/', 'my_uu.views.ajax_add_uchet_record_api'),
 )
 
 from django.contrib.staticfiles.urls import staticfiles_urlpatterns

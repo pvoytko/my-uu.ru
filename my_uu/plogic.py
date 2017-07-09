@@ -2,6 +2,7 @@
 
 
 import models
+import django.contrib.auth.models
 
 
 # получая на вход кверисет записей учета, и ID счета и категории, фильтрует кверисет
@@ -337,3 +338,12 @@ def replaceUlrsWithLinks(text):
 
     return text
 
+
+# Проверяет юзера и пароль, возвращает модель юзера.
+# Либо кидет исключение, если не верные.
+def pmCheckUserAndPassword(usr, psw):
+    user_model = django.contrib.auth.models.User.objects.get(username = usr)
+    is_pass_correct = django.contrib.auth.hashers.check_password(psw, user_model.password)
+    if not is_pass_correct:
+        raise RuntimeError(u'Ошибка проверки пароля')
+    return user_model

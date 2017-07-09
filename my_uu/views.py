@@ -16,6 +16,7 @@ from django import forms
 import utils
 import simplejson
 import calendar
+import annoying.decorators
 
 import json
 import datetime
@@ -26,6 +27,7 @@ import plogic
 from django.views.decorators.csrf import csrf_exempt
 import django.http
 import pvl_http.funcs
+import pvl_datetime_format.funcs
 
 
 def extractAngularPostData(request, *keys):
@@ -1668,13 +1670,47 @@ def ajax_remove_uchet_record_api(request):
     pswd_raw = pvl_http.funcs.getParamValueFromJson(inp_params, 'arura_password')
 
     # Проверяем пароль
-    user_model = django.contrib.auth.models.User.objects.get(username = username)
-    is_pass_correct = django.contrib.auth.hashers.check_password(pswd_raw, user_model.password)
-    if not is_pass_correct:
-        raise RuntimeError(u'Ошибка проверки пароля')
-    
+    plogic.pmCheckUserAndPassword(username, pswd_raw)
+
     # Теперь удаляем запись
     uchet_model = my_uu.models.Uchet.objects.get(id = rec_id, user = user_model)
     uchet_model.delete()
 
     return django.http.HttpResponse("OK")
+
+
+# АПИ метод добавления записи
+@csrf_exempt
+@pvl_http.funcs.getParamsErrorsDecorator
+@annoying.decorators.ajax_request
+def ajax_add_uchet_record_api(request):
+
+    # Получаем данные из запроса
+    inp_params = pvl_http.funcs.parseJsonRequestBody(request.body)
+    username = pvl_http.funcs.getParamValueFromJson(inp_params, 'aaura_username')
+    pswd_raw = pvl_http.funcs.getParamValueFromJson(inp_params, 'aaura_password')
+    uchet_date = pvl_http.funcs.getParamValueFromJson(inp_params,     'aaura_date')
+    uchet_type = pvl_http.funcs.getParamValueFromJson(inp_params,     'aaura_type')
+    uchet_summa = pvl_http.funcs.getParamValueFromJson(inp_params,    'aaura_summa')
+    uchet_account = pvl_http.funcs.getParamValueFromJson(inp_params,  'aaura_account')
+    uchet_category = pvl_http.funcs.getParamValueFromJson(inp_params, 'aaura_category')
+    uchet_comment = pvl_http.funcs.getParamValueFromJson(inp_params,  'aaura_comment')
+
+    # Проверка реквизитов
+    user_model = plogic.pmCheckUserAndPassword(username, pswd_raw)
+
+    # Добавляем запись в БД
+    u = my_uu.models.Uchet.objects.create(
+        user = user_model,
+        date = pvl_datetime_format.funcs.strToDate(uchet_date),
+        utype = my_uu.models.UType.objects.get(name = uchet_type),
+        sum = uchet_summa,
+        account = my_uu.models.Account.objects.get(name = uchet_account, user = user_model),
+        category = my_uu.models.Category.objects.get(name = uchet_category, user = user_model),
+        comment = uchet_comment,
+    )
+
+    # Ответ
+    return {
+        "aaura_record_id": u.id,
+    }
