@@ -1670,7 +1670,7 @@ def ajax_remove_uchet_record_api(request):
     pswd_raw = pvl_http.funcs.getParamValueFromJson(inp_params, 'arura_password')
 
     # Проверяем пароль
-    plogic.pmCheckUserAndPassword(username, pswd_raw)
+    user_model = plogic.pmCheckUserAndPassword(username, pswd_raw)
 
     # Теперь удаляем запись
     uchet_model = my_uu.models.Uchet.objects.get(id = rec_id, user = user_model)
