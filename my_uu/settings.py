@@ -152,6 +152,7 @@ if INSTANCE_SPECIFIC_DJANGO_DEBUG_STATIC:
         os.path.join(PROJECT_DIR, "static/"),
     ]
 else:
+    STATICFILES_DIRS = []
     STATIC_ROOT = os.path.join(PROJECT_DIR, 'static')
 
 
