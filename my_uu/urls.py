@@ -19,9 +19,6 @@ urlpatterns = patterns('',
     url(r'^logout_user/$', 'my_uu.views.logout_user' ),
     url(r'^begin/$', 'my_uu.views.begin'),
 
-    # Личный кабинет отправка "улучшить" с любой страницы
-    url(r'^lk/improove_ajax/$', 'my_uu.views.lk_improove_ajax'),
-
     # Личный кабинет начало
     url(r'^lk/beg/$', 'my_uu.views.lk_beg'),
 
@@ -34,7 +31,6 @@ urlpatterns = patterns('',
     # Личный кабинет анализ
     url(r'^lk/ana/$', 'my_uu.views.lk_ana'),
     url(r'^ajax_lk_ana/$', 'my_uu.views.ajax_lk_ana'),
-    url(r'^lk/ana/(?P<type>[^/]+)/(?P<period>[^/]+)/(?P<group>[^/]+)/$', 'my_uu.views.lk_ana'),
 
     # Личный кабинет счета и категории
     url(r'^lk/acc/$', 'my_uu.views.lk_acc'),

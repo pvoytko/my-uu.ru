@@ -3,6 +3,7 @@
 
 import models
 import django.contrib.auth.models
+import my_uu.models
 
 
 # получая на вход кверисет записей учета, и ID счета и категории, фильтрует кверисет
@@ -347,3 +348,22 @@ def pmCheckUserAndPassword(usr, psw):
     if not is_pass_correct:
         raise RuntimeError(u'Ошибка проверки пароля')
     return user_model
+
+
+# Если одно из них None, вернет -- иначе "4 500 в нед." для примера.
+def getBudgetStr(budget_choice_code, budget_value):
+    if budget_choice_code == my_uu.models.LKCM_BUDGET_PERIOD_DAY:
+        period = u'в день'
+    elif budget_choice_code == my_uu.models.LKCM_BUDGET_PERIOD_WEEK:
+        period = u'в нед.'
+    elif budget_choice_code == my_uu.models.LKCM_BUDGET_PERIOD_MONTH:
+        period = u'в мес.'
+    elif budget_choice_code == my_uu.models.LKCM_BUDGET_PERIOD_QUART:
+        period = u'в кварт.'
+    elif budget_choice_code == my_uu.models.LKCM_BUDGET_PERIOD_YEAR:
+        period = u'в год'
+    else:
+        raise RuntimeError(u'Ошибка в функции анализа расходов.')
+
+    return my_uu.utils.formatMoneyValue(budget_value) + u' ' + period
+

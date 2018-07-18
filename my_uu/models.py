@@ -268,9 +268,33 @@ class Account(models.Model):
         unique_together = ('user', 'name',)
 
 
+LKCM_BUDGET_PERIOD_ALL = "LKCM_BUDGET_PERIOD_ALL"
+LKCM_BUDGET_PERIOD_DAY = "LKCM_BUDGET_PERIOD_DAY"
+LKCM_BUDGET_PERIOD_WEEK = "LKCM_BUDGET_PERIOD_WEEK"
+LKCM_BUDGET_PERIOD_MONTH = "LKCM_BUDGET_PERIOD_MONTH"
+LKCM_BUDGET_PERIOD_QUART = "LKCM_BUDGET_PERIOD_QUART"
+LKCM_BUDGET_PERIOD_YEAR = "LKCM_BUDGET_PERIOD_YEAR"
+LKCM_BUDGET_PERIOD_NONE = "LKCM_BUDGET_PERIOD_NONE"
+LKCM_BUDGET_PERIOD_CHOICES1 = [
+    (LKCM_BUDGET_PERIOD_DAY, u'День'),
+    (LKCM_BUDGET_PERIOD_WEEK, u'Неделя'),
+    (LKCM_BUDGET_PERIOD_MONTH, u'Месяц'),
+    (LKCM_BUDGET_PERIOD_QUART, u'Квартал'),
+    (LKCM_BUDGET_PERIOD_YEAR, u'Год'),
+]
+LKCM_BUDGET_PERIOD_CHOICES2 = [
+    (LKCM_BUDGET_PERIOD_ALL, u'Все'),
+] + LKCM_BUDGET_PERIOD_CHOICES1 + [
+    (LKCM_BUDGET_PERIOD_NONE, u'Не задано'),
+]
+
 # Категория
 class Category(models.Model):
+
+    # Пользователь
     user = models.ForeignKey(django.contrib.auth.models.User)
+
+    # Имя
     name = models.CharField(max_length=255, error_messages={
         'blank': u'Название категории не должно быть пустым.',
         'max_length': u'Название категории не должно быть более 255 символов длинной.'
@@ -281,6 +305,16 @@ class Category(models.Model):
 
     # Дефолтова позиция = 1000, т.о. при добавлениии она всегда бдует в конец ставиться.
     position = models.PositiveIntegerField(default=1000)
+
+    # Периодичность бюджета
+    lkcm_budget_period = models.CharField(
+        max_length=255,
+        null=True,
+        blank=True,
+        default=None,
+        choices = LKCM_BUDGET_PERIOD_CHOICES1,
+    )
+    lkcm_budget_value = models.PositiveIntegerField(null=True, blank=True, default=None)
 
     # Уникальность имени счета только в рамках одного юзера
     class Meta:

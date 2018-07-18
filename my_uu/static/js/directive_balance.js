@@ -1,5 +1,4 @@
-﻿var project = angular.module('project');
-project.directive('uuBalance', function(){
+﻿angular.module('myNgApp').directive('uuBalance', function(){
     return {
         restrict: 'E',
         template:

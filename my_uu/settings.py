@@ -39,7 +39,7 @@ INSTANCE_ROOT = PROJECT_DIR
 #     True - да, используется для копии сайта программистов
 #     False - нет, используется для демонстрационной и боевой копии
 #     (там nginx обрабатывает статику и STATIC_URL в этом случае будет такой чтобы указывать на nginx)
-
+#
 # Все копии программистов. Что значает эта секция см. комменты чуть выше.
 if INSTANCE_ROOT.startswith('/var/www/pvoy_myuu_8') :
     INSTANCE_SPECIFIC_DJANGO_DEBUG = True
@@ -144,13 +144,13 @@ STATIC_URL = '/static/'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(PROJECT_DIR, '../pvoy_myuu', 'media')
 if INSTANCE_SPECIFIC_DJANGO_DEBUG_STATIC:
-    STATICFILES_DIRS = (
+    STATICFILES_DIRS = [
         # Тут важно без начального слеша, т.е. нельзя /static/, т.к. os.path.join возвращает
         # относительный путь а не абсолютный т.е. путь вида "static/" она и вернет и если
         # начальный слеш то при нахождении статики этот путь уже будет считаться абсолютным и
         # т.к. его нет в системе и статика находиться не будет.
         os.path.join(PROJECT_DIR, "static/"),
-    )
+    ]
 else:
     STATIC_ROOT = os.path.join(PROJECT_DIR, 'static')
 
@@ -225,6 +225,9 @@ INSTALLED_APPS = (
     # Страница тестового поста
     'bootstrapform',
 
+    # Убрать cdn
+    'pvl_static_mtime',
+
     # django
     'django.contrib.admin',
     'django.contrib.auth',
@@ -291,3 +294,12 @@ MESSAGE_TAGS = {
     messages.ERROR: 'alert-danger error',
     messages.INFO: 'alert-info error',
 }
+
+
+# Это папка в ней кешируется файлы cdn
+# Ш-80
+PVL_CDN_TO_STATIC_DIR_CACHE_NAME = ".cache_dir_pvl_cdn_to_static"
+PVL_CDN_TO_STATIC_IS_SAVE_TO_STATIC_ROOT = False
+STATICFILES_DIRS.append(
+    os.path.join(INSTANCE_ROOT, PVL_CDN_TO_STATIC_DIR_CACHE_NAME)
+)

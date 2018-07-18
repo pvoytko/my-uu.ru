@@ -1,30 +1,30 @@
+{% load pvl_static_mtime %}
+
 <!doctype html>
-<html ng-app="project">
+<html ng-app="myNgApp">
 
 <head>
     <title>Мой Удобный Учет: Личный Кабинет</title>
 
     <!-- jQuery -->
-    <script src="http://code.jquery.com/jquery-1.10.1.min.js"></script>
-    <script src="http://code.jquery.com/ui/1.10.3/jquery-ui.min.js"></script>
-    <link rel="stylesheet" href="http://code.jquery.com/ui/1.10.3/themes/redmond/jquery-ui.css" />
+    <script src="{% pvl_cdn_to_static 'http://code.jquery.com/jquery-1.10.1.min.js' %}"></script>
+    <script src="{% pvl_cdn_to_static 'http://code.jquery.com/ui/1.10.3/jquery-ui.min.js' %}"></script>
+    <link rel="stylesheet" href="{% pvl_cdn_to_static 'http://code.jquery.com/ui/1.10.3/themes/redmond/jquery-ui.css' %}" />
 
     <!-- Bootstrap 2 -->
 {#    <link href="/static/libs/bootstrap/css/bootstrap.min.css" rel="stylesheet" media="screen">#}
 {#    <script src="/static/libs/bootstrap/js/bootstrap.min.js"></script>#}
 
-    <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap.min.css">
-    <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap-theme.min.css">
-    <script src="//netdna.bootstrapcdn.com/bootstrap/3.0.0/js/bootstrap.min.js"></script>
+    <link rel="stylesheet" href="{% pvl_cdn_to_static 'http://netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap.min.css' %}">
+    <link rel="stylesheet" href="{% pvl_cdn_to_static 'http://netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap-theme.min.css' %}">
+    <script src="{% pvl_cdn_to_static 'http://netdna.bootstrapcdn.com/bootstrap/3.0.0/js/bootstrap.min.js' %}"></script>
 
     <!-- Angular -->
-    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.2.9/angular.min.js"></script>
+    <script src="{% pvl_cdn_to_static 'https://ajax.googleapis.com/ajax/libs/angularjs/1.2.9/angular.min.js' %}"></script>
 
     <link rel="stylesheet" href="/static/css/common.css" />
 
     <link rel="shortcut icon" type="image/png" href="/static/img/favicon.png"/>
-
-    <script src="/static/js/improove_ctrl.js"></script>
 
     <!-- Настройка приложения Ангулар -->
     <script src="/static/js/angular_project.js"></script>
@@ -47,6 +47,36 @@
         }
     </style>
 
+
+    {# Ш-7322 С помощью данного стиля внутри контейнера с css классом pv_light_tooltip #}
+    {# стандартый тултип бутстрапа станет не на чером фоне, а на светлом #}
+    {# используется в рзадлее Планов  #}
+    <style>
+        .pv_light_tooltip .tooltip.in {
+            opacity: 1;
+        }
+        .pv_light_tooltip .tooltip-inner p {
+            margin-bottom: 10px;
+        }
+        .pv_light_tooltip .tooltip-inner p:last-of-type {
+            margin-bottom: 0px;
+        }
+        .pv_light_tooltip .tooltip-inner {
+            max-width: 350px;
+            /* If max-width does not work, try using width instead */
+            width: 350px;
+            background-color: lightgoldenrodyellow;
+            color: black;
+            padding: 15px 15px 15px 15px;
+            border-radius: 10px;
+            border: 1px solid black;
+            text-align: left;
+
+            /* Это исправление бага внутри таблицы подсказка- то стиль от ячейке nowrap переносится */
+            /* пример http://pvoytko.ru/jx/kkuB4bO4wu */
+            white-space: normal;
+        }
+    </style>
 
     <script>
 
@@ -76,109 +106,57 @@
 
     <div class="page_content_container" style="position: relative; padding-top: 113px;">
 
-        <a class="logo__text" href="{% url 'my_uu.views.lk_uch' %} " style="position: fixed; top: 16px; margin-left: 50%; left: -430px; z-index: 101;">
-            «Мой Удобный Учет»
-        </a>
+            <a class="logo__text" href="{% url 'my_uu.views.lk_uch' %} " style="position: fixed; top: 16px; margin-left: 50%; left: -430px; z-index: 101;">
+                «Мой Удобный Учет»
+            </a>
 
-        <div class="logout">
-            <span class="logout__email">{{ user.username }}</span>
-            <a class="logout__link" href="/logout_user/">Выход</a>
-        </div>
+            <div class="logout">
+                <span class="logout__email">{{ user.username }}</span>
+                <a class="logout__link" href="/logout_user/">Выход</a>
+            </div>
 
-        <ul class="nav nav-pills" style="position: fixed; visibility: block; top: 73px; z-index: 101;">
-            <li{% block beg_active %}{% endblock %}><a href="/lk/beg/">Начало</a></li>
-            <li style="width: 2px; background-color: rgb(212, 224, 236);float: left; display: list-item; height: 16px; margin: 9px 3px; margin-left: 5px; margin-right: 1px;">&nbsp;</li>
-            <li{% block acc_active %}{% endblock %}><a href="/lk/acc/">Счета</a></li>
-            <li{% block cat_active %}{% endblock %}><a href="/lk/cat/">Категории</a></li>
-            <li{% block uch_active %}{% endblock %}><a href="/lk/">Учет</a></li>
-            <li{% block ana_active %}{% endblock %}><a href="/lk/ana/">Анализ</a></li>
-            <li style="width: 2px; background-color: rgb(212, 224, 236);float: left; display: list-item; height: 16px; margin: 9px 3px; margin-left: 5px; margin-right: 1px;">&nbsp;</li>
-            <li{% block imp_active %}{% endblock %}><a href="/lk/imp/">Импорт</a></li>
-            <li{% block exp_active %}{% endblock %}><a href="/lk/exp/">Экспорт</a></li>
+            <ul class="nav nav-pills" style="position: fixed; visibility: block; top: 73px; z-index: 101;">
+                <li{% block beg_active %}{% endblock %}><a href="/lk/beg/">Начало</a></li>
+                <li style="width: 2px; background-color: rgb(212, 224, 236);float: left; display: list-item; height: 16px; margin: 9px 3px; margin-left: 5px; margin-right: 1px;">&nbsp;</li>
+                <li{% block acc_active %}{% endblock %}><a href="/lk/acc/">Счета</a></li>
+                <li{% block cat_active %}{% endblock %}><a href="/lk/cat/">Категории</a></li>
+                <li{% block uch_active %}{% endblock %}><a href="/lk/">Учет</a></li>
+                <li{% block ana_active %}{% endblock %}><a href="/lk/ana/">Анализ</a></li>
+                <li style="width: 2px; background-color: rgb(212, 224, 236);float: left; display: list-item; height: 16px; margin: 9px 3px; margin-left: 5px; margin-right: 1px;">&nbsp;</li>
+                <li{% block imp_active %}{% endblock %}><a href="/lk/imp/">Импорт</a></li>
+                <li{% block exp_active %}{% endblock %}><a href="/lk/exp/">Экспорт</a></li>
 
-{#            {% if user.userprofile.is20DaysUser %}#}
-{#                <li style="width: 2px; background-color: rgb(212, 224, 236);float: left; display: list-item; height: 16px; margin: 9px 3px">&nbsp;</li>#}
-{#                <li{% block pay_active %}{% endblock %}><a href="/lk/pay/">Оплата</a></li>#}
-{#            {% endif %}#}
-{#            закоментил 04.08.2016, удалить через квартал #}
+    {#            {% if user.userprofile.is20DaysUser %}#}
+    {#                <li style="width: 2px; background-color: rgb(212, 224, 236);float: left; display: list-item; height: 16px; margin: 9px 3px">&nbsp;</li>#}
+    {#                <li{% block pay_active %}{% endblock %}><a href="/lk/pay/">Оплата</a></li>#}
+    {#            {% endif %}#}
+    {#            закоментил 04.08.2016, удалить через квартал #}
 
-        </ul>
-
-        <div style="background-color: white; height: 112px; z-index: 100; position: fixed; width: 860px; top: 0px;"></div>
-
-        {% block lk_content %}
-
-        {% endblock %}
-
-        <style>
-            .improove__panel {
-                position: fixed;
-                right: 0;
-                bottom: 50%;
-                margin-bottom: -15px;
-                width: 132px;
-                height: 68px;
-                padding: 5px;
-                background-color: lavender;
-                border: 1px solid lightblue;
-                z-index: 95;
-            }
-            .improove__btn {
-                color: rgb(39, 100, 133);
-                font-weight: bold;
-                width: 120px;
-            }
-            .improove-dlg {
-                position: fixed;
-                z-index: 110;
-            }
-        </style>
-        <div class="improove__panel">
-            <button class="btn improove__btn btn-default" id="improove">Вопрос или <br>предложение</button>
-        </div>
-
-        <div id="improove-dialog-modal" style="display: none; padding-top: 20px; padding-right: 30px; padding-left: 15px;" ng-controller="ImprooveCtrl">
-            <ul>
-                <li>Не получается сделать то, что хочется и нужна подсказка?</li>
-                <li>Что-то не удобно, хочется сообщить об этом?</li>
-                <li>Хочется, чтобы появилась нужная Вам функция?</li>
             </ul>
-            <p>
-                Напишите это в поле ниже и нажмите кнопку "Отправить".
-            </p>
-            <textarea rows="6" class="span7" ng-show="!isSendToServerNow && !isSendToServerSuccess && !isSendToServerError" style="resize: none; width: 100%;" ng-model="improoveText">
-            </textarea>
-            <div class="alert alert-info" ng-show="isSendToServerNow">
-                Отправка на сервер, подождите...
-            </div>
-            <div class="alert alert-success" ng-show="isSendToServerSuccess">
-                Ваше сообщение успешно отправлено!
-            </div>
-            <div class="alert alert-error" ng-show="isSendToServerError">
-                <span ng:bind="errorText"></span>
-            </div>
-            <div style="position: absolute; bottom: 15px; right: 15px;">
-                <button class="btn btn-success pull-right" ng-click="sendToServer()" ng-disabled="isSendToServerNow || isSendToServerSuccess">Отправить</button>
-                <button class="btn pull-right" style="margin-right: 15px;" ng-click="clearStatus()" id="improoveDlgCloseBtn">Закрыть (Esc)</button>
-            </div>
-        </div>
 
-        <script>
-            $('#improove').click(function(){
-                $( "#improove-dialog-modal" ).dialog({
-                    modal: true,
-                    dialogClass: "improove-dlg",
-                    width: 600,
-                    height: 360,
-                    resizable: false,
-                    title: 'Задать вопрос или сообщить предложение'
-                });
-                $( "#improove-dialog-modal").parent().find(".ui-dialog-titlebar-close").html("<span style='position: relative; top: -3px;'>&times;</span>");
-            });
-            $('#improoveDlgCloseBtn').click(function(){
-                $( "#improove-dialog-modal" ).dialog('close');
-            });
-        </script>
+    </div>
+
+
+    {# Это белая подложка сверху в шапке #}
+    <div style="background-color: white; height: 112px; z-index: 100; position: fixed; width: 100%; top: 0px;"></div>
+
+
+    <div>
+
+        {# Три столбца на флекс - Ш-7593 #}
+        {% block lk_wide_content %}
+            <div style="display: flex; flex-flow: row nowrap;">
+                <div style="flex-grow: 1;">
+                </div>
+                <div style="width: 830px;">
+                    {% block lk_content %}
+
+                    {% endblock %}
+                </div>
+                <div style="flex-grow: 1;">
+                </div>
+            </div>
+        {% endblock %}
 
     </div>
 

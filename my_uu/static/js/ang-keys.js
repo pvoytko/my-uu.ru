@@ -1,4 +1,4 @@
-﻿projectModule.directive('ngEnter', function () {
+﻿angular.module('myNgApp').directive('ngEnter', function () {
     return function (scope, element, attrs) {
         element.bind("keydown keypress", function (event) {
             if(event.which === 13) {
@@ -11,7 +11,9 @@
     };
 });
 
-projectModule.directive('ngDocIns', function () {
+
+// Директива задает что делать при клике на инсерт
+angular.module('myNgApp').directive('ngDocIns', function () {
     return function (scope, element, attrs) {
         $(document).bind("keydown keypress", function (event) {
 

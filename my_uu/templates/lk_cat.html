@@ -9,7 +9,9 @@
 
 {% block cat_active %} class="active"{% endblock %}
 
-{% block lk_content %}
+
+
+{% block lk_wide_content %}
 
     <script>
 
@@ -39,9 +41,11 @@
                 $scope.errorText = "";
 
                 // В диалоге редачим копию модели а не саму модель
-                $scope.model = { visible: true };
+                $scope.lkcat_model = {
+                    visible: true
+                };
                 if (resultHolderObject){
-                    $scope.model = jQuery.extend({}, resultHolderObject);
+                    $scope.lkcat_model = jQuery.extend({}, resultHolderObject);
                 }
 
                 // Сохраняем либо ссылку на исходную модель либо на массив в который аппендим.
@@ -59,7 +63,7 @@
                 httpObj = $http({
                     method: 'POST',
                     url: '{% url "my_uu.views.lk_delete_category_ajax" %}',
-                    data: JSON.stringify($scope.model),
+                    data: JSON.stringify($scope.lkcat_model),
                     cache: false,
                     timeout: 15000
                 }).success(function(data, status){
@@ -88,7 +92,7 @@
                 httpObj = $http({
                     method: 'POST',
                     url: '{% url "my_uu.views.lk_save_category_ajax" %}',
-                    data: JSON.stringify($scope.model),
+                    data: JSON.stringify($scope.lkcat_model),
                     cache: false,
                     timeout: 15000
                 }).success(function(data, status){
@@ -96,13 +100,13 @@
                     if (data.status == "ok"){
 
                         // Сохраняем модель из диалога в модель что была в странице
-                        $scope.model = data.data;
+                        $scope.lkcat_model = data.data;
                         if ($scope.resultHolderObject){
                             for (var attr in $scope.resultHolderObject) {
-                                $scope.resultHolderObject[attr] = $scope.model[attr];
+                                $scope.resultHolderObject[attr] = $scope.lkcat_model[attr];
                             };
                         } else {
-                            $scope.resultHolderArray.push($scope.model);
+                            $scope.resultHolderArray.push($scope.lkcat_model);
                         };
 
                         // Закрываем диалог
@@ -123,6 +127,9 @@
             $scope.close = function(){
                 $element.dialog('close');
             }
+
+            // Периоды для бюдждетов
+            $scope.ac_choices_list = {{ lkc_budget_periods_choices_json|safe }};
         }
     </script>
 
@@ -139,53 +146,139 @@
         }
     </style>
 
-    <div id="change-dialog-modal" style="display: none; padding-top: 20px; z-index: 110;" ng-controller="ChangeDlgCtrl">
 
-        <form class="form-horizontal form-condensed" ng-enter="updateOnServerAndClose()" ng-esc="close()">
-            <div class="form-group">
-                <label class="control-label col-xs-4">Название категории</label>
-                <div class="col-xs-8">
-                    <input type="text" ng-model="model.name" class="form-control">
-                </div>
-            </div>
-            <div class="form-group">
-                <label class="control-label col-xs-4">Видима</label>
-                <div class="col-xs-8">
-                    <div>
-                        <button type="button" class="btn btn-default" ng-class="{active: model.visible}" ng-click="model.visible=true">да</button>
-                        <button type="button" class="btn btn-default" ng-class="{active: !model.visible}" ng-click="model.visible=false">нет</button>
-                    </div>
-                    <div class="help-block">Показывать ли эту категорию в списке при внесении операций учета. Скрывайте старые больше ненужные категории.</div>
-                </div>
-            </div>
-        </form>
+    <style>
+        .dotted_link{
+            text-decoration: none;
+            border-bottom: 1px dotted blue;
+            color: blue;
+            cursor: pointer;
+        }
+        .dotted_link:hover{
+            text-decoration: none;
+            border-bottom-color: red;
+            color: red;
+            cursor: pointer;
+        }
 
-        <div ng-show="errorText" class="alert alert-danger" ng-bind="errorText">
-        </div>
-        <div ng-show="loading" class="alert alert-info">
-            Выполняется сохранение, ждите до 15 секунд...
-        </div>
+        /* Внешний вид плашки за котоую можно тянуть */
+        .move_panel {
+            cursor: move;
+        }
+        .move_panel div {
+            background-color: #eeeeee;
+            border: 1px solid darkgrey;
+            border-radius: 5px;
+            height: 22px;
+            width: 22px;
+            text-align: center;
+            color: darkgrey;
+            font-weight: bold;
+            margin-top: -1px;
+            margin-bottom: -1px;
+        }
 
-        <div class="row" style="margin-bottom: 5px;">
-            <div class="col-xs-12">
-                <button class="btn btn-success pull-right" ng-click="updateOnServerAndClose()" ng-disabled="loading">Сохранить (Enter)</button>
-                <button class="btn pull-right btn-default" style="margin-right: 15px;" ng-click="close()">Отмена (Esc)</button>
-                <button class="btn btn-danger pull-right" ng-click="deleteOnServerAndClose()" style="margin-right: 15px;" ng-if="resultHolderObject" ng-disabled="loading">Удалить</button>
-            </div>
-        </div>
-    </div>
+        /* При наведении и при тяге сроки рамка плашки краснеет */
+        .move_panel_hover div, .tDnD_whileDrag .move_panel div {
+            border-color: red;
+            color: red;
+        }
+
+        /* При нведении и тяге строки фон строки серый а шрифт жирный красный */
+        .tDnD_whileDrag td {
+            background-color: #f5e5e5;
+            color: red !important;
+            font-weight: bold;
+        }
+
+        .row_hover {
+            background-color: #f5f5f5;
+        }
+
+        /* Троеточие у текста */
+        .ellipsis{
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* Пока обрабатывается ajax сохранения порядка строк */
+        .row_saving {
+            color: orange;
+        }
+
+        /* Серая строка если не видима категория */
+        .row_not_visible {
+            color: #dddddd;
+        }
+    </style>
+    <script type="text/javascript">
+        $(document).ready(function() {
+            $("#table-1").tableDnD({
+                dragHandle: ".move_panel",
+
+                // По умолчанию класс tDnD_whileDrag ставится когда уже начали тянуть строку.
+                // С помощью этого события ставим его сразу при клике (чтоб юзер видел что при клике
+                // краснеет строка).
+                // CSS класс снимается в библиотеке tdnd по отпусканию клика.
+                onDragStart: function(ev, target){
+                    $(target).parent('tr').addClass('tDnD_whileDrag');
+                },
+                onDrop: function(table, row){
+
+                    // Считываем ID строк таблицы и сохраняем в массив чтобы отправить на сервер.
+                    var rows = $("#table-1").find('tbody').find('tr');
+                    var rowIds = [];
+                    rows.each(function(i, e){rowIds.push(parseInt(e.id))});
+
+                    // На время выполнения ajax на сервер строка остается рыжей
+                    $(row).addClass('row_saving');
+
+                    // Отправляем на сервер порядок для сохранения
+                    var prom = $.post(
+                        "{% url 'my_uu.views.lk_save_categories_order_ajax' %}",
+                        JSON.stringify(rowIds)
+                    ).done(function(){
+                        $(row).removeClass('row_saving');
+                    }).error(function(obj, err, textCode){
+                        $(row).removeClass('row_saving');
+                        uuJqReqFail(textCode, 'Новый порядок категорий не сохранен.');
+                    });
+                }
+            });
+
+            // Стандартый CSS-bootstrap table-hover и hover над move_panel глюит иногда когда делаем драг-энд-дроп
+            // строки (остается подсветка на строках где она уже не должна быть), потому реализуем это через JS
+            $("#table-1").bind('mousemove', function(ev){
+                $("#table-1").find('tr').removeClass('row_hover');
+                $("#table-1").find('.move_panel').removeClass('move_panel_hover');
+                var row = $(ev.target).parents('tr:first');
+                if (row && row.parent().prop("tagName") == 'TBODY') {
+                    row.addClass('row_hover');
+                };
+                var movePanelTd = $(ev.target).hasClass('move_panel') ? $(ev.target) : null;
+                if (!movePanelTd){
+                     movePanelTd = $(ev.target).parents('td:first').hasClass('move_panel') ? $(ev.target).parents('td:first') : null;
+                }
+                if (movePanelTd){
+                    movePanelTd.addClass('move_panel_hover');
+                }
+            });
+        });
+    </script>
 
     <script>
 
         function AccountsCtrl($scope, $http, $element){
 
-            $scope.accountList = JSON.parse('{{ categoryListJsonString|escapejs }}');
+            $scope.accountList = {{ lkc_category_list_json|safe }};
 
             // Форматирование счета для отображения в листинге
-            $scope.display = function(account){
+            $scope.acGetDisplayInfo = function(account){
                 var res = {}
                 res.opCount = account.count;
                 res.visible = (account.visible) ? 'да': 'нет';
+                res.agd_budget = account.lkc_budget_with_period_str;
                 return res;
             }
 
@@ -202,149 +295,138 @@
         }
     </script>
 
-    <div ng-controller="AccountsCtrl" ng-doc-ins="addDlg()" ng-cloak>
+    <div
+            style="display: flex; flex-flow: row nowrap;"
+            ng-controller="AccountsCtrl"
+            ng-doc-ins="addDlg()"
+            ng-cloak
+            >
 
-        <style>
-            .dotted_link{
-                text-decoration: none;
-                border-bottom: 1px dotted blue;
-                color: blue;
-                cursor: pointer;
-            }
-            .dotted_link:hover{
-                text-decoration: none;
-                border-bottom-color: red;
-                color: red;
-                cursor: pointer;
-            }
+        <div style="flex-grow: 1; flex-basis: 1%;">
 
-            /* Внешний вид плашки за котоую можно тянуть */
-            .move_panel {
-                cursor: move;
-            }
-            .move_panel div {
-                background-color: #eeeeee;
-                border: 1px solid darkgrey;
-                border-radius: 5px;
-                height: 22px;
-                width: 22px;
-                text-align: center;
-                color: darkgrey;
-                font-weight: bold;
-                margin-top: -1px;
-                margin-bottom: -1px;
-            }
+            {% include "include_show_invisible_categories.html" %}
 
-            /* При наведении и при тяге сроки рамка плашки краснеет */
-            .move_panel_hover div, .tDnD_whileDrag .move_panel div {
-                border-color: red;
-                color: red;
-            }
+        </div>
+        <div style="width: 830px;">
 
-            /* При нведении и тяге строки фон строки серый а шрифт жирный красный */
-            .tDnD_whileDrag td {
-                background-color: #f5e5e5;
-                color: red !important;
-                font-weight: bold;
-            }
+            <div>
 
-            .row_hover {
-                background-color: #f5f5f5;
-            }
+                <table
+                        id="table-1"
+                        class="table table-condensed pv_light_tooltip"
+                        style="table-layout: fixed; width: 100%;"
+                        >
+                    <thead>
+                        <th style="width: 40px;"></th>
+                        <th style="width: 90%;">Название категории</th>
+                        <th style="text-align: center; width: 80px;">Операций</th>
+                        <th style="text-align: center; width: 80px;">Видима</th>
+                        <th style="text-align: left; width: 160px;">Бюджет</th>
+                        <th style="text-align: left; width: 100px;">Изменить</th>
+                    </thead>
+                    <tbody>
+                        <tr
+                                ng-repeat="a in accountList"
+                                ng-if="a.visible || lkc_is_show_hided"
+                                ng-class="{ 'row_not_visible': !a.visible }"
+                                id="{$ a.id $}"
+                                >
+                            <td class="move_panel" title="Потяните, чтобы изменить порядок"><div>↕</div></td>
+                            <td
+                                    >
+                                <div pv-tooltip-directive="a.name" class="ellipsis">
+                                    {$ a.name $}
+                                </div>
+                            </td>
+                            <td style="text-align: center;">{$ acGetDisplayInfo(a).opCount $}</td>
+                            <td style="text-align: center;">{$ acGetDisplayInfo(a).visible $}</td>
+                            <td style="text-align: left;">{$ acGetDisplayInfo(a).agd_budget $}</td>
+                            <td style="cursor: default;"><span ng-click="changeDlg(a)" class="dotted_link">изменить</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+                <button class="btn btn-info" style="margin-left: 47px; top: -15px; position: relative;" ng-click="addDlg()">Добавить категорию (Ins)</button>
 
-            /* Троеточие у текста */
-            .ellipsis{
-                white-space: nowrap;
-                overflow: hidden;
-                text-overflow: ellipsis;
-            }
+                <div style="padding-top: 50px;"></div>
 
-            /* Пока обрабатывается ajax сохранения порядка строк */
-            .row_saving {
-                color: orange;
-            }
+            </div>
+        </div>
 
-            /* Серая строка если не видима категория */
-            .row_not_visible {
-                color: #dddddd;
-            }
-        </style>
-        <script type="text/javascript">
-            $(document).ready(function() {
-                $("#table-1").tableDnD({
-                    dragHandle: ".move_panel",
+        <div style="flex-grow: 1; flex-basis: 1%;">
+        </div>
 
-                    // По умолчанию класс tDnD_whileDrag ставится когда уже начали тянуть строку.
-                    // С помощью этого события ставим его сразу при клике (чтоб юзер видел что при клике
-                    // краснеет строка).
-                    // CSS класс снимается в библиотеке tdnd по отпусканию клика.
-                    onDragStart: function(ev, target){
-                        $(target).parent('tr').addClass('tDnD_whileDrag');
-                    },
-                    onDrop: function(table, row){
+    </div>
 
-                        // Считываем ID строк таблицы и сохраняем в массив чтобы отправить на сервер.
-                        var rows = $("#table-1").find('tbody').find('tr');
-                        var rowIds = [];
-                        rows.each(function(i, e){rowIds.push(parseInt(e.id))});
 
-                        // На время выполнения ajax на сервер строка остается рыжей
-                        $(row).addClass('row_saving');
+    {# Диалог редактирования #}
+    <div id="change-dialog-modal" style="display: none; padding-top: 20px; z-index: 110;" ng-controller="ChangeDlgCtrl">
 
-                        // Отправляем на сервер порядок для сохранения
-                        var prom = $.post(
-                            "{% url 'my_uu.views.lk_save_categories_order_ajax' %}",
-                            JSON.stringify(rowIds)
-                        ).done(function(){
-                            $(row).removeClass('row_saving');
-                        }).error(function(obj, err, textCode){
-                            $(row).removeClass('row_saving');
-                            uuJqReqFail(textCode, 'Новый порядок категорий не сохранен.');
-                        });
-                    }
-                });
+        <form class="form-horizontal form-condensed" ng-enter="updateOnServerAndClose()" ng-esc="close()">
+            <div class="form-group">
+                <label class="control-label col-xs-4">Название категории</label>
+                <div class="col-xs-8">
+                    <input type="text" ng-model="lkcat_model.name" class="form-control">
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="control-label col-xs-4">Видима</label>
+                <div class="col-xs-8">
+                    <div>
+                        <button type="button" class="btn btn-default" ng-class="{active: lkcat_model.visible}" ng-click="lkcat_model.visible=true">да</button>
+                        <button type="button" class="btn btn-default" ng-class="{active: !lkcat_model.visible}" ng-click="lkcat_model.visible=false">нет</button>
+                    </div>
+                    <div class="help-block">Показывать ли эту категорию в списке при внесении операций учета. Скрывайте старые больше ненужные категории.</div>
+                </div>
+            </div>
 
-                // Стандартый CSS-bootstrap table-hover и hover над move_panel глюит иногда когда делаем драг-энд-дроп
-                // строки (остается подсветка на строках где она уже не должна быть), потому реализуем это через JS
-                $("#table-1").bind('mousemove', function(ev){
-                    $("#table-1").find('tr').removeClass('row_hover');
-                    $("#table-1").find('.move_panel').removeClass('move_panel_hover');
-                    var row = $(ev.target).parents('tr:first');
-                    if (row && row.parent().prop("tagName") == 'TBODY') {
-                        row.addClass('row_hover');
-                    };
-                    var movePanelTd = $(ev.target).hasClass('move_panel') ? $(ev.target) : null;
-                    if (!movePanelTd){
-                         movePanelTd = $(ev.target).parents('td:first').hasClass('move_panel') ? $(ev.target).parents('td:first') : null;
-                    }
-                    if (movePanelTd){
-                        movePanelTd.addClass('move_panel_hover');
-                    }
-                });
-            });
-        </script>
+            {# Бюджет категории #}
+            <div class="form-group">
+                <label class="control-label col-xs-4">Периодичность бюджета</label>
+                <div class="col-xs-8">
+                    <div>
+                        <button
+                                ng-repeat="p in ac_choices_list"
+                                style="margin: 3px;"
+                                type="button"
+                                class="btn btn-default"
+                                ng-class="{active: lkcat_model.lkcm_budget_period==p.0}"
+                                ng-click="lkcat_model.lkcm_budget_period=p.0"
+                                >
+                            {$ p.1 $}
+                        </button>
+                    </div>
+                    <div class="help-block">
+                        С какой периодичностью повторяются данные расходы.
+                        Используется для отображения на странице "Анализ".
+                    </div>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="control-label col-xs-4">Бюджет категории</label>
+                <div class="col-xs-8">
+                    <input type="text" ng-model="lkcat_model.lkcm_budget_value" class="form-control">
+                    <div class="help-block">
+                        Не более скольки планируется расход за указанный период по этой категории.
+                        Используется для отображения на странице "Анализ".
+                    </div>
+                </div>
+            </div>
 
-        <table id="table-1" class="table table-condensed" style="table-layout: fixed;">
-            <thead>
-                <th style="width: 5%;"></th>
-                <th style="width: 40%;">Название</th>
-                <th style="text-align: center;">Операций</th>
-                <th style="text-align: center;">Видима</th>
-                <th></th>
-            </thead>
-            <tbody>
-                <tr ng-repeat="a in accountList" ng-class="{ 'row_not_visible': !a.visible }" id="{$ a.id $}">
-                    <td class="move_panel" title="Потяните, чтобы изменить порядок"><div>↕</div></td>
-                    <td class="ellipsis">{$ a.name $}</td>
-                    <td style="text-align: center;">{$ display(a).opCount $}</td>
-                    <td style="text-align: center;">{$ display(a).visible $}</td>
-                    <td style="cursor: default;"><span ng-click="changeDlg(a)" class="dotted_link">изменить</span></td>
-                </tr>
-            </tbody>
-        </table>
-        <button class="btn btn-info" style="margin-left: 47px; top: -15px; position: relative;" ng-click="addDlg()">Добавить категорию (Ins)</button>
+        </form>
 
-        <div style="padding-top: 50px;"></div>
+        <div ng-show="errorText" class="alert alert-danger" ng-bind="errorText">
+        </div>
+        <div ng-show="loading" class="alert alert-info">
+            Выполняется сохранение, ждите до 15 секунд...
+        </div>
+
+        <div class="row" style="margin-bottom: 5px;">
+            <div class="col-xs-12">
+                <button class="btn btn-success pull-right" ng-click="updateOnServerAndClose()" ng-disabled="loading">Сохранить (Enter)</button>
+                <button class="btn pull-right btn-default" style="margin-right: 15px;" ng-click="close()">Отмена (Esc)</button>
+                <button class="btn btn-danger pull-right" ng-click="deleteOnServerAndClose()" style="margin-right: 15px;" ng-if="resultHolderObject" ng-disabled="loading">Удалить</button>
+            </div>
+        </div>
 
     </div>
 

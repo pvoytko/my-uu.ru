@@ -13,7 +13,7 @@
 
 {% block ana_active %} class="active"{% endblock %}
 
-{% block lk_content %}
+{% block lk_wide_content %}
 
     <script>
 
@@ -72,19 +72,15 @@
         }
 
 
-        // ПЕреход на страницу анализа с указанными типом анализа, периодом, группировкой.
-        // Если они не указаны (undefined), тогда взять их из УРЛ. Если в урл их нет,
-        // тогда они будут по-умолчанию.
-        function goToAnaUrl(type, period, grouping){
-            return goToUchOrAnaUrl(type, period, grouping, true)
-        }
-
         function AnaController($scope, $http){
 
             // какие открыть в таблице
             $scope.periodCode = '{{ lka_period }}';
             $scope.anaType = '{{ lka_type }}';
             $scope.ac_is_grouping = '{{ lka_is_grouping }}' == 'True';
+            $scope.ac_budget_period = '{{ lka_budget_period }}';
+
+            $scope.lka_bperiod_choices = {{ lka_bperiod_choices_json|safe }};
 
             // Тут получаем с сервера данные в формате
             // pageData {
@@ -98,16 +94,39 @@
             // }
 
             // Версия в контроллере
-            $scope.acGoToAnaUrl = function(type, period, grouping_switch){
+            $scope.acGoToAnaUrl = function(type, period, grouping_switch, bperiod){
 
-                // Возвращает строку для передачи в урл в зависимости от значения чекбокса
+                // Это видимо баг кода работы с чекбоксом, что инвертно работает, исправляем таким образом:
                 if (grouping_switch){
                     $scope.ac_is_grouping = !$scope.ac_is_grouping;
                 }
-                var grouping = $scope.ac_is_grouping ? 'group' : 'nogroup';
+
+                // Возвращает строку для передачи в урл в зависимости от значения чекбокса
+                var grouping = $scope.ac_is_grouping ? 'group' : '';
 
                 // переход
-                return goToAnaUrl(type, period, grouping);
+                // ПЕреход на страницу анализа с указанными типом анализа, периодом, группировкой.
+                // Если они не указаны (undefined), тогда взять их из УРЛ. Если в урл их нет,
+                // тогда они будут по-умолчанию.
+                url = window.location.href;
+                if (type === undefined){
+                    type = getParameterByName('lka_type', url);
+                }
+                if (period === undefined){
+                    period = getParameterByName('lka_period', url);
+                }
+                if (grouping === undefined){
+                    grouping = getParameterByName('lka_group', url);
+                }
+                if (bperiod === undefined){
+                    bperiod = getParameterByName('lka_bperiod', url);
+                }
+                url = pvlGetUrlReplaceParam(url, 'lka_type', type, true);
+                url = pvlGetUrlReplaceParam(url, 'lka_period', period, true);
+                url = pvlGetUrlReplaceParam(url, 'lka_group', grouping, true);
+                url = pvlGetUrlReplaceParam(url, 'lka_bperiod', bperiod, true);
+
+                window.location.href = url;
             };
 
             // Загрузка данных с сервера
@@ -115,7 +134,8 @@
                 $scope.loader = new FromServerLoader('/ajax_lk_ana/', $http, {
                     periodCode: $scope.periodCode,
                     anaType: $scope.anaType,
-                    lkax_is_grouping: $scope.ac_is_grouping
+                    lkax_is_grouping: $scope.ac_is_grouping,
+                    lkax_bperiod: $scope.ac_budget_period
                 });
             };
             $scope.load();
@@ -129,11 +149,14 @@
             $scope.getPeriods = function(){
                 return $scope.loader.api.pageData['periods'][$scope.anaType + '-' + $scope.periodCode];
             };
+            $scope.getSimplePageData = function(){
+                return $scope.loader.api.pageData;
+            };
             $scope.getCatCaption = function(){
-                return "Категории"
+                return "Категории";
             };
             $scope.getTotCaption = function(){
-                return $scope.anaType == 'rashod' ? "Расходы всего" : "Доходы всего"
+                return "Сумма";
             };
         }
     </script>
@@ -149,109 +172,209 @@
         }
     </style>
 
-    <div ng-controller="AnaController">
+    <style>
+        .sili_help_icon{
+            display: inline-block;
+            height: 18px;
+            width: 18px;
+            background: url(/static/img/sili_tooltip.png) no-repeat;
+            position: relative;
+            top: 5px;
+        }
+        .tooltip-inner {
+            max-width: 630px;
+            text-align: left;
+        }
+    </style>
 
-        <!-- Выбор группировки -->
-        <h5 style="display: inline;">Анализ </h5>
-        <div style="padding-bottom: 7px; display: inline-block; position: relative; top:0px; padding-left: 12px;" ng-cloak>
+    <div
+            style="display: flex; flex-flow: row nowrap;"
+            ng-controller="AnaController"
+            ng-cloak
+            >
 
-            <button type="button" class="btn btn-default" ng-class="{active: anaType=='rashod'}" ng-click="acGoToAnaUrl('rashod', undefined, undefined)">расходов</button>
-            <button type="button" class="btn btn-default" ng-class="{active: anaType=='dohod'}" ng-click="acGoToAnaUrl('dohod', undefined, undefined)">доходов</button>
+        <div style="width: 320px;">
 
-        </div>
-        <h5 style="display: inline; padding-left: 20px;">По периодам</h5>
-        <div style="padding-bottom: 7px; display: inline-block; position: relative; padding-left: 12px;" ng-cloak>
+            <div style="padding: 0px 25px 25px 25px;">
 
-            <button type="button" class="btn btn-default" ng-class="{active: periodCode=='day'}" ng-click="acGoToAnaUrl(undefined, 'day', undefined)">день</button>
-            <button type="button" class="btn btn-default" ng-class="{active: periodCode=='week'}" ng-click="acGoToAnaUrl(undefined, 'week', undefined)">неделя</button>
-            <button type="button" class="btn btn-default" ng-class="{active: periodCode=='month'}" ng-click="acGoToAnaUrl(undefined, 'month', undefined)">месяц</button>
-            <button type="button" class="btn btn-default" ng-class="{active: periodCode=='quart'}" ng-click="acGoToAnaUrl(undefined, 'quart', undefined)">квартал</button>
+                <!-- Выбор группировки -->
+                <h5 style="margin: 0px 0px 0px 0px;">Анализ </h5>
+                <div style="padding-bottom: 7px; display: inline-block; position: relative; top:0px;" ng-cloak>
 
-        </div>
-        <style>
-            .sili_help_icon{
-                display: inline-block;
-                height: 18px;
-                width: 18px;
-                background: url(/static/img/sili_tooltip.png) no-repeat;
-                position: relative;
-                top: 5px;
-            }
-            .tooltip-inner {
-                max-width: 630px;
-                text-align: left;
-            }
-        </style>
-        <div class="form-group" style="display: inline-block; padding-left: 20px; margin-bottom: 0px;">
-            <div class="checkbox" style="margin-top: 0px;">
-                <label>
-                    <input style="position: relative; top: 3px;" type="checkbox" ng-model="ac_is_grouping" ng-click="acGoToAnaUrl(undefined, undefined, true)">
-                    <span>группировка</span>
-                </label>
-                <span ng-controller='SiliTooltipCtrl2' title='Позволяет объединить несколько категорий в таблице в одну при отображении, для облегчения анализа. Для этого в качестве названия группы берётся часть названия категории, находящаяся перед первым двойным дефисом. Например, у Вас есть категория "Еда -- Столовая" и "Еда -- Магазин". Тогда при клике на галочку эти две категории объединятся в одну с названием "Еда".' class="sili_help_icon"></span>
+                    <button style="margin-top: 5px;" type="button" class="btn btn-default" ng-class="{active: anaType=='rashod'}" ng-click="acGoToAnaUrl('rashod', undefined, undefined, undefined)">расходов</button>
+                    <button style="margin-top: 5px;" type="button" class="btn btn-default" ng-class="{active: anaType=='dohod'}" ng-click="acGoToAnaUrl('dohod', undefined, undefined, undefined)">доходов</button>
+
+                </div>
+
+                <h5 style="margin: 10px 0px 0px 0px;">По периодам</h5>
+                <div style="padding-bottom: 7px; display: inline-block; position: relative;" ng-cloak>
+
+                    <button style="margin-top: 5px;" type="button" class="btn btn-default" ng-class="{active: periodCode=='day'}" ng-click="acGoToAnaUrl(undefined, 'day', undefined, undefined)">день</button>
+                    <button style="margin-top: 5px;" type="button" class="btn btn-default" ng-class="{active: periodCode=='week'}" ng-click="acGoToAnaUrl(undefined, 'week', undefined, undefined)">неделя</button>
+                    <button style="margin-top: 5px;" type="button" class="btn btn-default" ng-class="{active: periodCode=='month'}" ng-click="acGoToAnaUrl(undefined, 'month', undefined, undefined)">месяц</button>
+                    <button style="margin-top: 5px;" type="button" class="btn btn-default" ng-class="{active: periodCode=='quart'}" ng-click="acGoToAnaUrl(undefined, 'quart', undefined, undefined)">квартал</button>
+
+                </div>
+
+                <div class="form-group" style="margin: 10px 0px 0px 0px;">
+                    <div class="checkbox" style="margin-top: 0px;">
+                        <label>
+                            <input style="position: relative; top: 3px;" type="checkbox" ng-model="ac_is_grouping" ng-click="acGoToAnaUrl(undefined, undefined, true, undefined)">
+                            <span>Группировка</span>
+                        </label>
+                        <span ng-controller='SiliTooltipCtrl2' title='Позволяет объединить несколько категорий в таблице в одну при отображении, для облегчения анализа. Для этого в качестве названия группы берётся часть названия категории, находящаяся перед первым двойным дефисом. Например, у Вас есть категория "Еда -- Столовая" и "Еда -- Магазин". Тогда при клике на галочку эти две категории объединятся в одну с названием "Еда".' class="sili_help_icon"></span>
+                    </div>
+                </div>
+
+                <h5 style="margin: 20px 0px 0px 0px;">Показать категории с периодичностью бюджета:</h5>
+                <div style="padding-bottom: 7px; position: relative;" ng-cloak>
+
+                    <button
+                            style="margin-top: 5px; margin-right: 5px;"
+                            ng-repeat="p in lka_bperiod_choices"
+                            type="button"
+                            class="btn btn-default"
+                            ng-class="{active: ac_budget_period==p.0}"
+                            ng-click="acGoToAnaUrl(undefined, undefined, undefined, p.0)"
+                            >
+                        {$ p.1 $}
+                    </button>
+
+                </div>
+
             </div>
         </div>
+        <div style="width: 100%; flex-grow: 1;">
 
-        <div ng-cloak>
+            <div ng-cloak>
 
-            <div ng-if="loader.isLoading()" class="alert alert-warning">
-                Загрузка данных с сервера, подождите, пожалуйста, до 30 секунд...
-            </div>
-            <div ng-if="loader.isSuccess()">
+                <div ng-if="loader.isLoading()" class="alert alert-warning">
+                    Загрузка данных с сервера, подождите, пожалуйста, до 30 секунд...
+                </div>
+                <div ng-if="loader.isSuccess()">
 
-                <!-- Таблица с периодами, категориями, суммами -->
-                <table class="table table-hover table-condensed table-bordered" style="width: auto;" ng-cloak>
-                    <thead>
-                        <tr>
-                            <th style="background-color: #f0f0f0; width: 200px; text-align: center;">{$ getCatCaption() $}</th>
-
-                            {# ширина 101 подобрана чтобы недели входили, например, неделя 13 2016 года - длинный текст #}
-                            <th style="background-color: #f0f0f0; width: 101px; text-align: center;" ng-repeat="p in getPeriods()">
-                                {$ p.first $}<br /><span style="font-weight: normal;">{$ p.second $}</span>
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr ng-show="getDataRowList().length == 0">
-                            <td colspan="7" style="text-align: center; padding: 50px;">Нет операций для отобржения. Начните вести учет на вкладке "Учет".</td>
-                        </tr>
-                        <tr ng-repeat="row in getDataRowList()">
-                            <td style="background-color: #f0f0f0; ">
-                                <div ng-controller='SiliTooltipCtrl2' style="text-overflow: ellipsis; white-space: nowrap; overflow: hidden; width: 200px;">{$ row.category $}</div>
-                            </td>
-                            <td ng-repeat="i in row.lka_cell_data track by $index" style="text-align: right;">
-                                <a
-                                        href="/lk/{$ i.lka_cell_period $}/None/{$ row.lka_category_id $}/"
-                                        class="lka_sum_link"
-
-                                        {# Проход к учету возможен только без группировки #}
-                                        {% if lka_is_grouping %}
-                                            onclick="alert('Включена группировка. Переход к учету при клике на сумму возможен только при отключенной группировке. Отключите группировку, пожалуйста, и повторите попытку.'); return false;"
-                                        {% endif %}
+                    <!-- Таблица с периодами, категориями, суммами -->
+                    <table
+                            class="table table-hover table-condensed table-bordered pv_light_tooltip"
+                            style="width: auto; border: none;"
+                            ng-cloak
+                            >
+                        <thead>
+                            <tr>
+                                <th
+                                        style="background-color: #f0f0f0; width: 200px; text-align: center; height: 75px; vertical-align: top; border-top: 1px solid #ddd;"
                                         >
-                                    {$ i.lka_cell_val $}
-                                </a>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td style="background-color: #f0f0f0; font-weight: bold; text-align: right;">
-                                <span>{$ getTotCaption() $}</span>
-                            </td>
-                            <td ng-repeat="i in getTotalRow() track by $index" style="background-color: #f0f0f0; text-align: right; font-weight: bold;">{$ i $}</td>
-                        </tr>
-                    </tbody>
-                </table>
+                                    {$ getCatCaption() $}
+                                </th>
+
+                                {# ширина 101 подобрана чтобы недели входили, например, неделя 13 2016 года - длинный текст #}
+                                <th
+                                        style="background-color: #f0f0f0; width: 101px; text-align: center; height: 75px; vertical-align: top; border-top: 1px solid #ddd;"
+                                        ng-repeat="p in getPeriods()"
+                                        >
+                                    {$ p.first $}<br /><span style="font-weight: normal;">{$ p.second $}</span>
+                                </th>
+
+                                <th style="background-color: transparent; width: 20px; border: none; height: 75px; vertical-align: top;">
+
+                                </th>
+                                <th style="background-color: #f0f0f0; width: 141px; text-align: center; height: 75px; vertical-align: top; border-top: 1px solid #ddd;">
+                                    Бюджет
+                                </th>
+
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr ng-show="getDataRowList().length == 0">
+                                <td colspan="7" style="text-align: center; padding: 50px;">Нет операций для отображения.</td>
+                            </tr>
+                            <tr ng-repeat="row in getDataRowList()">
+                                <td style="background-color: #f0f0f0; ">
+                                    <div
+                                            style="text-overflow: ellipsis; white-space: nowrap; overflow: hidden; width: 200px;"
+                                            pv-tooltip-directive='row.category'
+                                            >
+                                        {$ row.category $}
+                                    </div>
+                                </td>
+                                <td ng-repeat="i in row.lka_cell_data track by $index" style="text-align: right;">
+                                    <a
+                                            href="/lk/{$ i.lka_cell_period $}/None/{$ row.lka_category_id $}/"
+                                            class="lka_sum_link"
+
+                                            {# Проход к учету возможен только без группировки #}
+                                            {% if lka_is_grouping %}
+                                                onclick="alert('Включена группировка. Переход к учету при клике на сумму возможен только при отключенной группировке. Отключите группировку, пожалуйста, и повторите попытку.'); return false;"
+                                            {% endif %}
+                                            >
+                                        {$ i.lka_cell_val $}
+                                    </a>
+                                </td>
+
+                                <td style="border: none;">
+                                </td>
+                                <td style="text-align: left;">
+                                    {$ row.lka_budget_str $}
+                                </td>
+
+                            </tr>
+                            <tr>
+                                <td style="background-color: #f0f0f0; font-weight: bold; text-align: right;">
+                                    <span>{$ getTotCaption() $}</span>
+                                </td>
+                                <td
+                                        ng-repeat="i in getTotalRow() track by $index"
+                                        style="background-color: #f0f0f0; text-align: right; font-weight: bold;"
+                                        >
+                                    {$ i $}
+                                </td>
+
+                                <td style="border: none;">
+                                </td>
+                                <td style="background-color: #f0f0f0; text-align: left; font-weight: bold;">
+                                    {$ getSimplePageData().pa_budget_summ $}
+                                </td>
+
+                            </tr>
+                        </tbody>
+                    </table>
+
+                </div>
+                <div ng-if="loader.isUnknownError()" class="alert alert-danger">
+                    Нет связи с сервером. Повторите попытку позже, пожалуйста, или обратитесь в службу поддержки.
+                </div>
+                <div ng-if="loader.isServerError()" class="alert alert-danger">
+                    Ошибка на сервере. Повторите попытку позже, пожалуйста, или обратитесь в службу поддержки.
+                </div>
 
             </div>
-            <div ng-if="loader.isUnknownError()" class="alert alert-danger">
-                Нет связи с сервером. Повторите попытку позже, пожалуйста, или обратитесь в службу поддержки.
-            </div>
-            <div ng-if="loader.isServerError()" class="alert alert-danger">
-                Ошибка на сервере. Повторите попытку позже, пожалуйста, или обратитесь в службу поддержки.
-            </div>
-
         </div>
 
+        <!-- Таблица с бюджетами и суммой под ней  -->
+{#        <div style="flex-grow: 1; flex-basis: 1%;">#}
+{#            <table class="table table-hover table-condensed table-bordered" style="width: auto; border: none;" ng-cloak ng-if="!loader.isLoading()">#}
+{#                <thead>#}
+{#                    <tr>#}
+{#                    </tr>#}
+{#                </thead>#}
+{#                <tbody>#}
+{#                    <tr ng-repeat="bs in getSimplePageData().pa_budgets_list">#}
+{#                        <td style="border: none;">#}
+{#                        </td>#}
+{#                        <td style="text-align: left;">#}
+{#                            {$ bs.pabl_caption $}#}
+{#                        </td>#}
+{#                    </tr>#}
+{#                    <tr>#}
+{#                        <td style="border: none;">#}
+{#                        </td>#}
+{#                        <td style="background-color: #f0f0f0; text-align: left; font-weight: bold;">#}
+{#                            {$ getSimplePageData().pa_budget_summ $}#}
+{#                        </td>#}
+{#                    </tr>#}
+{#                </tbody>#}
+{#            </table>#}
+{#        </div>#}
 
     </div>
 

@@ -398,12 +398,34 @@ def lk_cat(request):
 
     # Получаем счета и категории с указанием количества записей
     rowsC = my_uu.models.Category.objects.annotate(count = Count('uchet')).order_by('position', 'id')
-    rowsC = rowsC.filter(user=request.user).values('id', 'name', 'count', 'visible')
-    categoryListJsonString = json.dumps(list(rowsC))
+    rowsC = rowsC.filter(user=request.user).values(
+        'id',
+        'name',
+        'count',
+        'visible',
+        'lkcm_budget_value',
+        'lkcm_budget_period',
+    )
+    category_list = []
+    for c in rowsC:
+        category_list.append(dict(c))
+
+        if c['lkcm_budget_period'] and c['lkcm_budget_value'] is not None:
+            category_list[-1]['lkc_budget_with_period_str'] = my_uu.plogic.getBudgetStr(
+                c['lkcm_budget_period'], c['lkcm_budget_value']
+            )
+        else:
+            category_list[-1]['lkc_budget_with_period_str'] = u'не задано'
+
 
     return render(request, 'lk_cat.html', {
         'request': request,
-        'categoryListJsonString': categoryListJsonString
+
+        # Перечень категорий
+        'lkc_category_list_json': json.dumps(category_list),
+
+        # Варианты периодичности для бюджета категорий, кроме варианта "Все"
+        'lkc_budget_periods_choices_json': json.dumps(my_uu.models.LKCM_BUDGET_PERIOD_CHOICES1)
     } )
 
 
@@ -451,13 +473,18 @@ class AnaWeekIterator(object):
 # Страница Анализ личного кабиета
 @uu_login_required
 @uuTrackEventDecor(my_uu.models.EventLog.EVENT_VISIT_ANA)
-def lk_ana(request, type = None, period = None, group = None):
+def lk_ana(request):
+
+    type = request.GET.get('lka_type', None)
+    period = request.GET.get('lka_period', None)
+    group = request.GET.get('lka_group', None)
+    bperiod = request.GET.get('lka_bperiod', None)
 
     if type is None:
         type = 'rashod'
 
     if period is None:
-        period = 'day'
+        period = 'week'
 
     if group is None:
         group = False
@@ -469,10 +496,19 @@ def lk_ana(request, type = None, period = None, group = None):
         else:
             raise RuntimeError(u'Неподдерживаемое значение.')
 
+    if bperiod is None:
+        bperiod = 'LKCM_BUDGET_PERIOD_ALL'
+
+    bperiod_choices = my_uu.models.LKCM_BUDGET_PERIOD_CHOICES2
+
     return render(request, 'lk_ana.html', {
         'lka_period': period,
         'lka_type': type,
         'lka_is_grouping': group,
+        'lka_budget_period': bperiod,
+
+        # Варианты периода для бюджета
+        'lka_bperiod_choices_json': json.dumps(bperiod_choices),
     })
 
 
@@ -721,11 +757,9 @@ def getQuartFirstDate(dt):
     return dt.replace(day=1, month=m1)
 
 
+# Страница анализа, при ее открытии - в контекст добавляются переменные для показа таблицы
 @uu_login_required
 def ajax_lk_ana(request):
-
-    # Уникальный список категорий
-    categoryList = request.user.category_set.all().order_by('position', 'id')
 
     # Форматирует как деньги переданный список чисел
     def formatMoneyRow(moneyRow):
@@ -794,6 +828,34 @@ def ajax_lk_ana(request):
             return uchet.filter(category__name__in = [catOrGroup, ])
 
 
+    def getFromDictDictOrEmpty(dicti, key1, key2, empty_val, periodCode):
+
+        # получая на вход дату и период (день, неделя, месяц, квартал) - на их основе вычисляет id периода)
+        # примеры
+        #     "Неделя 14 2016" (урл - w2016-14)
+        #     или
+        #     "24 апр Вс 2016" (d2016.12.01)
+        #     или
+        #     "Февраль 2016" (2013-02)
+        #     или
+        #     "I - 2016" (q2013-1)
+        period_id = plogic.convertPeriodCodeAndStartDateToPeriodId(periodCode, key2)
+
+        if key1 not in dicti:
+            return {'lka_cell_val': empty_val, 'lka_cell_period': period_id}
+        elem1 = dicti[key1]
+        if key2 not in elem1:
+            return {'lka_cell_val': empty_val, 'lka_cell_period': period_id}
+        return {'lka_cell_val': my_uu.utils.formatMoneyValue(elem1[key2]), 'lka_cell_period': period_id}
+
+
+    def getValFormattedOrZero(dictionary, key):
+        if key in dictionary:
+            return my_uu.utils.formatMoneyValue(dictionary[key])
+        else:
+            return my_uu.utils.formatMoneyValue(0)
+
+
     # format_header_from_val_func = Функция, применяемая к первой дате периода, возвращает словарь first second для оторажения в заголовке
     # period_count = Число периодов для отображения
     # get_first_period_date_func Функция, применяемая к дате, получает первый день требуемого периода
@@ -808,6 +870,7 @@ def ajax_lk_ana(request):
         get_first_period_date_func,
         dec_period_func,
         is_groups_on,
+        bperiod,
     ):
 
         # Сколь периодов включая теукщий будет в очтете
@@ -864,14 +927,81 @@ def ajax_lk_ana(request):
         # Теперь надо сформировать список из категорий, в порядке нужном для пользователя,
         # только те, по которым есть данные (остальные убираем).
         # Если несколько категорий при группировке преобразовались в одну, то на выходе дожна быть только одна.
-        categoryList = list(request.user.category_set.values('name', 'id').order_by('position', 'id'))
+        categoryModelListAll = list(request.user.category_set.order_by('position', 'id'))
         categoryNames = set()
-        for c in reversed(categoryList):
-            c['name'] = plogic.convertCategoryNameToGroupNameIfGrouping(c['name'], is_groups_on)
-            if c['name'] not in pivot_table['rows'] or c['name'] in categoryNames:
-                categoryList.remove(c)
+        categoryModelListFiltered1 = []
+        for c in categoryModelListAll:
+            c.name = plogic.convertCategoryNameToGroupNameIfGrouping(c.name, is_groups_on)
+            if c.name not in pivot_table['rows'] or c.name in categoryNames:
+                pass
             else:
-                categoryNames.add(c['name'])
+                categoryNames.add(c.name)
+                categoryModelListFiltered1.append(c)
+
+        # Если стоит фильтр по периодичности бюджета, то применяем его
+        categoryModelListFiltered2 = []
+        if bperiod:
+            for c in categoryModelListFiltered1:
+                if bperiod == my_uu.models.LKCM_BUDGET_PERIOD_ALL:
+                    categoryModelListFiltered2.append(c)
+                elif c.lkcm_budget_period == bperiod:
+                    categoryModelListFiltered2.append(c)
+                elif c.lkcm_budget_period is None and bperiod == my_uu.models.LKCM_BUDGET_PERIOD_NONE:
+                    categoryModelListFiltered2.append(c)
+        else:
+            categoryModelListFiltered2 = categoryModelListFiltered1
+
+        # Обновленний список категорий - пересчитывем сумму
+        # Но перед этим из записей учета удаляем все что не попадают в выбранные категории.
+        uchet_list_cur_filter = []
+        allowed_categories = [c.name for c in categoryModelListFiltered2]
+        for u in uchet_list:
+            if u['category__name'] in allowed_categories:
+                uchet_list_cur_filter.append(u)
+        pivot_table = convertTableDataToPivotDate(
+            uchet_list_cur_filter,
+            'category__name',
+            'period_value_sort',
+            'sum',
+            colsTotalFunc=lambda ll: sum([l for l in ll if l]),
+        )
+        pageData['totalRow'][anaType + '-' + result_suffix] = [
+            getValFormattedOrZero(pivot_table['colsTotalValues'], k) for k in periods_start_dates
+        ]
+
+        # в эту переменную сохраняем значения для показа в столбце бюджета
+        # попутно проверяем что все они имеют один период и он задан и если да - то сумму будем выводить
+        budget_sum_val = 0
+        budget_is_all_present_and_same_period = False
+        budget_prev_period = []
+        budgets_str_by_category_id = {}
+        for c in categoryModelListFiltered2:
+            if c.lkcm_budget_value is not None and c.lkcm_budget_period and not is_groups_on:
+
+                # Если период другой, то значит уже не надо считать суму.
+                # Исползуем массив, т.к. период может быть None
+                if not len(budget_prev_period):
+                    budget_is_all_present_and_same_period = True
+                    budget_prev_period.append(c.lkcm_budget_period)
+                if len(budget_prev_period) and (budget_prev_period[0] != c.lkcm_budget_period):
+                    budget_is_all_present_and_same_period = False
+
+                budget_str = my_uu.plogic.getBudgetStr(c.lkcm_budget_period, c.lkcm_budget_value)
+                period_code = c.lkcm_budget_period
+                budget_sum_val += c.lkcm_budget_value
+            elif is_groups_on:
+                budget_str = u'группировка'
+                budget_is_all_present_and_same_period = False
+            else:
+                budget_str = u'не задано'
+                budget_is_all_present_and_same_period = False
+            budgets_str_by_category_id[c.id] = budget_str
+
+        # значение для показа в ячейке суммы в бюджете
+        if budget_is_all_present_and_same_period:
+            pageData['pa_budget_summ'] = my_uu.plogic.getBudgetStr(period_code, budget_sum_val)
+        else:
+            pageData['pa_budget_summ'] = u'--'
 
         # Преобразуем к выходному формату:
         # periods:
@@ -889,43 +1019,18 @@ def ajax_lk_ana(request):
         #         {data}: [ssss, ssss, ] значения строки, по одному на каждый столбец
         pageData['periods'][anaType + '-' + result_suffix] = periodsHeaders
         pageData['dataRows'][anaType + '-' + result_suffix] = []
-        def getFromDictDictOrEmpty(dicti, key1, key2, empty_val, periodCode):
-
-            # получая на вход дату и период (день, неделя, месяц, квартал) - на их основе вычисляет id периода)
-            # примеры
-            #     "Неделя 14 2016" (урл - w2016-14)
-            #     или
-            #     "24 апр Вс 2016" (d2016.12.01)
-            #     или
-            #     "Февраль 2016" (2013-02)
-            #     или
-            #     "I - 2016" (q2013-1)
-            period_id = plogic.convertPeriodCodeAndStartDateToPeriodId(periodCode, key2)
-
-            if key1 not in dicti:
-                return {'lka_cell_val': empty_val, 'lka_cell_period': period_id}
-            elem1 = dicti[key1]
-            if key2 not in elem1:
-                return {'lka_cell_val': empty_val, 'lka_cell_period': period_id}
-            return {'lka_cell_val': my_uu.utils.formatMoneyValue(elem1[key2]), 'lka_cell_period': period_id}
-        for r in categoryList:
+        for r in categoryModelListFiltered2:
             pageData['dataRows'][anaType + '-' + result_suffix].append({
-                'category': r['name'],
-                'lka_category_id': r['id'],
+                'category': r.name,
+                'lka_category_id': r.id,
                 'lka_cell_data': [getFromDictDictOrEmpty(
-                    pivot_table['values'], r['name'], k, '0 р.', periodCode
-                ) for k in periods_start_dates]
+                    pivot_table['values'], r.name, k, '0 р.', periodCode
+                ) for k in periods_start_dates],
+                'lka_budget_str': budgets_str_by_category_id[r.id],
             })
-        def getValFormattedOrZero(dictionary, key):
-            if key in dictionary:
-                return my_uu.utils.formatMoneyValue(dictionary[key])
-            else:
-                return my_uu.utils.formatMoneyValue(0)
-        pageData['totalRow'][anaType + '-' + result_suffix] = [
-            getValFormattedOrZero(pivot_table['colsTotalValues'], k) for k in periods_start_dates
-        ]
 
-    def addDayAnaDataToPageData(pageData, anaType, is_groups_on):
+
+    def addDayAnaDataToPageData(pageData, anaType, is_groups_on, bperiod):
 
         return addPeriodAnaDataToPageData(
             pageData,
@@ -936,9 +1041,10 @@ def ajax_lk_ana(request):
             get_first_period_date_func = lambda dt: dt,
             dec_period_func = lambda dt: dt - datetime.timedelta(days=1),
             is_groups_on = is_groups_on,
+            bperiod = bperiod,
         )
 
-    def addWeekAnaDataToPageData(pageData, anaType, is_groups_on):
+    def addWeekAnaDataToPageData(pageData, anaType, is_groups_on, bperiod):
 
         def formatWeekHeader(d):
             return dict( first = u'Неделя ' + str(plogic.getWeekNumberOfYear(d)), second = getDatesForWeek(d) )
@@ -952,9 +1058,10 @@ def ajax_lk_ana(request):
             get_first_period_date_func = lambda dt: dt - datetime.timedelta(days=dt.weekday()),
             dec_period_func = lambda dt: dt - datetime.timedelta(days=7),
             is_groups_on = is_groups_on,
+            bperiod = bperiod,
         )
 
-    def addMonthAnaDataToPageData(pageData, anaType, is_groups_on):
+    def addMonthAnaDataToPageData(pageData, anaType, is_groups_on, bperiod):
 
         monthNames = [u'Январь', u'Февраль', u'Март', u'Апрель', u'Май', u'Июнь', u'Июль', u'Август', u'Сентябрь', u'Октябрь', u'Ноябрь', u'Декабрь']
 
@@ -967,9 +1074,10 @@ def ajax_lk_ana(request):
             get_first_period_date_func = lambda dt: dt.replace(day=1),
             dec_period_func = lambda dt: addMonths(dt, -1),
             is_groups_on = is_groups_on,
+            bperiod = bperiod,
         )
 
-    def addQuartAnaDataToPageData(pageData, anaType, is_groups_on):
+    def addQuartAnaDataToPageData(pageData, anaType, is_groups_on, bperiod):
 
         return addPeriodAnaDataToPageData(
             pageData,
@@ -980,25 +1088,33 @@ def ajax_lk_ana(request):
             get_first_period_date_func = getQuartFirstDate,
             dec_period_func = lambda dt: addMonths(dt, -3),
             is_groups_on = is_groups_on,
+            bperiod = bperiod,
         )
 
+    anaType, periodCode, is_groups_on, bperiod = extractAngularPostData(
+        request,
+        'anaType',
+        'periodCode',
+        'lkax_is_grouping',
+        'lkax_bperiod',
+    )
+
+    # Данные для таблицы
     pageData = {
         'periods': {},
         'dataRows': {},
         'totalRow': {}
     }
-
-    anaType, periodCode, is_groups_on = extractAngularPostData(request, 'anaType', 'periodCode', 'lkax_is_grouping')
-
-
     if periodCode == 'day':
-        addDayAnaDataToPageData(pageData, anaType, is_groups_on)
-    if periodCode == 'week':
-        addWeekAnaDataToPageData(pageData, anaType, is_groups_on)
-    if periodCode == 'month':
-        addMonthAnaDataToPageData(pageData, anaType, is_groups_on)
-    if periodCode == 'quart':
-        addQuartAnaDataToPageData(pageData, anaType, is_groups_on)
+        addDayAnaDataToPageData(pageData, anaType, is_groups_on, bperiod)
+    elif periodCode == 'week':
+        addWeekAnaDataToPageData(pageData, anaType, is_groups_on, bperiod)
+    elif periodCode == 'month':
+        addMonthAnaDataToPageData(pageData, anaType, is_groups_on, bperiod)
+    elif periodCode == 'quart':
+        addQuartAnaDataToPageData(pageData, anaType, is_groups_on, bperiod)
+    else:
+        raise RuntimeError(u'Ошибка в функции анализа расходов.')
 
     return JsonResponse(request, {
         'pageData': pageData,
@@ -1324,6 +1440,8 @@ def lk_delete_account_ajax(request):
 def lk_save_accounts_order_ajax(request):
     return _lk_save_accounts_or_category_position(request, request.user.account_set, my_uu.models.EventLog.EVENT_REORDER_ACCOUNTS)
 
+
+# Вызвыается при сохранении категории со страницы категорий
 @uu_login_required
 def lk_save_category_ajax(request):
     def rowGetter(id):
@@ -1331,7 +1449,15 @@ def lk_save_category_ajax(request):
         rowsC = rowsC.filter(user=request.user, id=id).values('id', 'name', 'count', 'visible')
         return rowsC[0]
 
-    return _lk_save_settings_ajax(request, 'category_set', my_uu.models.Category, my_uu.models.EventLog.EVENT_EDT_CAT, my_uu.models.EventLog.EVENT_ADD_CAT, u'Категория', rowGetter)
+    return _lk_save_settings_ajax(
+        request,
+        'category_set',
+        my_uu.models.Category,
+        my_uu.models.EventLog.EVENT_EDT_CAT,
+        my_uu.models.EventLog.EVENT_ADD_CAT,
+        u'Категория',
+        rowGetter,
+    )
 
 @uu_login_required
 def lk_delete_category_ajax(request):
@@ -1340,11 +1466,6 @@ def lk_delete_category_ajax(request):
 @uu_login_required
 def lk_save_categories_order_ajax(request):
     return _lk_save_accounts_or_category_position(request, request.user.category_set, my_uu.models.EventLog.EVENT_REORDER_CATEGORIES)
-
-@uu_login_required
-def lk_improove_ajax(request):
-    my_uu.utils.sendImprooveEmail(request.user.id, request.user.email, json.loads(request.body)['improoveText'])
-    return JsonResponseWithStatusOk()
 
 
 # Страница Анализ личного кабиета

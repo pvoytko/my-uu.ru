@@ -119,3 +119,92 @@ function goToUchOrAnaUrl(url_part2, url_part3, url_part4, is_ana){
     // Переход
     window.location.href = new_url;
 }
+
+
+/*
+Ш-7338 Добавляет параметр к УРЛ
+Источник http://stackoverflow.com/a/13064060/1412586
+Было
+    http://95.213.159.169:8001/dashboard/make_request/?test=test1&a=3
+1. Вызываем:
+    url = pvlGetUrlReplaceParam(url, 'test', 'test2');
+    Стало
+    http://95.213.159.169:8001/dashboard/make_request/?test=test2&a=3
+2. Вызываем:
+    url = pvlGetUrlReplaceParam(url, 'test', '');
+    Стало
+    http://95.213.159.169:8001/dashboard/make_request/?test=&a=3
+3. Вызываем:
+    url = pvlGetUrlReplaceParam(url, 'test', '', true);
+    Стало
+    http://95.213.159.169:8001/dashboard/make_request/?a=3
+*/
+function pvlGetUrlReplaceParam(url, param_name, new_value, is_del_if_empty) {
+
+    // Если оно null, то пустая стрка, а не значение "null"
+    // Тут важно использовать encodeURIComponent т.к. если new_value содержит например % то урл будет  не верным без этого.
+    var new_value_or_empty = new_value ? encodeURIComponent(new_value) : "";
+
+    var hash = location.hash;
+    url = url.replace(hash, '');
+
+    // параметра уже есть в УРЛ
+    if (url.indexOf(param_name + "=") >= 0)
+    {
+        var prefix = url.substring(0, url.indexOf(param_name));
+        var suffix = url.substring(url.indexOf(param_name));
+        suffix = suffix.substring(suffix.indexOf("=") + 1);
+        suffix = (suffix.indexOf("&") >= 0) ? suffix.substring(suffix.indexOf("&")) : "";
+
+        // Если при пустом значнии удалить праметр, то
+        if (!new_value_or_empty && is_del_if_empty){
+
+            // Случай когда урл остается такой
+            // http://95.213.159.169:8001/dashboard/?
+            // то удаляем последний знак вопроса
+            if (prefix[prefix.length-1] == '?'){
+                prefix = prefix.substr(0, prefix.length-1);
+            }
+            url = prefix + suffix;
+
+        // Если при пустом значнии оставить праметр, то
+        } else {
+            url = prefix + param_name + "=" + new_value_or_empty + suffix;
+        }
+
+    }
+
+    // параметра еще нет в УРЛ
+    else
+    {
+
+        // Если при пустом значнии удалить праметр, то
+        if (!new_value_or_empty && is_del_if_empty){
+
+            // ничего не делаем, т.к. его итак нет.
+
+        // Если при пустом значнии оставить праметр, то
+        } else {
+
+            // добавляем параметр
+            if (url.indexOf("?") < 0)
+                url += "?" + param_name + "=" + new_value_or_empty;
+            else
+                url += "&" + param_name + "=" + new_value_or_empty;
+        }
+    }
+    return url + hash;
+}
+
+
+// Источник http://stackoverflow.com/a/901144/1412586
+// Ш-7338
+function getParameterByName(name, url) {
+    if (!url) url = window.location.href;
+    name = name.replace(/[\[\]]/g, "\\$&");
+    var regex = new RegExp("[?&]" + name + "(=([^&#]*)|&|#|$)"),
+        results = regex.exec(url);
+    if (!results) return null;
+    if (!results[2]) return '';
+    return decodeURIComponent(results[2].replace(/\+/g, " "));
+}

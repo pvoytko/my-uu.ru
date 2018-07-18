@@ -75,20 +75,6 @@ def sendFeedbackRequest(user):
 
 
 # Отправляет запрос на улучшение
-def sendImprooveEmail(userId, userEmailFrom, improoveText):
-    sendHtmlEmailFromSupport(
-        'pvoytko@gmail.com',
-        u'[my-uu.ru] Запрос на улучшение сервиса',
-        'email_improove.html',
-        {
-            'userId': userId,
-            'userEmail': userEmailFrom,
-            'improoveText': improoveText
-        }
-    )
-
-
-# Отправляет запрос на улучшение
 def sendFeedbackEmail(userId, userEmailFrom, text):
     sendHtmlEmailFromSupport(
         'pvoytko@gmail.com',
@@ -104,13 +90,13 @@ def sendFeedbackEmail(userId, userEmailFrom, text):
 # Получая число возвращает строку "11,05 р."
 def formatMoneyValue(mval):
     def group(number):
-        s = '%d' % number
+        s = u'%d' % number
         groups = []
         while s and s[-1].isdigit():
             groups.append(s[-3:])
             s = s[:-3]
         return s + ' '.join(reversed(groups))
-    return "{0} р.".format(group(round(mval, 0)))
+    return u"{0} р.".format(group(round(mval, 0)))
 
 
 # Номер к меяцу. 1 - янв, 2 - фев, ...
