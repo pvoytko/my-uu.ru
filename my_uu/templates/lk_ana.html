@@ -1,4 +1,6 @@
 {% extends 'lk_base.html' %}
+{% load pvl_angular %}
+
 
 {% block add_to_head %}
 
@@ -213,6 +215,7 @@
                     <button style="margin-top: 5px;" type="button" class="btn btn-default" ng-class="{active: periodCode=='week'}" ng-click="acGoToAnaUrl(undefined, 'week', undefined, undefined)">неделя</button>
                     <button style="margin-top: 5px;" type="button" class="btn btn-default" ng-class="{active: periodCode=='month'}" ng-click="acGoToAnaUrl(undefined, 'month', undefined, undefined)">месяц</button>
                     <button style="margin-top: 5px;" type="button" class="btn btn-default" ng-class="{active: periodCode=='quart'}" ng-click="acGoToAnaUrl(undefined, 'quart', undefined, undefined)">квартал</button>
+                    <button style="margin-top: 5px;" type="button" class="btn btn-default" ng-class="{active: periodCode=='app_year'}" ng-click="acGoToAnaUrl(undefined, 'app_year', undefined, undefined)">год</button>
 
                 </div>
 
@@ -279,7 +282,10 @@
 
                                 </th>
                                 <th style="background-color: #f0f0f0; width: 141px; text-align: center; height: 75px; vertical-align: top; border-top: 1px solid #ddd;">
-                                    Бюджет
+                                    Бюджет (план) по категории
+                                </th>
+                                <th style="background-color: #f0f0f0; width: 141px; text-align: center; height: 75px; vertical-align: top; border-top: 1px solid #ddd;">
+                                    Бюджет (план) за год
                                 </th>
 
                             </tr>
@@ -293,6 +299,9 @@
                                     <div
                                             style="text-overflow: ellipsis; white-space: nowrap; overflow: hidden; width: 200px;"
                                             pv-tooltip-directive='row.category'
+
+                                            {# Если категория не видима то подсветка цветом #}
+                                            ng-style="{'color': row.lka_is_category_visible ? 'auto' : '#dddddd'}"
                                             >
                                         {$ row.category $}
                                     </div>
@@ -313,8 +322,11 @@
 
                                 <td style="border: none;">
                                 </td>
-                                <td style="text-align: left;">
+                                <td style="text-align: left;" class="{$ row.bcbci_color $}">
                                     {$ row.lka_budget_str $}
+                                </td>
+                                <td style="text-align: left;" class="{$ row.bcbci_year_color $}">
+                                    {$ row.lka_budget_year_str $}
                                 </td>
 
                             </tr>
@@ -333,6 +345,9 @@
                                 </td>
                                 <td style="background-color: #f0f0f0; text-align: left; font-weight: bold;">
                                     {$ getSimplePageData().pa_budget_summ $}
+                                </td>
+                                <td style="background-color: #f0f0f0; text-align: left; font-weight: bold;">
+                                    {$ getSimplePageData().pa_budget_year_summ $}
                                 </td>
 
                             </tr>

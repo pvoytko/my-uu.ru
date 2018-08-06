@@ -4,6 +4,8 @@
 import models
 import django.contrib.auth.models
 import my_uu.models
+import pvl_datetime_format.funcs
+import datetime
 
 
 # получая на вход кверисет записей учета, и ID счета и категории, фильтрует кверисет
@@ -42,7 +44,6 @@ def getAccountIdAndCategoryIdFromUchetPageUrl(request_path):
 # Примеры кодов периода - см. convertPeriodCodeAndStartDateToPeriodId а так же, last3, last30
 def filterUchetByViewPeriod(uchetRecords, period_id):
 
-    import datetime
     import dateutil.relativedelta
 
     # Последние 3 дня, 30 дней
@@ -71,10 +72,18 @@ def filterUchetByViewPeriod(uchetRecords, period_id):
         # Это 18 неделя если использовать функцию getWeekNumberOfYear
         # Если использовать strptime то для 18-й недли возвращет дату 2016-05-02 00:00:00 т.е. 2 мая, то что надо
 
-        # ИСточник - http://stackoverflow.com/questions/17087314/get-date-from-week-number
-        d1 = datetime.datetime.strptime('{y}-{w}-0'.format(y = year, w = week), "%Y-%U-%w")
-        d2 = d1 + datetime.timedelta(days=6)
-        return uchetRecords.filter(date__gte = d1, date__lte = d2)
+        # Сейчас задача из номера недели получить дату. Раньше это делалось как тут
+        # http://stackoverflow.com/questions/17087314/get-date-from-week-number
+        # но это не работало, что для недели 30 23–29 июл возвращалось дата 29 июл - 3 авг
+        # Новый алгоритм работает так. Берем 4 число января. По моим предположениям
+        # это число гарантированно выпадает на первую неделю (в отличие от 1 января, которое
+        # может выпадать и на последнюю неделю прошлого года).
+        # И от 4 числа - добавляем 7 * номер недели и затем берем понедельник - получим нужную неделю.
+        w1dayN = datetime.datetime(year=year, month=1, day=4)
+        wNdayN = w1dayN + datetime.timedelta(days=(week-1)*7)
+        d1 = getFirstMomentOfWeek0(wNdayN)
+        d2 = getFirstMomentOfNextWeek(wNdayN)
+        return uchetRecords.filter(date__gte = d1, date__lt = d2)
 
     # Месяц
     elif period_id.startswith('m'):
@@ -109,6 +118,21 @@ def getUserUchetRecords(user):
 def getWeekNumberOfYear(date):
     return date.isocalendar()[1]
 
+# Ш-7337
+# Получая дату, возвращает начало недели.
+def getFirstMomentOfWeek0(dt):
+    return dt - datetime.timedelta(days=dt.weekday())
+
+def getFirstMomentOfWeek1(dtm):
+    return convertDateToDateTime(
+        getFirstMomentOfWeek0(dtm.date())
+    )
+
+# Ш-7337
+# Получая дату, возвращает начало следующей недели.
+def getFirstMomentOfNextWeek(dtm):
+    return getFirstMomentOfWeek0(dtm) + datetime.timedelta(days=7)
+
 
 # получая на вход дату и код периода (quart, week, month, day) - на их основе вычисляет id периода)
 # примеры
@@ -119,6 +143,8 @@ def getWeekNumberOfYear(date):
 #     "Февраль 2016" (m2013-02)
 #     или
 #     "I - 2016" (q2013-1)
+#     или
+#     "2018" (y2018)
 def convertPeriodCodeAndStartDateToPeriodId(period_code, start_date):
 
     import views
@@ -131,6 +157,8 @@ def convertPeriodCodeAndStartDateToPeriodId(period_code, start_date):
         return "m{0}-{1:02}".format(start_date.year, start_date.month)
     elif period_code == u'quart':
         return "q{0}-{1}".format(start_date.year, views.getQuartNumber(start_date))
+    elif period_code == u'app_year':
+        return "y{0}".format(start_date.year)
 
     raise RuntimeError(u'Неизвестный код периода')
 
@@ -350,7 +378,7 @@ def pmCheckUserAndPassword(usr, psw):
     return user_model
 
 
-# Если одно из них None, вернет -- иначе "4 500 в нед." для примера.
+# Если одно из них None, вернет "--" иначе "4 500 в нед." для примера.
 def getBudgetStr(budget_choice_code, budget_value):
     if budget_choice_code == my_uu.models.LKCM_BUDGET_PERIOD_DAY:
         period = u'в день'
@@ -366,4 +394,40 @@ def getBudgetStr(budget_choice_code, budget_value):
         raise RuntimeError(u'Ошибка в функции анализа расходов.')
 
     return my_uu.utils.formatMoneyValue(budget_value) + u' ' + period
+
+# Если одно из них None, вернет "--" иначе "4 500 в год" т.е приводит к году
+def getBudgetYearStr(budget_choice_code, budget_value):
+
+    if budget_value is None:
+        return u'--'
+
+    if budget_choice_code == my_uu.models.LKCM_BUDGET_PERIOD_DAY:
+        budget_value = budget_value * 366
+    elif budget_choice_code == my_uu.models.LKCM_BUDGET_PERIOD_WEEK:
+        budget_value = budget_value * 53
+    elif budget_choice_code == my_uu.models.LKCM_BUDGET_PERIOD_MONTH:
+        budget_value = budget_value * 12
+    elif budget_choice_code == my_uu.models.LKCM_BUDGET_PERIOD_QUART:
+        budget_value = budget_value * 4
+    elif budget_choice_code == my_uu.models.LKCM_BUDGET_PERIOD_YEAR:
+        budget_value = budget_value
+    else:
+        raise RuntimeError(u'Ошибка в функции анализа расходов.')
+
+    return budget_value, my_uu.utils.formatMoneyValue(budget_value) + u' в год'
+
+
+# Получая дату, возвращает начало месяца.
+def getFirstMomentOfMonth0(dt):
+    return dt.replace(day=1)
+
+
+# Получая дату-время, возвращает начало месяца.
+def getFirstMomentOfMonth1(dtm):
+    return convertDateToDateTime(getFirstMomentOfMonth0(dtm.date()))
+
+
+def convertDateToDateTime(sourcedate):
+    return datetime.datetime.combine(sourcedate, datetime.time(0, 0))
+
 

@@ -286,11 +286,6 @@ def lk_beg(request):
     return locals()
 
 
-# Преобразует Django-model в список словарьей чтобы можно было JSON выполнить.
-def _getUchetRecordsList(uchetRecords):
-    return uchetRecords.values('id', 'date', 'utype__name', 'sum', 'account__name', 'category__name', 'comment')
-
-
 def _getAccountBalanceList(request):
     accountBalanceList = my_uu.models.Account.objects.filter(user=request.user, visible=True)
     accountBalanceList = accountBalanceList.annotate(balance = Sum('uchet__sum'))
@@ -343,9 +338,21 @@ def lk_uch(request, period = None, account_id = None, category_id = None):
 
     # QS записей учета для отображения в таблице при открытии страницы
     # фильтруем согласно выбранного счета и категории
-    uchet_records = _getUchetRecordsList(plogic.getUserUchetRecords(request.user))
-    uchet_records = plogic.filterUchetRecordsByPeriodAndAccountAndCategory(
-        uchet_records, period_id, account_id, category_id
+    uchet_records_qs = plogic.getUserUchetRecords(request.user)
+    uchet_records_filtered = plogic.filterUchetRecordsByPeriodAndAccountAndCategory(
+        uchet_records_qs,
+        period_id,
+        account_id,
+        category_id,
+    )
+    uchet_records = uchet_records_filtered.values(
+        'id',
+        'date',
+        'utype__name',
+        'sum',
+        'account__name',
+        'category__name',
+        'comment',
     )
 
     return render(request, 'lk_uch.html', {
@@ -715,7 +722,7 @@ def convertTableDataToPivotDate(
 
 # Источник http://stackoverflow.com/questions/4130922/how-to-increment-datetime-by-custom-months-in-python-without-using-library
 # Добавляет заданное количство месяцев к дате.
-def addMonths(sourcedate, months):
+def addMonths0(sourcedate, months):
     month = sourcedate.month - 1 + months
     year = int(sourcedate.year + month / 12 )
     month = month % 12 + 1
@@ -723,23 +730,37 @@ def addMonths(sourcedate, months):
     return datetime.date(year,month,day)
 
 
+def addMonths1(sourcedatetime, months):
+    new_dtm = addMonths0(sourcedatetime, months)
+    return plogic.convertDateToDateTime(new_dtm)
+
+
+# Добавляет заданное количство недель к дате-время.
+def addWeeks(sourcedatetime, weeks):
+    return sourcedatetime + datetime.timedelta(days=7*weeks)
+
+
 # Возвращает число дней в квартале, к которому относится переданная дата.
 # Суммирует число дней каждогоесяца, из которых состоит квартал.
 def getDaysInQuart(dt):
     q = getQuartNumber(dt)
     m1, m2, m3 = getMonthsForQuart(q)
-    m1ld = addMonths(dt.replace(day=1, month=m1), 1) - datetime.timedelta(days=1)
-    m2ld = addMonths(dt.replace(day=1, month=m1), 1) - datetime.timedelta(days=1)
-    m3ld = addMonths(dt.replace(day=1, month=m1), 1) - datetime.timedelta(days=1)
+    m1ld = addMonths0(dt.replace(day=1, month=m1), 1) - datetime.timedelta(days=1)
+    m2ld = addMonths0(dt.replace(day=1, month=m1), 1) - datetime.timedelta(days=1)
+    m3ld = addMonths0(dt.replace(day=1, month=m1), 1) - datetime.timedelta(days=1)
     m1dc = m1ld.day
     m2dc = m2ld.day
     m3dc = m3ld.day
     return m1dc + m2dc + m3dc
 
 
-# квартал вида IV - 20015 из даты
+# квартал вида IV - 2015 из даты
 def formatQuartStr(dt):
     return u"{0} - {1}".format([u"I", u"II", u"III", u"IV", ][getQuartNumber(dt)-1], dt.year)
+
+# год вида 2015 из даты
+def formatYearStr(dt):
+    return unicode(dt.year)
 
 # возвращает номер квартала для даты. Т.е. возвращает одно из чисел: 1 2 3 4
 def getQuartNumber(dt):
@@ -755,6 +776,10 @@ def getQuartFirstDate(dt):
     qn = getQuartNumber(dt)
     m1, m2, m3 = getMonthsForQuart(qn)
     return dt.replace(day=1, month=m1)
+
+
+def getYearFirstDate(dt):
+    return dt.replace(day=1, month=1)
 
 
 # Страница анализа, при ее открытии - в контекст добавляются переменные для показа таблицы
@@ -855,6 +880,154 @@ def ajax_lk_ana(request):
         else:
             return my_uu.utils.formatMoneyValue(0)
 
+    # Цвет задается в виде названия CSS класса, варианты:
+    # * pvm_budget_color_green
+    # * pvm_budget_color_yellow
+    # * pvm_budget_color_red
+    def alaGetColorForCategory(prev_period_summ, this_period_summ, budget):
+        if this_period_summ < -budget:
+            return 'pvm_budget_color_red'
+        if prev_period_summ < -budget:
+            return 'pvm_budget_color_yellow'
+        return 'pvm_budget_color_green'
+
+
+    def alaGetCategoryFactForPeriod(start_period_func, inc_period_func):
+
+        # Делаем запрос, который нам посчитает бюджет за прошлую неделю и за эту по каждой из категорий
+        now = pvl_datetime_format.funcs.getNow()
+        cur_week_start_dtm = start_period_func(now)
+        prev_week_start_dtm = inc_period_func(cur_week_start_dtm, -1)
+        next_week_start_dtm = inc_period_func(cur_week_start_dtm, 1)
+        cat_weeks_fact1 = dict(
+
+            # Тут важно без фильтра по типу "Расход", т.к. например комиссия банков - я туда вношу и расходы и доходы
+            # и бюджет сумма за месяц - больше 0 получается. Если только по расходам, то меньше.
+            my_uu.models.Uchet.objects.filter(
+                user = request.user,
+                date__gte = prev_week_start_dtm.date(),
+                date__lt = cur_week_start_dtm.date(),
+            ).values_list('category_id').annotate(
+                Sum('sum')
+            )
+        )
+        cat_weeks_fact2 = dict(
+            my_uu.models.Uchet.objects.filter(
+                user = request.user,
+                date__gte = cur_week_start_dtm.date(),
+                date__lt = next_week_start_dtm.date(),
+            ).values_list('category_id').annotate(
+                Sum('sum')
+            )
+        )
+        return cat_weeks_fact1, cat_weeks_fact2
+
+
+    # Возвращает словарь, где по ID категории - возвращается другой словарь с двумя полями - цвет столбца 1 и 2
+    # Цвет задается в виде названия CSS класса, варианты:
+    # * pvm_budget_color_green
+    # * pvm_budget_color_yellow
+    # * pvm_budget_color_red
+    def alaGetColorsForCategoryBudgets(request, categoryModelListFiltered2):
+
+        # Делаем запрос, который нам посчитает бюджет за прошлую неделю и за эту по каждой из категорий
+        cat_days_fact1, cat_days_fact2 = alaGetCategoryFactForPeriod(
+            lambda dt: dt,
+            lambda dt, dc: dt + datetime.timedelta(days=dc),
+        )
+        cat_weeks_fact1, cat_weeks_fact2 = alaGetCategoryFactForPeriod(
+            plogic.getFirstMomentOfWeek1,
+            addWeeks,
+        )
+        cat_months_fact1, cat_months_fact2 = alaGetCategoryFactForPeriod(
+            plogic.getFirstMomentOfMonth1,
+            addMonths1,
+        )
+        cat_quart_fact1, cat_quart_fact2 = alaGetCategoryFactForPeriod(
+            getQuartFirstDate,
+            lambda dt, inc: plogic.convertDateToDateTime(addMonths0(dt, 3 * inc)),
+        )
+        cat_year_fact1, cat_year_fact2 = alaGetCategoryFactForPeriod(
+            getYearFirstDate,
+            lambda dt, inc: plogic.convertDateToDateTime(dt.replace(year = dt.year + inc)),
+        )
+
+        # Сначала формируем список по категориям, и для каждой категории - вносим:
+        # * бюджет за день этот и прошлый
+        # * бюджет за неделю этот и прошлый
+        # * бюджет за месяц этот и прошлый
+        # * бюджет за квартал этот и прошлый
+        # * бюджет за год этот и прошлый
+        # чтобы потом на основе этого списка данных и периодичности бюджета - определить,
+        # каким цветом подсвечивать категорию.
+        this_and_prev_budget_sums = {}
+        for c in categoryModelListFiltered2:
+
+            this_and_prev_budget_sums[c.id] = {
+
+                'tap_day_prev': cat_days_fact1.get(c.id, 0),
+                'tap_day_this': cat_days_fact2.get(c.id, 0),
+
+                'tap_week_prev': cat_weeks_fact1.get(c.id, 0),
+                'tap_week_this': cat_weeks_fact2.get(c.id, 0),
+
+                'tap_month_prev': cat_months_fact1.get(c.id, 0),
+                'tap_month_this': cat_months_fact2.get(c.id, 0),
+
+                'tap_quart_prev': cat_quart_fact1.get(c.id, 0),
+                'tap_quart_this': cat_quart_fact2.get(c.id, 0),
+
+                'tap_year_prev': cat_year_fact1.get(c.id, 0),
+                'tap_year_this': cat_year_fact2.get(c.id, 0),
+            }
+
+
+        res = {}
+        for c in categoryModelListFiltered2:
+
+            # Если не задан бюджет - то без подсветки
+            if c.lkcm_budget_value is None or c.lkcm_budget_period is None:
+                budget_color = ''
+                budget_year_color = ''
+
+            # Иначе, если задан, то вычисляем цвет
+            else:
+
+                # смотря какой период задан, те значения и сравниваем
+                # для определения цвета по категории
+                if c.lkcm_budget_period == my_uu.models.LKCM_BUDGET_PERIOD_DAY:
+                    s1 = this_and_prev_budget_sums[c.id]['tap_day_prev']
+                    s2 = this_and_prev_budget_sums[c.id]['tap_day_this']
+                elif c.lkcm_budget_period == my_uu.models.LKCM_BUDGET_PERIOD_WEEK:
+                    s1 = this_and_prev_budget_sums[c.id]['tap_week_prev']
+                    s2 = this_and_prev_budget_sums[c.id]['tap_week_this']
+                elif c.lkcm_budget_period == my_uu.models.LKCM_BUDGET_PERIOD_MONTH:
+                    s1 = this_and_prev_budget_sums[c.id]['tap_month_prev']
+                    s2 = this_and_prev_budget_sums[c.id]['tap_month_this']
+                elif c.lkcm_budget_period == my_uu.models.LKCM_BUDGET_PERIOD_QUART:
+                    s1 = this_and_prev_budget_sums[c.id]['tap_quart_prev']
+                    s2 = this_and_prev_budget_sums[c.id]['tap_quart_this']
+                elif c.lkcm_budget_period == my_uu.models.LKCM_BUDGET_PERIOD_YEAR:
+                    s1 = this_and_prev_budget_sums[c.id]['tap_year_prev']
+                    s2 = this_and_prev_budget_sums[c.id]['tap_year_this']
+                else:
+                    raise RuntimeError(u'Неподдерживаемый код периода бюджета категории в alaGetColorsForCategoryBudgets')
+
+                budget_color = alaGetColorForCategory(s1, s2, c.lkcm_budget_value)
+
+                # для определения цвета по году - всегда сравниваем годовые суммы
+                budget_year_color = alaGetColorForCategory(100, 200, 50)
+
+            res[c.id] = {
+
+                # Цвет столбца с бюджетом категории
+                'bcbci_color': budget_color,
+
+                # Цвет столбца с бюджетом на год
+                'bcbci_year_color': budget_year_color,
+            }
+
+        return res
 
     # format_header_from_val_func = Функция, применяемая к первой дате периода, возвращает словарь first second для оторажения в заголовке
     # period_count = Число периодов для отображения
@@ -971,37 +1144,87 @@ def ajax_lk_ana(request):
 
         # в эту переменную сохраняем значения для показа в столбце бюджета
         # попутно проверяем что все они имеют один период и он задан и если да - то сумму будем выводить
-        budget_sum_val = 0
-        budget_is_all_present_and_same_period = False
-        budget_prev_period = []
-        budgets_str_by_category_id = {}
+        budgets_by_category_id = {}
         for c in categoryModelListFiltered2:
-            if c.lkcm_budget_value is not None and c.lkcm_budget_period and not is_groups_on:
 
-                # Если период другой, то значит уже не надо считать суму.
-                # Исползуем массив, т.к. период может быть None
-                if not len(budget_prev_period):
-                    budget_is_all_present_and_same_period = True
-                    budget_prev_period.append(c.lkcm_budget_period)
-                if len(budget_prev_period) and (budget_prev_period[0] != c.lkcm_budget_period):
-                    budget_is_all_present_and_same_period = False
-
-                budget_str = my_uu.plogic.getBudgetStr(c.lkcm_budget_period, c.lkcm_budget_value)
-                period_code = c.lkcm_budget_period
-                budget_sum_val += c.lkcm_budget_value
-            elif is_groups_on:
+            # Группировка включена
+            if is_groups_on:
                 budget_str = u'группировка'
-                budget_is_all_present_and_same_period = False
-            else:
+                budget_val = None
+                budget_year_str = u'группировка'
+                budget_year_val = None
+
+            # Для категории не задан бюджет
+            elif c.lkcm_budget_value is None or not c.lkcm_budget_period:
                 budget_str = u'не задано'
-                budget_is_all_present_and_same_period = False
-            budgets_str_by_category_id[c.id] = budget_str
+                budget_val = None
+                budget_year_str = u'не задано'
+                budget_year_val = None
+
+            # Все задано
+            else:
+                budget_val = c.lkcm_budget_period
+                budget_str = my_uu.plogic.getBudgetStr(c.lkcm_budget_period, c.lkcm_budget_value)
+                budget_year_val, budget_year_str = my_uu.plogic.getBudgetYearStr(
+                    c.lkcm_budget_period,
+                    c.lkcm_budget_value,
+                )
+
+            budgets_by_category_id[c.id] = {
+
+                # значене в столбце бюджета по категории
+                'bbci_val': budget_val,
+                'bbci_str': budget_str,
+
+                # Строковое значене в столбце бюджета за код
+                'bbci_year_val': budget_year_val,
+                'bbci_year_str': budget_year_str,
+            }
+
+        # Вычисляем значение для отображения в самом низу итоговое
+        budget_sum_val = 0
+        budget_year_sum_val = 0
+        budget_prev_period = None
+        budget_is_all_present = False
+        budget_is_same_period = False
+        is_first_iter = True
+        for c in categoryModelListFiltered2:
+
+            # Первая итерация -
+            if is_first_iter:
+                budget_is_all_present = True
+                budget_is_same_period = True
+                budget_prev_period = c.lkcm_budget_period
+                is_first_iter = False
+
+            # Если очередной мес. бюджет период не равен прошлому - то не надо сумму считать
+            if budget_prev_period != c.lkcm_budget_period:
+                budget_is_same_period = False
+
+            # Если не задана сумма - то не надо сумму счситать
+            if c.lkcm_budget_value is None or c.lkcm_budget_period is None:
+                budget_is_all_present = False
+
+            # Накапливаем бюджетную сумму, если надо считать
+            if budget_is_all_present and budget_is_same_period:
+                budget_sum_val += c.lkcm_budget_value
+
+            # Считаем за год, если надо
+            if budget_is_all_present:
+                budget_year_sum_val += budgets_by_category_id[c.id]['bbci_year_val']
 
         # значение для показа в ячейке суммы в бюджете
-        if budget_is_all_present_and_same_period:
-            pageData['pa_budget_summ'] = my_uu.plogic.getBudgetStr(period_code, budget_sum_val)
+        if budget_is_all_present and budget_is_same_period:
+            pageData['pa_budget_summ'] = my_uu.plogic.getBudgetStr(budget_prev_period, budget_sum_val)
         else:
             pageData['pa_budget_summ'] = u'--'
+        if budget_is_all_present:
+            pageData['pa_budget_year_summ'] = my_uu.utils.formatMoneyValue(budget_year_sum_val) + u' в год'
+        else:
+            pageData['pa_budget_year_summ'] = u'--'
+
+        budget_colors_by_category_id = alaGetColorsForCategoryBudgets(request, categoryModelListFiltered2)
+
 
         # Преобразуем к выходному формату:
         # periods:
@@ -1019,15 +1242,32 @@ def ajax_lk_ana(request):
         #         {data}: [ssss, ssss, ] значения строки, по одному на каждый столбец
         pageData['periods'][anaType + '-' + result_suffix] = periodsHeaders
         pageData['dataRows'][anaType + '-' + result_suffix] = []
+        output_list = pageData['dataRows'][anaType + '-' + result_suffix]
         for r in categoryModelListFiltered2:
-            pageData['dataRows'][anaType + '-' + result_suffix].append({
+            output_list.append({
                 'category': r.name,
                 'lka_category_id': r.id,
                 'lka_cell_data': [getFromDictDictOrEmpty(
                     pivot_table['values'], r.name, k, '0 р.', periodCode
                 ) for k in periods_start_dates],
-                'lka_budget_str': budgets_str_by_category_id[r.id],
+
+                # Бюджет по категории за период бюджета
+                'lka_budget_str': budgets_by_category_id[r.id]['bbci_str'],
+
+                # Бюджет по категории за год
+                'lka_budget_year_str': budgets_by_category_id[r.id]['bbci_year_str'],
+
+                # Подсветка серым если категория не видима
+                'lka_is_category_visible': r.visible,
+
+                # Цвет для итогового бюджета
+                'bcbci_color': budget_colors_by_category_id[r.id]['bcbci_color'],
+                'bcbci_year_color': budget_colors_by_category_id[r.id]['bcbci_year_color'],
             })
+
+
+        # Теперь в pageВata добавим
+
 
 
     def addDayAnaDataToPageData(pageData, anaType, is_groups_on, bperiod):
@@ -1037,7 +1277,7 @@ def ajax_lk_ana(request):
             anaType,
             'day',
             format_header_from_val_func = lambda dt: { 'first': formatDayAndMonth(dt), 'second': formatDayOfWeek(dt) },
-            period_count = 6,
+            period_count = 5,
             get_first_period_date_func = lambda dt: dt,
             dec_period_func = lambda dt: dt - datetime.timedelta(days=1),
             is_groups_on = is_groups_on,
@@ -1054,9 +1294,9 @@ def ajax_lk_ana(request):
             anaType,
             'week',
             format_header_from_val_func = formatWeekHeader,
-            period_count = 6,
-            get_first_period_date_func = lambda dt: dt - datetime.timedelta(days=dt.weekday()),
-            dec_period_func = lambda dt: dt - datetime.timedelta(days=7),
+            period_count = 5,
+            get_first_period_date_func = plogic.getFirstMomentOfWeek0,
+            dec_period_func = lambda dt: addWeeks(dt, -1),
             is_groups_on = is_groups_on,
             bperiod = bperiod,
         )
@@ -1070,9 +1310,9 @@ def ajax_lk_ana(request):
             anaType,
             'month',
             format_header_from_val_func = lambda dt: dict(first = monthNames[dt.month-1], second = dt.year),
-            period_count = 6,
-            get_first_period_date_func = lambda dt: dt.replace(day=1),
-            dec_period_func = lambda dt: addMonths(dt, -1),
+            period_count = 5,
+            get_first_period_date_func = plogic.getFirstMomentOfMonth0,
+            dec_period_func = lambda dt: addMonths0(dt, -1),
             is_groups_on = is_groups_on,
             bperiod = bperiod,
         )
@@ -1084,9 +1324,23 @@ def ajax_lk_ana(request):
             anaType,
             'quart',
             format_header_from_val_func = lambda q_start_date: {'first': formatQuartStr(q_start_date), 'second': ''},
-            period_count = 6,
+            period_count = 5,
             get_first_period_date_func = getQuartFirstDate,
-            dec_period_func = lambda dt: addMonths(dt, -3),
+            dec_period_func = lambda dt: addMonths0(dt, -3),
+            is_groups_on = is_groups_on,
+            bperiod = bperiod,
+        )
+
+    def addYearAnaDataToPageData(pageData, anaType, is_groups_on, bperiod):
+
+        return addPeriodAnaDataToPageData(
+            pageData,
+            anaType,
+            'app_year',
+            format_header_from_val_func = lambda q_start_date: {'first': formatYearStr(q_start_date), 'second': ''},
+            period_count = 5,
+            get_first_period_date_func = getYearFirstDate,
+            dec_period_func = lambda dt: dt.replace(year = dt.year - 1),
             is_groups_on = is_groups_on,
             bperiod = bperiod,
         )
@@ -1113,8 +1367,11 @@ def ajax_lk_ana(request):
         addMonthAnaDataToPageData(pageData, anaType, is_groups_on, bperiod)
     elif periodCode == 'quart':
         addQuartAnaDataToPageData(pageData, anaType, is_groups_on, bperiod)
+    elif periodCode == 'app_year':
+        addYearAnaDataToPageData(pageData, anaType, is_groups_on, bperiod)
     else:
         raise RuntimeError(u'Ошибка в функции анализа расходов.')
+
 
     return JsonResponse(request, {
         'pageData': pageData,

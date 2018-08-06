@@ -66,3 +66,16 @@
     width: 320px;
     color: rgb(51, 51, 153);
 }
+
+
+/* PVBLOCK: Стили */
+.pvm_budget_color_red{
+    color: #dc3545;
+}
+.pvm_budget_color_green{
+    color: #28a745;
+}
+.pvm_budget_color_yellow{
+    color: #ffc107;
+}
+/* ENDPVBLOCK */
