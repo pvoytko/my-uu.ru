@@ -70,7 +70,8 @@
 
 /* PVBLOCK: Стили */
 .pvm_budget_color_red{
-    color: #dc3545;
+    color: red;
+    font-weight: bold;
 }
 .pvm_budget_color_green{
     color: #28a745;

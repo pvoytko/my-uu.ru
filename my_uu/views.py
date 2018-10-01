@@ -327,11 +327,12 @@ def lk_uch(request, period = None, account_id = None, category_id = None):
     # Если период - по дням или неделям или кварталам, для такого периода нет значений в списке фильтров
     # поэтому добавляем значениям.
     addFilterPeriodChoices = []
-    if period_id[0] in ('d', 'q', 'w'):
+    if period_id[0] in ('d', 'q', 'w', 'y'):
         caps = {
             'd': u'день',
             'w': u'неделя',
             'q': u'квартал',
+            'y': u'год',
         }
         period_str = u"{0} {1}".format(caps[period_id[0]], period_id[1:])
         addFilterPeriodChoices.append((period_id, period_str))
@@ -1098,15 +1099,24 @@ def ajax_lk_ana(request):
             u['sum_str'] = my_uu.utils.formatMoneyValue(u['sum'])
 
         # Теперь надо сформировать список из категорий, в порядке нужном для пользователя,
-        # только те, по которым есть данные (остальные убираем).
+        # только те, по которые видимы либо по ним есть данные
+        # (остальные убираем, т.е. те где нет данных одновременно невидимые).
         # Если несколько категорий при группировке преобразовались в одну, то на выходе дожна быть только одна.
         categoryModelListAll = list(request.user.category_set.order_by('position', 'id'))
         categoryNames = set()
         categoryModelListFiltered1 = []
         for c in categoryModelListAll:
             c.name = plogic.convertCategoryNameToGroupNameIfGrouping(c.name, is_groups_on)
-            if c.name not in pivot_table['rows'] or c.name in categoryNames:
+
+            # Если уже добавили, то пропускаем
+            if c.name in categoryNames:
                 pass
+
+            # Если нет данных и невдиима - то пропускаем
+            if c.name not in pivot_table['rows'] and not c.visible:
+                pass
+
+            # В остальных случаях - добавляем
             else:
                 categoryNames.add(c.name)
                 categoryModelListFiltered1.append(c)
@@ -1218,10 +1228,19 @@ def ajax_lk_ana(request):
             pageData['pa_budget_summ'] = my_uu.plogic.getBudgetStr(budget_prev_period, budget_sum_val)
         else:
             pageData['pa_budget_summ'] = u'--'
+
         if budget_is_all_present:
             pageData['pa_budget_year_summ'] = my_uu.utils.formatMoneyValue(budget_year_sum_val) + u' в год'
+            pageData['pa_budget_quart_summ'] = my_uu.utils.formatMoneyValue(budget_year_sum_val / 4) + u' в кварт.'
+            pageData['pa_budget_month_summ'] = my_uu.utils.formatMoneyValue(budget_year_sum_val / 12) + u' в мес.'
+            pageData['pa_budget_week_summ'] = my_uu.utils.formatMoneyValue(budget_year_sum_val / 53) + u' в нед.'
+            pageData['pa_budget_day_summ'] = my_uu.utils.formatMoneyValue(budget_year_sum_val / 366) + u' в день'
         else:
             pageData['pa_budget_year_summ'] = u'--'
+            pageData['pa_budget_quart_summ'] = u'--'
+            pageData['pa_budget_month_summ'] = u'--'
+            pageData['pa_budget_week_summ'] = u'--'
+            pageData['pa_budget_day_summ'] = u'--'
 
         budget_colors_by_category_id = alaGetColorsForCategoryBudgets(request, categoryModelListFiltered2)
 

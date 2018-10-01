@@ -208,3 +208,61 @@ function getParameterByName(name, url) {
     if (!results[2]) return '';
     return decodeURIComponent(results[2].replace(/\+/g, " "));
 }
+
+
+// Используется в разделе счетов и категорий для инициализации перетаскивания
+function uuInitTableDragAndDrop(table_id, save_order_url, err_msg)
+{
+    $(table_id).tableDnD({
+
+        dragHandle: ".move_panel",
+
+        // По умолчанию класс tDnD_whileDrag ставится когда уже начали тянуть строку.
+        // С помощью этого события ставим его сразу при клике (чтоб юзер видел что при клике
+        // краснеет строка).
+        // CSS класс снимается в библиотеке tdnd по отпусканию клика.
+        onDragStart: function(ev, target){
+            $(target).parent('tr').addClass('tDnD_whileDrag');
+        },
+        onDrop: function(table, row){
+
+            // Считываем ID строк таблицы и сохраняем в массив чтобы отправить на сервер.
+            var rows = $(table_id).find('tbody').find('tr');
+            var rowIds = [];
+            rows.each(function(i, e){rowIds.push(parseInt(e.id))});
+
+            // На время выполнения ajax на сервер строка остается рыжей
+            $(row).addClass('row_saving');
+
+            // Отправляем на сервер порядок для сохранения
+            var prom = $.post(
+                save_order_url,
+                JSON.stringify(rowIds)
+            ).done(function(){
+                $(row).removeClass('row_saving');
+            }).error(function(obj, err, textCode){
+                $(row).removeClass('row_saving');
+                uuJqReqFail(textCode, err_msg);
+            });
+        }
+    });
+
+    // Стандартый CSS-bootstrap table-hover и hover над move_panel глюит иногда когда делаем драг-энд-дроп
+    // строки (остается подсветка на строках где она уже не должна быть), потому реализуем это через JS
+    $(table_id).bind('mousemove', function(ev){
+        $(table_id).find('tr').removeClass('row_hover');
+        $(table_id).find('.move_panel').removeClass('move_panel_hover');
+        var row = $(ev.target).parents('tr:first');
+        if (row && row.parent().prop("tagName") == 'TBODY') {
+            row.addClass('row_hover');
+        };
+        var movePanelTd = $(ev.target).hasClass('move_panel') ? $(ev.target) : null;
+        if (!movePanelTd){
+             movePanelTd = $(ev.target).parents('td:first').hasClass('move_panel') ? $(ev.target).parents('td:first') : null;
+        }
+        if (movePanelTd){
+            movePanelTd.addClass('move_panel_hover');
+        }
+    });
+
+}

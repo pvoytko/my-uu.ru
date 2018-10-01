@@ -101,6 +101,16 @@ def filterUchetByViewPeriod(uchetRecords, period_id):
         d2 = datetime.date(year, (quart)*3 + 1, 1) - datetime.timedelta(days=1)
         return uchetRecords.filter(date__gte = d1, date__lte = d2)
 
+    # Год
+    elif period_id.startswith('y'):
+        year_parsed = int(period_id[1:])
+        year_cur_begin = datetime.date(year_parsed, 1, 1)
+        year_next_begin = datetime.date(year_parsed+1, 1, 1)
+        return uchetRecords.filter(
+            date__gte = year_cur_begin,
+            date__lt = year_next_begin,
+        )
+
     raise RuntimeError(u'Ошибка. Неподдерживаемый ID периода "{id}"'.format(id = period_id))
 
 

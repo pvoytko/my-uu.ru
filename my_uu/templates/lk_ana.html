@@ -343,6 +343,8 @@
 
                                 <td style="border: none;">
                                 </td>
+
+                                {# Итоговая сумма по всей таблице #}
                                 <td style="background-color: #f0f0f0; text-align: left; font-weight: bold;">
                                     {$ getSimplePageData().pa_budget_summ $}
                                 </td>
@@ -351,6 +353,45 @@
                                 </td>
 
                             </tr>
+
+                            {# Итоговыве по таблице - кварт, мес, нед #}
+                            <tr>
+                                <td style="border: none;"></td>
+                                <td ng-repeat="i in getTotalRow() track by $index" style="border: none;"></td>
+                                <td style="border: none;"></td>
+                                <td style="border: none;"></td>
+                                <td style="background-color: #f0f0f0; text-align: left; font-weight: bold;">
+                                    {$ getSimplePageData().pa_budget_quart_summ $}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="border: none;"></td>
+                                <td ng-repeat="i in getTotalRow() track by $index" style="border: none;"></td>
+                                <td style="border: none;"></td>
+                                <td style="border: none;"></td>
+                                <td style="background-color: #f0f0f0; text-align: left; font-weight: bold;">
+                                    {$ getSimplePageData().pa_budget_month_summ $}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="border: none;"></td>
+                                <td ng-repeat="i in getTotalRow() track by $index" style="border: none;"></td>
+                                <td style="border: none;"></td>
+                                <td style="border: none;"></td>
+                                <td style="background-color: #f0f0f0; text-align: left; font-weight: bold;">
+                                    {$ getSimplePageData().pa_budget_week_summ $}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="border: none;"></td>
+                                <td ng-repeat="i in getTotalRow() track by $index" style="border: none;"></td>
+                                <td style="border: none;"></td>
+                                <td style="border: none;"></td>
+                                <td style="background-color: #f0f0f0; text-align: left; font-weight: bold;">
+                                    {$ getSimplePageData().pa_budget_day_summ $}
+                                </td>
+                            </tr>
+
                         </tbody>
                     </table>
 
@@ -364,32 +405,6 @@
 
             </div>
         </div>
-
-        <!-- Таблица с бюджетами и суммой под ней  -->
-{#        <div style="flex-grow: 1; flex-basis: 1%;">#}
-{#            <table class="table table-hover table-condensed table-bordered" style="width: auto; border: none;" ng-cloak ng-if="!loader.isLoading()">#}
-{#                <thead>#}
-{#                    <tr>#}
-{#                    </tr>#}
-{#                </thead>#}
-{#                <tbody>#}
-{#                    <tr ng-repeat="bs in getSimplePageData().pa_budgets_list">#}
-{#                        <td style="border: none;">#}
-{#                        </td>#}
-{#                        <td style="text-align: left;">#}
-{#                            {$ bs.pabl_caption $}#}
-{#                        </td>#}
-{#                    </tr>#}
-{#                    <tr>#}
-{#                        <td style="border: none;">#}
-{#                        </td>#}
-{#                        <td style="background-color: #f0f0f0; text-align: left; font-weight: bold;">#}
-{#                            {$ getSimplePageData().pa_budget_summ $}#}
-{#                        </td>#}
-{#                    </tr>#}
-{#                </tbody>#}
-{#            </table>#}
-{#        </div>#}
 
     </div>
 

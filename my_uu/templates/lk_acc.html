@@ -178,6 +178,20 @@
                 $( "#change-dialog-modal").scope().showForAdd($scope.accountList);
             }
 
+            // Вызывается при клике галочки, чтобы оновить jquery обработчики, иначе скрытые
+            // (невидимые) не работает drag and drop.
+            $scope.lkcShowHidedClickedUpdateDnD = function(){
+
+                $timeout(function(){
+                    uuInitTableDragAndDrop(
+                        "#table-1",
+                        "{% url 'my_uu.views.lk_save_accounts_order_ajax' %}",
+                        'Новый порядок счетов не сохранен.'
+                    );
+                });
+            }
+
+            $scope.lkcShowHidedClickedUpdateDnD();
         }
     </script>
 
@@ -246,60 +260,6 @@
             color: #dddddd;
         }
     </style>
-    <script type="text/javascript">
-        $(document).ready(function() {
-            $("#table-1").tableDnD({
-                dragHandle: ".move_panel",
-
-                // По умолчанию класс tDnD_whileDrag ставится когда уже начали тянуть строку.
-                // С помощью этого события ставим его сразу при клике (чтоб юзер видел что при клике
-                // краснеет строка).
-                // CSS класс снимается в библиотеке tdnd по отпусканию клика.
-                onDragStart: function(ev, target){
-                    $(target).parent('tr').addClass('tDnD_whileDrag');
-                },
-                onDrop: function(table, row){
-
-                    // Считываем ID строк таблицы и сохраняем в массив чтобы отправить на сервер.
-                    var rows = $("#table-1").find('tbody').find('tr');
-                    var rowIds = [];
-                    rows.each(function(i, e){rowIds.push(parseInt(e.id))});
-
-                    // На время выполнения ajax на сервер строка остается рыжей
-                    $(row).addClass('row_saving');
-
-                    // Отправляем на сервер порядок для сохранения
-                    var prom = $.post(
-                        "{% url 'my_uu.views.lk_save_accounts_order_ajax' %}",
-                        JSON.stringify(rowIds)
-                    ).done(function(){
-                        $(row).removeClass('row_saving');
-                    }).error(function(obj, err, textCode){
-                        $(row).removeClass('row_saving');
-                        uuJqReqFail(textCode, 'Новый порядок счетов не сохранен.');
-                    });
-                }
-            });
-
-            // Стандартый CSS-bootstrap table-hover и hover над move_panel глюит иногда когда делаем драг-энд-дроп
-            // строки (остается подсветка на строках где она уже не должна быть), потому реализуем это через JS
-            $("#table-1").bind('mousemove', function(ev){
-                $("#table-1").find('tr').removeClass('row_hover');
-                $("#table-1").find('.move_panel').removeClass('move_panel_hover');
-                var row = $(ev.target).parents('tr:first');
-                if (row && row.parent().prop("tagName") == 'TBODY') {
-                    row.addClass('row_hover');
-                };
-                var movePanelTd = $(ev.target).hasClass('move_panel') ? $(ev.target) : null;
-                if (!movePanelTd){
-                     movePanelTd = $(ev.target).parents('td:first').hasClass('move_panel') ? $(ev.target).parents('td:first') : null;
-                }
-                if (movePanelTd){
-                    movePanelTd.addClass('move_panel_hover');
-                }
-            });
-        });
-    </script>
 
 
     <div
