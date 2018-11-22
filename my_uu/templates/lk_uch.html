@@ -123,7 +123,8 @@
 {% block lk_content %}
 
     <script>
-        function AddRecordCtrl($scope, $element){
+
+        angular.module('myNgApp').controller('AddRecordCtrl', function($scope, $element){
 
             // Флаг сбрасывается если сработало ограничение на внесение и больше вносить нельзя.
             $scope.showAddUchetDialog = {{ showAddUchetDialog }};
@@ -176,7 +177,7 @@
                 // Обработчик успешного закрытия вызываем при клике на кнопку ВНЕСТИ
                 $scope.onModelSuccessCallback = onModelSuccessCallback;
             }
-        };
+        });
 
     </script>
 
@@ -645,7 +646,7 @@
             }
 
 
-            function GridCtrl($scope, $http){
+            angular.module('myNgApp').controller('GridCtrl', function($scope, $http){
 
                 // Последнипе 3 дня, 30 дней
                 $scope.viewPeriodSet = {{ viewPeriodSetJson | safe }};
@@ -1081,7 +1082,7 @@
 
                 });
 
-            }
+            });
 
         </script>
         <script>

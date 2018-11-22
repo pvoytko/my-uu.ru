@@ -42,15 +42,18 @@
                     }
                 };
                 httpMethod(serverApiUrl).
-                    success(function(data) {
-                        self.api = data;
-                        self._isSuccessFlag = true;
-                    }).error(function(data, code){
-                        self._isErrorFlag = true;
+                    then(
+                        function(data) {
+                            self.api = data.data;
+                            self._isSuccessFlag = true;
+                        },
+                        function(data, code){
+                            self._isErrorFlag = true;
 
-                        // Если отпал инет или отменена загрузка (клик по ссылке) или упал сервер то код будет 0
-                        self._serverErrorCode = code;
-                    });
+                            // Если отпал инет или отменена загрузка (клик по ссылке) или упал сервер то код будет 0
+                            self._serverErrorCode = code;
+                        }
+                    );
             }
             // Выдает true пока ждем ответ от сервера
             this.isLoading = function(){
@@ -74,7 +77,7 @@
         }
 
 
-        function AnaController($scope, $http){
+        angular.module('myNgApp').controller('AnaController', function($scope, $http){
 
             // какие открыть в таблице
             $scope.periodCode = '{{ lka_period }}';
@@ -160,7 +163,7 @@
             $scope.getTotCaption = function(){
                 return "Сумма";
             };
-        }
+        });
     </script>
 
     <style>
@@ -237,10 +240,10 @@
                             ng-repeat="p in lka_bperiod_choices"
                             type="button"
                             class="btn btn-default"
-                            ng-class="{active: ac_budget_period==p.0}"
-                            ng-click="acGoToAnaUrl(undefined, undefined, undefined, p.0)"
+                            ng-class="{ 'active': ac_budget_period == p[0] }"
+                            ng-click="acGoToAnaUrl(undefined, undefined, undefined, p[0] )"
                             >
-                        {$ p.1 $}
+                        {$ p[1] $}
                     </button>
 
                 </div>

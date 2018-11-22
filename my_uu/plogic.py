@@ -441,3 +441,22 @@ def convertDateToDateTime(sourcedate):
     return datetime.datetime.combine(sourcedate, datetime.time(0, 0))
 
 
+
+# получая на вход структуру формата как для CharField choices и отображаемое значение (вторая колнка)
+# возвращает значение из первой колнки (то что хранится в БД).
+# если не найдено - кинет исключение.
+# Ш-7275
+def convertChoicesDisplayValueToDbValue(choices, display_value):
+    for db_val, dis_val in choices:
+        if display_value == dis_val:
+            return db_val
+    raise RuntimeError(u'Попытка преобразовать неподдерживаемое значвение "' + display_value + '"')
+
+
+# Аналогично convertChoicesDisplayValueToDbValue, только в обратном направлении.
+# Ш-7275
+def convertChoicesDbValueToDisplayValue(choices, db_value):
+    for db_val, dis_val in choices:
+        if db_value == db_val:
+            return dis_val
+    raise RuntimeError(u'Попытка преобразовать неподдерживаемое значвение "' + db_value + '"')

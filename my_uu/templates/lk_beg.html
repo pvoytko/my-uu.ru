@@ -8,7 +8,8 @@
 
     <!-- Диалог подписка на рукводство -->
     <script>
-        function ManualCtrl($scope, $element){
+
+        angular.module('myNgApp').controller('ManualCtrl', function($scope, $element){
 
             // Отобразить если с сервера пришло True
             // А приходит True только если ране не показывалось уже.
@@ -40,7 +41,8 @@
             $scope.closeDlg = function() {
                 $($element).modal('hide');
             }
-        }
+
+        });
     </script>
     <div class="modal" styel="display: none;" data-keyboard="true" ng-controller="ManualCtrl" tabindex="-1">
         <div class="modal-dialog">

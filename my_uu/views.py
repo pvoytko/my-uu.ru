@@ -413,6 +413,9 @@ def lk_cat(request):
         'visible',
         'lkcm_budget_value',
         'lkcm_budget_period',
+
+        # дб значение типа категории
+        'lkcm_dohod_rashod_type',
     )
     category_list = []
     for c in rowsC:
@@ -424,6 +427,12 @@ def lk_cat(request):
             )
         else:
             category_list[-1]['lkc_budget_with_period_str'] = u'не задано'
+
+        # строковое значение типа категории
+        category_list[-1]['lkc_cat_type_str'] = my_uu.plogic.convertChoicesDbValueToDisplayValue(
+            my_uu.models.LKCM_DOHOD_RASHOD_TYPE_CHOICES1,
+            category_list[-1]['lkcm_dohod_rashod_type'],
+        )
 
 
     return render(request, 'lk_cat.html', {
@@ -1398,10 +1407,10 @@ def ajax_lk_ana(request):
 
 
 # Страница импорта
-@uu_login_required
-@uuTrackEventDecor(my_uu.models.EventLog.EVENT_VISIT_IMP)
-def lk_imp(request):
-    return render(request, 'lk_imp.html', { 'request': request })
+# @uu_login_required
+# @uuTrackEventDecor(my_uu.models.EventLog.EVENT_VISIT_IMP)
+# def lk_imp(request):
+#     return render(request, 'lk_imp.html', { 'request': request })
 
 
 # Страница экспорта
@@ -1412,27 +1421,27 @@ def lk_exp(request):
 
 
 # Импорт данных через аякс
-@uu_login_required
-@uuTrackEventDecor(my_uu.models.EventLog.EVENT_IMP)
-def lk_imp_ajax(request):
-    importedData = json.loads(request.body)
-
-    def getOrCreateAccount(accName):
-        return request.user.account_set.get_or_create(name = accName)[0]
-
-    def getOrCreateCategory(catName):
-        return request.user.category_set.get_or_create(name = catName)[0]
-
-    for uchet in importedData:
-        request.user.uchet_set.create(
-            date = datetime.datetime.strptime(uchet[0], '%d.%m.%Y'),
-            utype = my_uu.models.UType.objects.get(name__iexact = uchet[1]),
-            sum = uchet[2],
-            account = getOrCreateAccount(uchet[3]),
-            category = getOrCreateCategory(uchet[4]),
-            comment = uchet[5],
-        )
-    return JsonResponseWithStatusOk(importedCount = len(importedData))
+# @uu_login_required
+# @uuTrackEventDecor(my_uu.models.EventLog.EVENT_IMP)
+# def lk_imp_ajax(request):
+#     importedData = json.loads(request.body)
+#
+#     def getOrCreateAccount(accName):
+#         return request.user.account_set.get_or_create(name = accName)[0]
+#
+#     def getOrCreateCategory(catName):
+#         return request.user.category_set.get_or_create(name = catName)[0]
+#
+#     for uchet in importedData:
+#         request.user.uchet_set.create(
+#             date = datetime.datetime.strptime(uchet[0], '%d.%m.%Y'),
+#             utype = my_uu.models.UType.objects.get(name__iexact = uchet[1]),
+#             sum = uchet[2],
+#             account = getOrCreateAccount(uchet[3]),
+#             category = getOrCreateCategory(uchet[4]),
+#             comment = uchet[5],
+#         )
+#     return JsonResponseWithStatusOk(importedCount = len(importedData))
 
 
 # Экспорт данных

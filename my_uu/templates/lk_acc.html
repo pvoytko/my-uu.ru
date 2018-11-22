@@ -16,7 +16,7 @@
 
     <script>
 
-        function ChangeDlgCtrl($scope, $element, $http){
+        angular.module('myNgApp').controller('ChangeDlgCtrl', function($scope, $element, $http){
 
             // Вызывается из другого контроллера для показа диалога
             $scope.showForChange = function(resultHolderObject, resultHolderArray){
@@ -71,24 +71,27 @@
                 // Шлем на сервер
                 httpObj = $http({
                     method: 'POST',
-                    url: '{% url "my_uu.views.lk_delete_account_ajax" %}',
+                    url: '',
                     data: JSON.stringify($scope.model),
                     cache: false,
                     timeout: 15000
-                }).success(function(data, status){
-                    $scope.loading = false;
-                    if (data.status == "ok"){
+                }).then(
+                    function(data, status){
+                        $scope.loading = false;
+                        if (data.status == "ok"){
 
-                        $scope.resultHolderArray.splice($scope.resultHolderArray.indexOf($scope.resultHolderObject), 1);
-                        $scope.close();
+                            $scope.resultHolderArray.splice($scope.resultHolderArray.indexOf($scope.resultHolderObject), 1);
+                            $scope.close();
+                        }
+                        else {
+                            $scope.errorText = data.text;
+                        }
+                    },
+                    function(data, status){
+                        $scope.loading = false;
+                        uuAngReqFail('Удалить счет не удалось.');
                     }
-                    else {
-                        $scope.errorText = data.text;
-                    }
-                }).error(function(data, status){
-                    $scope.loading = false;
-                    uuAngReqFail('Удалить счет не удалось.');
-                });
+                );
 
             }
 
@@ -104,39 +107,43 @@
                     data: JSON.stringify($scope.model),
                     cache: false,
                     timeout: 15000
-                }).success(function(data, status){
-                    $scope.loading = false;
-                    if (data.status == "ok"){
+                }).then(
+                    function(data, status){
+                        var data = data.data;
+                        $scope.loading = false;
+                        if (data.status == "ok"){
 
-                        // Сохраняем модель из диалога в модель что была в странице
-                        $scope.model = data.data
-                        if ($scope.resultHolderObject){
-                            for (var attr in $scope.resultHolderObject) {
-                                $scope.resultHolderObject[attr] = $scope.model[attr];
+                            // Сохраняем модель из диалога в модель что была в странице
+                            $scope.model = data.data
+                            if ($scope.resultHolderObject){
+                                for (var attr in $scope.resultHolderObject) {
+                                    $scope.resultHolderObject[attr] = $scope.model[attr];
+                                };
+                            } else {
+                                $scope.resultHolderArray.push($scope.model);
                             };
-                        } else {
-                            $scope.resultHolderArray.push($scope.model);
-                        };
 
-                        // Закрываем диалог
-                        $scope.close();
+                            // Закрываем диалог
+                            $scope.close();
 
+                        }
+                        else {
+                            $scope.errorText = data.text;
+                        }
+                    },
+                    function(data, status){
+                        $scope.loading = false;
+                        uuAngReqFail('Сохранить изменения счета не удалось.');
                     }
-                    else {
-                        $scope.errorText = data.text;
-                    }
-                }).error(function(data, status){
-                    $scope.loading = false;
-                    uuAngReqFail('Сохранить изменения счета не удалось.');
-                });
-
+                );
             };
 
             // Закрытие диалога по кнопке "Отмена" а также после сохранения на сервере.
             $scope.close = function(){
-                $element.dialog('close');
+                $($element).dialog('close');
             }
-        }
+
+        });
     </script>
 
     <style>
@@ -154,7 +161,7 @@
 
     <script>
 
-        function AccountsCtrl($scope, $http, $element){
+        angular.module('myNgApp').controller('AccountsCtrl', function($scope, $http, $element, $timeout){
 
             $scope.accountList = JSON.parse('{{ accountListJsonString|escapejs }}');
 
@@ -192,7 +199,9 @@
             }
 
             $scope.lkcShowHidedClickedUpdateDnD();
-        }
+
+        });
+
     </script>
 
     <style>

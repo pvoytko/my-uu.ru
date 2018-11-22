@@ -219,6 +219,7 @@ INSTALLED_APPS = (
     # Мой УУ, чтоб шаблоны находились, должно быть до DAB
     'my_uu',
     'pvl_send_email',
+    'pvl_backend_ajax',
 
     # Это dab админка
     'django_admin_bootstrapped',

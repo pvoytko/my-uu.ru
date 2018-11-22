@@ -15,7 +15,7 @@
 
     <script>
 
-        function ChangeDlgCtrl($scope, $element, $http){
+        angular.module('myNgApp').controller('ChangeDlgCtrl', function($scope, $element, $http){
 
             // Вызывается из другого контроллера для показа диалога
             $scope.showForChange = function(resultHolderObject, resultHolderArray){
@@ -95,42 +95,46 @@
                     data: JSON.stringify($scope.lkcat_model),
                     cache: false,
                     timeout: 15000
-                }).success(function(data, status){
-                    $scope.loading = false;
-                    if (data.status == "ok"){
+                }).then(
+                    function(data, status){
+                        var data = data.data;
+                        $scope.loading = false;
+                        if (data.status == "ok"){
 
-                        // Сохраняем модель из диалога в модель что была в странице
-                        $scope.lkcat_model = data.data;
-                        if ($scope.resultHolderObject){
-                            for (var attr in $scope.resultHolderObject) {
-                                $scope.resultHolderObject[attr] = $scope.lkcat_model[attr];
+                            // Сохраняем модель из диалога в модель что была в странице
+                            $scope.lkcat_model = data.data;
+                            if ($scope.resultHolderObject){
+                                for (var attr in $scope.resultHolderObject) {
+                                    $scope.resultHolderObject[attr] = $scope.lkcat_model[attr];
+                                };
+                            } else {
+                                $scope.resultHolderArray.push($scope.lkcat_model);
                             };
-                        } else {
-                            $scope.resultHolderArray.push($scope.lkcat_model);
-                        };
 
-                        // Закрываем диалог
-                        $scope.close();
+                            // Закрываем диалог
+                            $scope.close();
 
+                        }
+                        else {
+                            $scope.errorText = data.text;
+                        }
+                    },
+                    function(data, status){
+                        $scope.loading = false;
+                        uuAngReqFail('Сохранить изменения категории не удалось.');
                     }
-                    else {
-                        $scope.errorText = data.text;
-                    }
-                }).error(function(data, status){
-                    $scope.loading = false;
-                    uuAngReqFail('Сохранить изменения категории не удалось.');
-                });
-
+                );
             };
 
             // Закрытие диалога по кнопке "Отмена" а также после сохранения на сервере.
             $scope.close = function(){
-                $element.dialog('close');
+                $($element).dialog('close');
             }
 
             // Периоды для бюдждетов
             $scope.ac_choices_list = {{ lkc_budget_periods_choices_json|safe }};
-        }
+
+        });
     </script>
 
     <style>
@@ -215,7 +219,7 @@
 
     <script>
 
-        function AccountsCtrl($scope, $http, $element, $timeout){
+        angular.module('myNgApp').controller('AccountsCtrl', function($scope, $http, $element, $timeout){
 
             $scope.accountList = {{ lkc_category_list_json|safe }};
 
@@ -252,7 +256,8 @@
             }
 
             $scope.lkcShowHidedClickedUpdateDnD();
-        }
+
+        });
     </script>
 
     <div
@@ -278,6 +283,7 @@
                         >
                     <thead>
                         <th style="width: 40px;"></th>
+                        <th style="width: 80px;">Тип</th>
                         <th style="width: 90%;">Название категории</th>
                         <th style="text-align: center; width: 80px;">Операций</th>
                         <th style="text-align: center; width: 80px;">Видима</th>
@@ -292,6 +298,10 @@
                                 id="{$ a.id $}"
                                 >
                             <td class="move_panel" title="Потяните, чтобы изменить порядок"><div>↕</div></td>
+                            <td
+                                    >
+                                {$ a.lkc_cat_type_str $}
+                            </td>
                             <td
                                     >
                                 <div pv-tooltip-directive="a.name" class="ellipsis">
@@ -349,10 +359,10 @@
                                 style="margin: 3px;"
                                 type="button"
                                 class="btn btn-default"
-                                ng-class="{active: lkcat_model.lkcm_budget_period==p.0}"
-                                ng-click="lkcat_model.lkcm_budget_period=p.0"
+                                ng-class="{ 'active': lkcat_model.lkcm_budget_period == p[0] }"
+                                ng-click="lkcat_model.lkcm_budget_period = p[0]"
                                 >
-                            {$ p.1 $}
+                            {$ p[1] $}
                         </button>
                     </div>
                     <div class="help-block">

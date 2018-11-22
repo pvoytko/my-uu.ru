@@ -43,8 +43,8 @@ urlpatterns = patterns('',
     url(r'^lk/save_categories_order_ajax/$', 'my_uu.views.lk_save_categories_order_ajax'),
 
     # Личный кабинет импорт
-    url(r'^lk/imp/$', 'my_uu.views.lk_imp'),
-    url(r'^lk/imp_ajax/$', 'my_uu.views.lk_imp_ajax'),
+    # url(r'^lk/imp/$', 'my_uu.views.lk_imp'),
+    # url(r'^lk/imp_ajax/$', 'my_uu.views.lk_imp_ajax'),
 
     # Личный кабинет экспорт
     url(r'^lk/exp/$', 'my_uu.views.lk_exp'),

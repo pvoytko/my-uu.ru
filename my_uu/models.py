@@ -288,6 +288,16 @@ LKCM_BUDGET_PERIOD_CHOICES2 = [
     (LKCM_BUDGET_PERIOD_NONE, u'Не задано'),
 ]
 
+
+
+LKCM_DOHOD_RASHOD_TYPE_RASHOD = "LKCM_DOHOD_RASHOD_TYPE_RASHOD"
+LKCM_DOHOD_RASHOD_TYPE_DOHOD = "LKCM_DOHOD_RASHOD_TYPE_DOHOD"
+LKCM_DOHOD_RASHOD_TYPE_CHOICES1 = [
+    (LKCM_DOHOD_RASHOD_TYPE_RASHOD, u'Расход'),
+    (LKCM_DOHOD_RASHOD_TYPE_DOHOD, u'Доход'),
+]
+
+
 # Категория
 class Category(models.Model):
 
@@ -315,6 +325,12 @@ class Category(models.Model):
         choices = LKCM_BUDGET_PERIOD_CHOICES1,
     )
     lkcm_budget_value = models.PositiveIntegerField(null=True, blank=True, default=None)
+
+    lkcm_dohod_rashod_type = models.CharField(
+        max_length=255,
+        default=LKCM_DOHOD_RASHOD_TYPE_RASHOD,
+        choices = LKCM_DOHOD_RASHOD_TYPE_CHOICES1,
+    )
 
     # Уникальность имени счета только в рамках одного юзера
     class Meta:
