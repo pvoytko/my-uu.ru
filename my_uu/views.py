@@ -350,6 +350,7 @@ def lk_uch(request, period = None, account_id = None, category_id = None):
         'id',
         'date',
         'utype__name',
+        'myum_time',
         'sum',
         'account__name',
         'category__name',
@@ -421,10 +422,13 @@ def lk_cat(request):
     for c in rowsC:
         category_list.append(dict(c))
 
+        # Если задана периодичность и значение то выводим
         if c['lkcm_budget_period'] and c['lkcm_budget_value'] is not None:
             category_list[-1]['lkc_budget_with_period_str'] = my_uu.plogic.getBudgetStr(
                 c['lkcm_budget_period'], c['lkcm_budget_value']
             )
+
+        # Расход или додход которому не задана периодиность или сумма
         else:
             category_list[-1]['lkc_budget_with_period_str'] = u'не задано'
 
@@ -496,6 +500,7 @@ def lk_ana(request):
     period = request.GET.get('lka_period', None)
     group = request.GET.get('lka_group', None)
     bperiod = request.GET.get('lka_bperiod', None)
+    end_date = request.GET.get('lka_end_date', '')
 
     if type is None:
         type = 'rashod'
@@ -523,6 +528,9 @@ def lk_ana(request):
         'lka_type': type,
         'lka_is_grouping': group,
         'lka_budget_period': bperiod,
+
+        # Дата по которую отчет
+        'lkas_end_date': end_date,
 
         # Варианты периода для бюджета
         'lka_bperiod_choices_json': json.dumps(bperiod_choices),
@@ -1052,31 +1060,38 @@ def ajax_lk_ana(request):
         period_count,
         get_first_period_date_func,
         dec_period_func,
+        inc_period_func,
         is_groups_on,
         bperiod,
+        end_date_str,
     ):
 
         # Сколь периодов включая теукщий будет в очтете
         q_count = period_count
 
         # Дата, с которой берутся данные для построения отчета тут будет. Но сначала - дата начала ткущего периода.
-        data_start_date = get_first_period_date_func(datetime.date.today())
+        if end_date_str:
+            end_date = pvl_datetime_format.funcs.strToDate(end_date_str)
+            data_start_date = get_first_period_date_func(end_date)
+        else:
+            data_start_date = get_first_period_date_func(datetime.date.today())
 
         # Первые даты всех периодов для которых строится отчет
         # Названия заголовков
         periods_start_dates = []
         periodsHeaders = []
+        data_cur_date = data_start_date
         while q_count > 0:
-            periodsHeaders.insert(0, format_header_from_val_func(data_start_date))
-            periods_start_dates.insert(0, data_start_date)
+            periodsHeaders.insert(0, format_header_from_val_func(data_cur_date))
+            periods_start_dates.insert(0, data_cur_date)
             q_count -= 1
             if q_count > 0:
-                data_start_date = dec_period_func(data_start_date)
+                data_cur_date = dec_period_func(data_cur_date)
 
         # Фильтруем нужные строки
         type = { 'rashod': my_uu.models.UType.RASHOD, 'dohod': my_uu.models.UType.DOHOD }[anaType]
         uchet_qs = request.user.uchet_set.filter(utype = type)
-        uchet_qs = uchet_qs.filter(date__gte = data_start_date)
+        uchet_qs = uchet_qs.filter(date__gte = data_cur_date)
 
         # Преобразуем к формату словарей
         uchet_list = uchet_qs.values('date', 'sum', 'category__name').order_by('date')
@@ -1111,7 +1126,15 @@ def ajax_lk_ana(request):
         # только те, по которые видимы либо по ним есть данные
         # (остальные убираем, т.е. те где нет данных одновременно невидимые).
         # Если несколько категорий при группировке преобразовались в одну, то на выходе дожна быть только одна.
-        categoryModelListAll = list(request.user.category_set.order_by('position', 'id'))
+        category_qs = request.user.category_set
+        if anaType == 'rashod':
+            category_type_qs = category_qs.filter(lkcm_dohod_rashod_type = my_uu.models.LKCM_DOHOD_RASHOD_TYPE_RASHOD)
+        elif anaType == 'dohod':
+            category_type_qs = category_qs.filter(lkcm_dohod_rashod_type = my_uu.models.LKCM_DOHOD_RASHOD_TYPE_DOHOD)
+        else:
+            raise RuntimeError('На странице анализа ошибка программирования в функции получепния данных.')
+
+        categoryModelListAll = list(category_type_qs.order_by('position', 'id'))
         categoryNames = set()
         categoryModelListFiltered1 = []
         for c in categoryModelListAll:
@@ -1294,112 +1317,126 @@ def ajax_lk_ana(request):
             })
 
 
-        # Теперь в pageВata добавим
+        # можем ли мотать влево и вправо (есть ли еще периоды) и какой аргумент в урл для этого передавать
+        pageData['lka_is_can_left'] = True
+        pageData['lka_is_can_right'] = True
+        data_start_date_1 = dec_period_func(data_start_date)
+        data_start_date_2 = inc_period_func(data_start_date)
+        pageData['lka_move_left_end_date'] = pvl_datetime_format.funcs.dateToStr(data_start_date_1)
+        pageData['lka_move_right_end_date'] = pvl_datetime_format.funcs.dateToStr(data_start_date_2)
 
 
 
-    def addDayAnaDataToPageData(pageData, anaType, is_groups_on, bperiod):
+    # Данные для показа на странице
+    def getAnaPageData(periodCode, anaType, is_groups_on, bperiod, end_date_str):
 
-        return addPeriodAnaDataToPageData(
-            pageData,
-            anaType,
-            'day',
-            format_header_from_val_func = lambda dt: { 'first': formatDayAndMonth(dt), 'second': formatDayOfWeek(dt) },
-            period_count = 5,
-            get_first_period_date_func = lambda dt: dt,
-            dec_period_func = lambda dt: dt - datetime.timedelta(days=1),
-            is_groups_on = is_groups_on,
-            bperiod = bperiod,
-        )
+        pageData = {
+            'periods': {},
+            'dataRows': {},
+            'totalRow': {}
+        }
+        if periodCode == 'day':
 
-    def addWeekAnaDataToPageData(pageData, anaType, is_groups_on, bperiod):
+            addPeriodAnaDataToPageData(
+                pageData,
+                anaType,
+                'day',
+                format_header_from_val_func = lambda dt: { 'first': formatDayAndMonth(dt), 'second': formatDayOfWeek(dt) },
+                period_count = 5,
+                get_first_period_date_func = lambda dt: dt,
+                dec_period_func = lambda dt: dt - datetime.timedelta(days=1),
+                inc_period_func = lambda dt: dt + datetime.timedelta(days=1),
+                is_groups_on = is_groups_on,
+                bperiod = bperiod,
+                end_date_str = end_date_str,
+            )
 
-        def formatWeekHeader(d):
-            return dict( first = u'Неделя ' + str(plogic.getWeekNumberOfYear(d)), second = getDatesForWeek(d) )
+        elif periodCode == 'week':
 
-        return addPeriodAnaDataToPageData(
-            pageData,
-            anaType,
-            'week',
-            format_header_from_val_func = formatWeekHeader,
-            period_count = 5,
-            get_first_period_date_func = plogic.getFirstMomentOfWeek0,
-            dec_period_func = lambda dt: addWeeks(dt, -1),
-            is_groups_on = is_groups_on,
-            bperiod = bperiod,
-        )
+            def formatWeekHeader(d):
+                return dict( first = u'Неделя ' + str(plogic.getWeekNumberOfYear(d)), second = getDatesForWeek(d) )
 
-    def addMonthAnaDataToPageData(pageData, anaType, is_groups_on, bperiod):
+            addPeriodAnaDataToPageData(
+                pageData,
+                anaType,
+                'week',
+                format_header_from_val_func = formatWeekHeader,
+                period_count = 5,
+                get_first_period_date_func = plogic.getFirstMomentOfWeek0,
+                dec_period_func = lambda dt: addWeeks(dt, -1),
+                inc_period_func = lambda dt: addWeeks(dt, 1),
+                is_groups_on = is_groups_on,
+                bperiod = bperiod,
+                end_date_str = end_date_str,
+            )
 
-        monthNames = [u'Январь', u'Февраль', u'Март', u'Апрель', u'Май', u'Июнь', u'Июль', u'Август', u'Сентябрь', u'Октябрь', u'Ноябрь', u'Декабрь']
+        elif periodCode == 'month':
 
-        return addPeriodAnaDataToPageData(
-            pageData,
-            anaType,
-            'month',
-            format_header_from_val_func = lambda dt: dict(first = monthNames[dt.month-1], second = dt.year),
-            period_count = 5,
-            get_first_period_date_func = plogic.getFirstMomentOfMonth0,
-            dec_period_func = lambda dt: addMonths0(dt, -1),
-            is_groups_on = is_groups_on,
-            bperiod = bperiod,
-        )
+            monthNames = [u'Январь', u'Февраль', u'Март', u'Апрель', u'Май', u'Июнь', u'Июль', u'Август', u'Сентябрь', u'Октябрь', u'Ноябрь', u'Декабрь']
 
-    def addQuartAnaDataToPageData(pageData, anaType, is_groups_on, bperiod):
+            addPeriodAnaDataToPageData(
+                pageData,
+                anaType,
+                'month',
+                format_header_from_val_func = lambda dt: dict(first = monthNames[dt.month-1], second = dt.year),
+                period_count = 5,
+                get_first_period_date_func = plogic.getFirstMomentOfMonth0,
+                dec_period_func = lambda dt: addMonths0(dt, -1),
+                inc_period_func = lambda dt: addMonths0(dt, 1),
+                is_groups_on = is_groups_on,
+                bperiod = bperiod,
+                end_date_str = end_date_str,
+            )
 
-        return addPeriodAnaDataToPageData(
-            pageData,
-            anaType,
-            'quart',
-            format_header_from_val_func = lambda q_start_date: {'first': formatQuartStr(q_start_date), 'second': ''},
-            period_count = 5,
-            get_first_period_date_func = getQuartFirstDate,
-            dec_period_func = lambda dt: addMonths0(dt, -3),
-            is_groups_on = is_groups_on,
-            bperiod = bperiod,
-        )
+        elif periodCode == 'quart':
 
-    def addYearAnaDataToPageData(pageData, anaType, is_groups_on, bperiod):
+            addPeriodAnaDataToPageData(
+                pageData,
+                anaType,
+                'quart',
+                format_header_from_val_func = lambda q_start_date: {'first': formatQuartStr(q_start_date), 'second': ''},
+                period_count = 5,
+                get_first_period_date_func = getQuartFirstDate,
+                dec_period_func = lambda dt: addMonths0(dt, -3),
+                inc_period_func = lambda dt: addMonths0(dt, 3),
+                is_groups_on = is_groups_on,
+                bperiod = bperiod,
+                end_date_str = end_date_str,
+            )
 
-        return addPeriodAnaDataToPageData(
-            pageData,
-            anaType,
-            'app_year',
-            format_header_from_val_func = lambda q_start_date: {'first': formatYearStr(q_start_date), 'second': ''},
-            period_count = 5,
-            get_first_period_date_func = getYearFirstDate,
-            dec_period_func = lambda dt: dt.replace(year = dt.year - 1),
-            is_groups_on = is_groups_on,
-            bperiod = bperiod,
-        )
+        elif periodCode == 'app_year':
 
-    anaType, periodCode, is_groups_on, bperiod = extractAngularPostData(
+            addPeriodAnaDataToPageData(
+                pageData,
+                anaType,
+                'app_year',
+                format_header_from_val_func = lambda q_start_date: {'first': formatYearStr(q_start_date), 'second': ''},
+                period_count = 5,
+                get_first_period_date_func = getYearFirstDate,
+                dec_period_func = lambda dt: dt.replace(year = dt.year - 1),
+                inc_period_func = lambda dt: dt.replace(year = dt.year + 1),
+                is_groups_on = is_groups_on,
+                bperiod = bperiod,
+                end_date_str = end_date_str,
+            )
+
+        else:
+            raise RuntimeError(u'Ошибка в функции анализа расходов.')
+
+        return pageData
+
+
+    anaType, periodCode, is_groups_on, bperiod, end_date_str = extractAngularPostData(
         request,
         'anaType',
         'periodCode',
         'lkax_is_grouping',
         'lkax_bperiod',
+        'lkax_end_date',
     )
 
     # Данные для таблицы
-    pageData = {
-        'periods': {},
-        'dataRows': {},
-        'totalRow': {}
-    }
-    if periodCode == 'day':
-        addDayAnaDataToPageData(pageData, anaType, is_groups_on, bperiod)
-    elif periodCode == 'week':
-        addWeekAnaDataToPageData(pageData, anaType, is_groups_on, bperiod)
-    elif periodCode == 'month':
-        addMonthAnaDataToPageData(pageData, anaType, is_groups_on, bperiod)
-    elif periodCode == 'quart':
-        addQuartAnaDataToPageData(pageData, anaType, is_groups_on, bperiod)
-    elif periodCode == 'app_year':
-        addYearAnaDataToPageData(pageData, anaType, is_groups_on, bperiod)
-    else:
-        raise RuntimeError(u'Ошибка в функции анализа расходов.')
-
+    pageData = getAnaPageData(periodCode, anaType, is_groups_on, bperiod, end_date_str)
 
     return JsonResponse(request, {
         'pageData': pageData,
@@ -1532,6 +1569,10 @@ def lk_save_uchet_ajax(request):
 
         # С клиента приходят в формате с ",", меняем на "."
         rowDbData['sum'] = r['sum'].replace(',', '.')
+
+        # Преобразовываем время
+        rowDbData['myum_time'] = datetime.datetime.strptime(r['lkud_time'], '%H:%M').time()
+        del rowDbData['lkud_time']
 
         # Если коммент очистить через del в jqxGrid, то на сервер приходят null. Преобразуем в пустые строки.
         # Иначе в БД эксепшен получим. Если зарегиться и добавить строку от нового юзера то коммент вообще
@@ -2053,13 +2094,6 @@ def lk_save_manual_answer_ajax(request):
     ms.save()
 
     return JsonResponseWithStatusOk()
-
-
-# Пустая старница в админке для проверки
-def page_mtestempty(request):
-    return django.http.HttpResponse(u'<div style="position: absolute; top: 50%; left: 50%; '
-                        u'transform: translateX(-50%) translateY(-50%); font-size: 28px;">'
-                        u'Еще не реализовано.</div></div>')
 
 
 # АПИ метод удаления записи

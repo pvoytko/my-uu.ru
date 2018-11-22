@@ -69,6 +69,20 @@ function uuValidateDate(dateStr) {
 }
 
 
+// Проверяет строковое значение время, если ошибка ввода, вернет ее текст.
+// === true если корректно
+function uuValidateTime(timeStr) {
+
+    if (!(timeStr.match(/\d?\d\:\d\d/))) {
+        return "Время должно иметь формат ЧЧ:ММ";
+    }
+    if (!moment(timeStr, 'HH:mm').isValid()) {
+        return "Указанное значение не является верным временем в формате ЧЧ:ММ или Ч:ММ";
+    }
+    return true;
+}
+
+
 // Делает редирект браузера на страницу анализа или учета, с переданными значениями фильтров.
 // Для примера см. метса использования функции.
 function goToUchOrAnaUrl(url_part2, url_part3, url_part4, is_ana){
@@ -265,4 +279,11 @@ function uuInitTableDragAndDrop(table_id, save_order_url, err_msg)
         }
     });
 
+}
+
+// Возвращает массив найденных элементов или пустой.
+// Ш-7277
+function pvlGetElemArrayByAttr(list, attrib_name, attrib_value){
+    var t_result = $.grep(list, function(e){ return e[attrib_name] == attrib_value });
+    return t_result;
 }

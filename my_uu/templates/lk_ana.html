@@ -7,9 +7,6 @@
     <!-- Форматирование дат -->
     <script type="text/javascript" src="/static/libs/moment/moment.min.js"></script>
 
-    <!-- Вспомогательные разные функции -->
-    <script src="/static/js/uu_utils.js"></script>
-
 {% endblock %}
 
 
@@ -84,7 +81,9 @@
             $scope.anaType = '{{ lka_type }}';
             $scope.ac_is_grouping = '{{ lka_is_grouping }}' == 'True';
             $scope.ac_budget_period = '{{ lka_budget_period }}';
+            $scope.ac_end_date = '{{ lkas_end_date }}';
 
+            // Варианты выбора чего-то
             $scope.lka_bperiod_choices = {{ lka_bperiod_choices_json|safe }};
 
             // Тут получаем с сервера данные в формате
@@ -140,7 +139,8 @@
                     periodCode: $scope.periodCode,
                     anaType: $scope.anaType,
                     lkax_is_grouping: $scope.ac_is_grouping,
-                    lkax_bperiod: $scope.ac_budget_period
+                    lkax_bperiod: $scope.ac_budget_period,
+                    lkax_end_date: $scope.ac_end_date
                 });
             };
             $scope.load();
@@ -163,6 +163,32 @@
             $scope.getTotCaption = function(){
                 return "Сумма";
             };
+
+            // Переод периодов для анализа влево или вправо
+            $scope.lkaMovePeriod = function(to_right){
+
+                // Провреяем, есть ли данные для переохда, если нет, то выходим.
+                if (to_right && !$scope.getSimplePageData().lka_is_can_right){
+                    return;
+                }
+                if (!to_right && !$scope.getSimplePageData().lka_is_can_left){
+                    return;
+                }
+
+                // Определяем дату окончания
+                var end_date = "";
+                if (to_right){
+                    end_date = $scope.getSimplePageData().lka_move_right_end_date;
+                }
+                else{
+                    end_date = $scope.getSimplePageData().lka_move_left_end_date;
+                }
+
+                // Делаем переход на новый урл.
+                url = window.location.href;
+                url = pvlGetUrlReplaceParam(url, 'lka_end_date', end_date, true);
+                window.location.href = url;
+            }
         });
     </script>
 
@@ -174,6 +200,7 @@
         }
         .lka_sum_link:hover{
             color: red;
+            background-color: yellow;
         }
     </style>
 
@@ -268,9 +295,24 @@
                         <thead>
                             <tr>
                                 <th
-                                        style="background-color: #f0f0f0; width: 200px; text-align: center; height: 75px; vertical-align: top; border-top: 1px solid #ddd;"
+                                        style="background-color: #f0f0f0; text-align: center; height: 75px; vertical-align: top; border-top: 1px solid #ddd; width: 200px;"
                                         >
                                     {$ getCatCaption() $}
+                                </th>
+
+                                {# Отступ #}
+                                <th style="background-color: transparent; width: 30px; border: none; height: 75px; vertical-align: top; position: relative;">
+
+                                    {# Стрелка #}
+                                    <div
+                                            style="right: -14px;"
+                                            class="my_uu_change_periood_arrow"
+                                            ng-class="{ 'my_uu_change_periood_arrow_disabled': !getSimplePageData().lka_is_can_left }"
+                                            ng-click="lkaMovePeriod(to_right=false)"
+                                            >
+                                        <i class="far fa-arrow-alt-circle-left"></i>
+                                    </div>
+
                                 </th>
 
                                 {# ширина 101 подобрана чтобы недели входили, например, неделя 13 2016 года - длинный текст #}
@@ -281,9 +323,21 @@
                                     {$ p.first $}<br /><span style="font-weight: normal;">{$ p.second $}</span>
                                 </th>
 
-                                <th style="background-color: transparent; width: 20px; border: none; height: 75px; vertical-align: top;">
+                                {# Отступ #}
+                                <th style="background-color: transparent; width: 30px; border: none; height: 75px; vertical-align: top; position: relative;">
+
+                                    {# Стрелка #}
+                                    <div
+                                            style="left: -14px;"
+                                            class="my_uu_change_periood_arrow"
+                                            ng-class="{ 'my_uu_change_periood_arrow_disabled': !getSimplePageData().lka_is_can_right }"
+                                            ng-click="lkaMovePeriod(to_right=true)"
+                                            >
+                                        <i class="far fa-arrow-alt-circle-right"></i>
+                                    </div>
 
                                 </th>
+
                                 <th style="background-color: #f0f0f0; width: 141px; text-align: center; height: 75px; vertical-align: top; border-top: 1px solid #ddd;">
                                     Бюджет (план) по категории
                                 </th>
@@ -309,6 +363,11 @@
                                         {$ row.category $}
                                     </div>
                                 </td>
+
+                                {# Отступ #}
+                                <td style="border: none;">
+                                </td>
+
                                 <td ng-repeat="i in row.lka_cell_data track by $index" style="text-align: right;">
                                     <a
                                             href="/lk/{$ i.lka_cell_period $}/None/{$ row.lka_category_id $}/"
@@ -323,8 +382,10 @@
                                     </a>
                                 </td>
 
+                                {# Отступ #}
                                 <td style="border: none;">
                                 </td>
+
                                 <td style="text-align: left;" class="{$ row.bcbci_color $}">
                                     {$ row.lka_budget_str $}
                                 </td>
@@ -337,6 +398,10 @@
                                 <td style="background-color: #f0f0f0; font-weight: bold; text-align: right;">
                                     <span>{$ getTotCaption() $}</span>
                                 </td>
+
+                                <td style="border: none;">
+                                </td>
+
                                 <td
                                         ng-repeat="i in getTotalRow() track by $index"
                                         style="background-color: #f0f0f0; text-align: right; font-weight: bold;"

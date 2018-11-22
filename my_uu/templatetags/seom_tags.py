@@ -22,14 +22,6 @@ def seom_main_menu(context):
     # Список всех пунктов меню - админа
     admin_menu_itesm = [
         {
-            'smm_caption': u'Тестовая страница',
-            'smm_url': django.core.urlresolvers.reverse('my_uu.views.page_mtestempty'),
-        },
-        {
-            'smm_caption': u'Тест модели',
-            'smm_url': django.core.urlresolvers.reverse('admin:my_uu_testmodel_changelist'),
-        },
-        {
             'smm_caption': u'Тестовый емейл',
             'smm_url': django.core.urlresolvers.reverse('pvl_send_email.views.page_vtestemail'),
         },
@@ -37,6 +29,10 @@ def seom_main_menu(context):
             'smm_caption': u'Шаблоны писем',
             'smm_url': '/lk/pvl_send_email/kemailtemplate/',
             'smm_url': django.core.urlresolvers.reverse('admin:pvl_send_email_kemailtemplate_changelist'),
+        },
+        {
+            'smm_caption': u'Операции',
+            'smm_url': django.core.urlresolvers.reverse('admin:my_uu_uchet_changelist'),
         },
     ]
 

@@ -42,7 +42,13 @@
 
                 // В диалоге редачим копию модели а не саму модель
                 $scope.lkcat_model = {
-                    visible: true
+
+                    // В диалоге добавления для новых категорий - по дефолту - видима категория
+                    visible: true,
+
+                    // В диалоге добавления для новых категорий - по дефолту - тип - расход
+                    lkcm_dohod_rashod_type: "LKCM_DOHOD_RASHOD_TYPE_RASHOD"
+
                 };
                 if (resultHolderObject){
                     $scope.lkcat_model = jQuery.extend({}, resultHolderObject);
@@ -66,20 +72,24 @@
                     data: JSON.stringify($scope.lkcat_model),
                     cache: false,
                     timeout: 15000
-                }).success(function(data, status){
-                    $scope.loading = false;
-                    if (data.status == "ok"){
+                }).then(
+                    function(data, status){
+                        var data = data.data;
+                        $scope.loading = false;
+                        if (data.status == "ok"){
 
-                        $scope.resultHolderArray.splice($scope.resultHolderArray.indexOf($scope.resultHolderObject), 1);
-                        $scope.close();
+                            $scope.resultHolderArray.splice($scope.resultHolderArray.indexOf($scope.resultHolderObject), 1);
+                            $scope.close();
+                        }
+                        else {
+                            $scope.errorText = data.text;
+                        }
+                    },
+                    function(data, status){
+                        $scope.loading = false;
+                        uuAngReqFail('Удалить категорию не удалось.');
                     }
-                    else {
-                        $scope.errorText = data.text;
-                    }
-                }).error(function(data, status){
-                    $scope.loading = false;
-                    uuAngReqFail('Удалить категорию не удалось.');
-                });
+                );
 
             }
 
@@ -221,7 +231,10 @@
 
         angular.module('myNgApp').controller('AccountsCtrl', function($scope, $http, $element, $timeout){
 
-            $scope.accountList = {{ lkc_category_list_json|safe }};
+            $scope.lcca_accountList = {{ lkc_category_list_json|safe }};
+
+            // Фильтр категорий изначально по расходу
+            $scope.lkc_filter_categories_type = 'LKCM_DOHOD_RASHOD_TYPE_RASHOD';
 
             // Форматирование счета для отображения в листинге
             $scope.acGetDisplayInfo = function(account){
@@ -234,12 +247,12 @@
 
             // Показать диалог изменения
             $scope.changeDlg = function(item){
-                $( "#change-dialog-modal").scope().showForChange(item, $scope.accountList);
+                $( "#change-dialog-modal").scope().showForChange(item, $scope.lcca_accountList);
             }
 
             // Показать диалог добавления
             $scope.addDlg = function(){
-                $( "#change-dialog-modal").scope().showForAdd($scope.accountList);
+                $( "#change-dialog-modal").scope().showForAdd($scope.lcca_accountList);
             }
 
             // Вызывается при клике галочки, чтобы оновить jquery обработчики, иначе скрытые
@@ -253,6 +266,15 @@
                         'Новый порядок категорий не сохранен.'
                     );
                 });
+            }
+
+            // Возвращает список категорий для показа
+            $scope.lkcGetCategoriesListFiltered = function(){
+                var res = $scope.lcca_accountList;
+
+                res = pvlGetElemArrayByAttr(res, 'lkcm_dohod_rashod_type', $scope.lkc_filter_categories_type);
+
+                return res;
             }
 
             $scope.lkcShowHidedClickedUpdateDnD();
@@ -269,6 +291,32 @@
 
         <div style="flex-grow: 1; flex-basis: 1%;">
 
+            <!-- Выбор типа -->
+            <h5 style="margin: 0px 0px 0px 25px;">Тип категории:</h5>
+            <div style="padding-bottom: 7px; display: block; margin-left: 25px;" ng-cloak>
+
+                <button
+                        style="margin-top: 5px;"
+                        type="button"
+                        class="btn btn-default"
+                        ng-class="{active: lkc_filter_categories_type=='LKCM_DOHOD_RASHOD_TYPE_RASHOD'}"
+                        ng-click="lkc_filter_categories_type='LKCM_DOHOD_RASHOD_TYPE_RASHOD'; lkcShowHidedClickedUpdateDnD()"
+                        >
+                    Расходы
+                </button>
+                <button
+                        style="margin-top: 5px;"
+                        type="button"
+                        class="btn btn-default"
+                        ng-class="{active: lkc_filter_categories_type=='LKCM_DOHOD_RASHOD_TYPE_DOHOD'}"
+                        ng-click="lkc_filter_categories_type='LKCM_DOHOD_RASHOD_TYPE_DOHOD'; lkcShowHidedClickedUpdateDnD()"
+                        >
+                    Доходы
+                </button>
+
+            </div>
+
+            {# Показывать невидимые #}
             {% include "include_show_invisible_categories.html" %}
 
         </div>
@@ -291,8 +339,9 @@
                         <th style="text-align: left; width: 100px;">Изменить</th>
                     </thead>
                     <tbody>
+
                         <tr
-                                ng-repeat="a in accountList"
+                                ng-repeat="a in lkcGetCategoriesListFiltered()"
                                 ng-if="a.visible || lkc_is_show_hided"
                                 ng-class="{ 'row_not_visible': !a.visible }"
                                 id="{$ a.id $}"
@@ -313,6 +362,17 @@
                             <td style="text-align: left;">{$ acGetDisplayInfo(a).agd_budget $}</td>
                             <td style="cursor: default;"><span ng-click="changeDlg(a)" class="dotted_link">изменить</span></td>
                         </tr>
+
+                        {# Показывается если нет категорий #}
+                        <tr ng-if="lkcGetCategoriesListFiltered().length == 0">
+                            <td
+                                    colspan="100%"
+                                    style="text-align: center; padding: 20px;"
+                                    >
+                                Нет категорий. Добавьте первую.
+                            </td>
+                        </tr>
+
                     </tbody>
                 </table>
                 <button class="btn btn-info" style="margin-left: 47px; top: -15px; position: relative;" ng-click="addDlg()">Добавить категорию (Ins)</button>
@@ -332,6 +392,42 @@
     <div id="change-dialog-modal" style="display: none; padding-top: 20px; z-index: 110;" ng-controller="ChangeDlgCtrl">
 
         <form class="form-horizontal form-condensed" ng-enter="updateOnServerAndClose()" ng-esc="close()">
+
+            <div class="form-group">
+                <label class="control-label col-xs-4">Тип категории</label>
+                <div class="col-xs-8">
+                    <div>
+                        <button
+                                type="button"
+                                class="btn btn-default"
+                                ng-class="{active: lkcat_model.lkcm_dohod_rashod_type == 'LKCM_DOHOD_RASHOD_TYPE_RASHOD' }"
+                                ng-click="lkcat_model.lkcm_dohod_rashod_type = 'LKCM_DOHOD_RASHOD_TYPE_RASHOD'"
+                                >
+                            Расход
+                        </button>
+                        <button
+                                type="button"
+                                class="btn btn-default"
+                                ng-class="{active: lkcat_model.lkcm_dohod_rashod_type == 'LKCM_DOHOD_RASHOD_TYPE_DOHOD' }"
+                                ng-click="lkcat_model.lkcm_dohod_rashod_type = 'LKCM_DOHOD_RASHOD_TYPE_DOHOD'"
+                                >
+                            Доход
+                        </button>
+                    </div>
+                    <div class="help-block">
+                        Зачем нужен тип? для удобства анализа, чтобы на странице анализа не видеть <br />
+                        не нужных нулевых категорий расходов  при анализе доходов и наоборот
+                        <a
+                                href="http://pvoytko.ru/jx/NE7inIlFrq"
+                                target="_blank"
+                                style="text-decoration: underline;"
+                                class="logout__link"
+                                >
+                            скриншот
+                        </a>
+                    </div>
+                </div>
+            </div>
             <div class="form-group">
                 <label class="control-label col-xs-4">Название категории</label>
                 <div class="col-xs-8">
@@ -350,7 +446,9 @@
             </div>
 
             {# Бюджет категории #}
-            <div class="form-group">
+            <div
+                class="form-group"
+                    >
                 <label class="control-label col-xs-4">Периодичность бюджета</label>
                 <div class="col-xs-8">
                     <div>
@@ -366,7 +464,7 @@
                         </button>
                     </div>
                     <div class="help-block">
-                        С какой периодичностью повторяются данные расходы.
+                        С какой периодичностью повторяются данные расходы (или доходы).
                         Используется для отображения на странице "Анализ".
                     </div>
                 </div>
@@ -376,7 +474,7 @@
                 <div class="col-xs-8">
                     <input type="text" ng-model="lkcat_model.lkcm_budget_value" class="form-control">
                     <div class="help-block">
-                        Не более скольки планируется расход за указанный период по этой категории.
+                        Не более скольки планируется расход (или доход) за указанный период по этой категории.
                         Используется для отображения на странице "Анализ".
                     </div>
                 </div>

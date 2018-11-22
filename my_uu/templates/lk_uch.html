@@ -599,6 +599,10 @@
                     u = serverArray[j];
                     row['serverRowId'] = u['id'];
                     row['date'] = moment(u['date']).format('DD.MM.YYYY');
+
+                    // По дефолту из БД значение времени фомратируется как ЧЧ:ММ:СС, а нам для показа в ячейке надо ЧЧ:ММ
+                    row['lkud_time'] = moment(u['myum_time'], 'H:m').format('HH:mm');
+
                     row['utype'] = u['utype__name'];
                     row['sum'] = String(u['sum']).replace('.', ',');
                     row['account'] = u['account__name'];
@@ -613,6 +617,7 @@
                     [
                         { name: 'serverRowId', type: 'string'},
                         { name: 'date', type: 'string'},
+                        { name: 'lkud_time', type: 'string'},
                         { name: 'utype', type: 'string'},
                         { name: 'sum', type: 'string'},
                         { name: 'account', type: 'string'},
@@ -845,9 +850,18 @@
                         return replateCellHtmlOldValueWithNewValue(defaulthtml, value, newValue);
                     }
 
+                    // Форматирует значение время в красивый вид.
+                    var lkugTimeCellsRenderer = function (row, columnfield, value, defaulthtml, columnproperties) {
+
+                        // Формируем значение в зависимости от даты-времени.
+                        var dt = moment(value, 'HH:mm:ss');
+                        var newValue = dt.format("H:mm");
+                        return replateCellHtmlOldValueWithNewValue(defaulthtml, value, newValue);
+                    }
+
                     $("#uuGrid").jqxGrid({
                         theme: 'darkblue',
-                        width: 860,
+                        width: 1060,
                         height: calcGridHeightToNewRowsCount(uchetRecords.length),
                         selectionmode: 'multiplecellsextended',
                         editable: true,
@@ -860,6 +874,12 @@
                                 cellsrenderer: deleteRowCellRenderer
                             },
                             {
+                                text: 'ID',
+                                datafield: 'serverRowId',
+                                width: 65,
+                                editable: false
+                            },
+                            {
                                 text: 'Дата',
                                 datafield: 'date',
                                 width: 90,
@@ -867,6 +887,20 @@
                                 cellsrenderer: dateCellsRenderer,
                                 validation: function (cell, value) {
                                     var valRes = uuValidateDate(value);
+                                    if (valRes !== true) {
+                                        return { result: false, message: valRes };
+                                    }
+                                    return true;
+                                }
+                            },
+                            {
+                                text: 'Время',
+                                datafield: 'lkud_time',
+                                width: 70,
+                                cellclassname: editedRowsServerSync.getCellClassNameGridCallback,
+                                // cellsrenderer: lkugTimeCellsRenderer,
+                                validation: function (cell, value) {
+                                    var valRes = uuValidateTime(value);
                                     if (valRes !== true) {
                                         return { result: false, message: valRes };
                                     }
@@ -1097,10 +1131,10 @@
 
         </script>
 
-        <div id="mainScope" ng-controller="GridCtrl" ng-cloak>
+        <div id="mainScope" ng-controller="GridCtrl" ng-cloak style="position: relative; left: -100px;">
 
             <!-- Это просто белая плашка чтобы собой зкрывать грид когда тот скроллируется  -->
-            <div style="position: fixed; background-color: white; z-index: 101; width: 860px; top: 110px; height: 40px;">
+            <div style="position: fixed; background-color: white; z-index: 101; width: 1060px; top: 110px; height: 40px;">
 
             </div>
             <div style="margin-top: -2px; position: fixed; top: 110px; z-index: 101;">
@@ -1244,7 +1278,7 @@
 
             <div>
 
-                <div id="uuFooterFixed" style="position: fixed; background-color: white; z-index: 99; bottom: 0px; width: 860px; border-top: 10px solid #449bca;">
+                <div id="uuFooterFixed" style="position: fixed; background-color: white; z-index: 99; bottom: 0px; width: 1060px; border-top: 10px solid #449bca;">
 
                     <button id="btnAdd" class="btn btn-info" style='position: absolute; top: 5px; z-index: 101;'>Внести (Ins)</button>
 

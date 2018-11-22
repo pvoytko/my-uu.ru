@@ -80,3 +80,29 @@
     color: #ffc107;
 }
 /* ENDPVBLOCK */
+
+
+
+/* Стрелки движения по периодам на странице анализа */
+.my_uu_change_periood_arrow{
+    position: absolute;
+    top: 23px;
+    font-size: 25px;
+    line-height: 25px;
+    background-color: white;
+    border-radius: 23px;
+    border: 2px solid white;
+    color: #428bca;
+    cursor: pointer;
+}
+.my_uu_change_periood_arrow:hover{
+    color: #c08600;
+}
+.my_uu_change_periood_arrow_disabled{
+    cursor: not-allowed;
+    color: #b1b1b1;
+}
+.my_uu_change_periood_arrow_disabled:hover{
+    cursor: not-allowed;
+    color: #b1b1b1;
+}

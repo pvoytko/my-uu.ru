@@ -349,6 +349,10 @@ class Uchet(models.Model):
 
     user = models.ForeignKey(django.contrib.auth.models.User)
     date = models.DateField()
+    myum_time = models.TimeField(
+        default="00:00",
+        help_text=u'Чтобы удобнее вспоминать какая операция за что отвечает',
+    )
     utype = models.ForeignKey(UType)
     sum = models.DecimalField(max_digits=11, decimal_places=2)
     account = models.ForeignKey(Account)
@@ -435,17 +439,25 @@ class FeedbackRequested(models.Model):
     datetime = models.DateTimeField(auto_now_add=True)
 
 
-class TestModel(models.Model):
-    tm_cap = models.CharField(max_length=128)
-    tm_cap2 = models.CharField(max_length=128, null=True)
+class UchetAdmin(admin.ModelAdmin):
 
-
-class TestModelAdmin(admin.ModelAdmin):
     list_display = (
-        'tm_cap',
-        'tm_cap2',
+        'id',
+        'user',
+        'date',
+        'myum_time',
+        'category',
+        'account',
+        'sum',
     )
-    list_per_page = 10
+
+    raw_id_fields = (
+        'user',
+        'account',
+        'category',
+    )
+
+    list_per_page = 50
 
 
 # Данная функция создана для того чтобы исключить ошибки что забыли указать требование авторизации админа
@@ -458,4 +470,4 @@ def registerModelAndAdmin(model_class, admin_class):
     admin.site.register(model_class, admin_class)
 
 
-registerModelAndAdmin(TestModel, TestModelAdmin)
+registerModelAndAdmin(Uchet, UchetAdmin)

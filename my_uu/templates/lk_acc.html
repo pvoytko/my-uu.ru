@@ -2,9 +2,6 @@
 
 {% block add_to_head %}
 
-    <!-- Форматирование валюты -->
-    <script src="/static/js/uu_utils.js"></script>
-
     <!-- Перетаскивание строк таблицы -->
     <script src="/static/libs/isocra-tablednd/jquery.tablednd.js"></script>
 
@@ -77,6 +74,7 @@
                     timeout: 15000
                 }).then(
                     function(data, status){
+                        var data = data.data;
                         $scope.loading = false;
                         if (data.status == "ok"){
 
