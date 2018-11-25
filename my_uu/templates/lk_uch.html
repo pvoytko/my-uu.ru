@@ -1321,10 +1321,13 @@
 
                                 // Добавляем строку, перед этим увеличив высоту грида (чтобы избежать его собственного скроллинга)
                                 // Либо 2 если это операция перевода.
+                                var cur_dtm = new Date();
+                                var cur_time_str = cur_dtm.getHours() + ":" + cur_dtm.getMinutes();
                                 if (dlgScope.type == '2'){
                                     var newHeight = adjustGridHeightToNewRowsCount($('#uuGrid').jqxGrid('getrows').length + 2);
                                     $('#uuGrid').jqxGrid('addrow', null, {
                                         'date': dlgScope.date,
+                                        'lkud_time': cur_time_str,
                                         'utype': uTypeList[dlgScope.type],
                                         'sum': strValWithCommaMinus,
                                         'account': dlgScope.account,
@@ -1333,6 +1336,7 @@
                                     });
                                     $('#uuGrid').jqxGrid('addrow', null, {
                                         'date': dlgScope.date,
+                                        'lkud_time': cur_time_str,
                                         'utype': uTypeList[dlgScope.type],
                                         'sum': strValWithComma,
                                         'account': dlgScope.account_to,
@@ -1343,6 +1347,7 @@
                                     var newHeight = adjustGridHeightToNewRowsCount($('#uuGrid').jqxGrid('getrows').length + 1);
                                     $('#uuGrid').jqxGrid('addrow', null, {
                                         'date': dlgScope.date,
+                                        'lkud_time': cur_time_str,
                                         'utype': uTypeList[dlgScope.type],
                                         'sum': (dlgScope.type == '0') ? strValWithCommaMinus : strValWithComma,
                                         'account': dlgScope.account,
