@@ -2144,7 +2144,7 @@ def ajax_add_uchet_record_api(request):
     u = my_uu.models.Uchet.objects.create(
         user = user_model,
         date = pvl_datetime_format.funcs.strToDate(uchet_date),
-        time = pvl_datetime_format.funcs.strToTime(uchet_time),
+        myum_time = pvl_datetime_format.funcs.strToTime(uchet_time),
         utype = my_uu.models.UType.objects.get(name = uchet_type),
         sum = uchet_summa,
         account = my_uu.models.Account.objects.get(name = uchet_account, user = user_model),
