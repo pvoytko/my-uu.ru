@@ -2130,6 +2130,7 @@ def ajax_add_uchet_record_api(request):
     username = pvl_http.funcs.getParamValueFromJson(inp_params, 'aaura_username')
     pswd_raw = pvl_http.funcs.getParamValueFromJson(inp_params, 'aaura_password')
     uchet_date = pvl_http.funcs.getParamValueFromJson(inp_params,     'aaura_date')
+    uchet_time = pvl_http.funcs.getParamValueFromJson(inp_params,     'aaura_time')
     uchet_type = pvl_http.funcs.getParamValueFromJson(inp_params,     'aaura_type')
     uchet_summa = pvl_http.funcs.getParamValueFromJson(inp_params,    'aaura_summa')
     uchet_account = pvl_http.funcs.getParamValueFromJson(inp_params,  'aaura_account')
@@ -2143,6 +2144,7 @@ def ajax_add_uchet_record_api(request):
     u = my_uu.models.Uchet.objects.create(
         user = user_model,
         date = pvl_datetime_format.funcs.strToDate(uchet_date),
+        time = pvl_datetime_format.funcs.strToTime(uchet_time),
         utype = my_uu.models.UType.objects.get(name = uchet_type),
         sum = uchet_summa,
         account = my_uu.models.Account.objects.get(name = uchet_account, user = user_model),
