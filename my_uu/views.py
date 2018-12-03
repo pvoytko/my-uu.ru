@@ -17,6 +17,7 @@ import utils
 import simplejson
 import calendar
 import annoying.decorators
+import annoying.functions
 
 import json
 import datetime
@@ -2140,6 +2141,26 @@ def ajax_add_uchet_record_api(request):
     # Проверка реквизитов
     user_model = plogic.pmCheckUserAndPassword(username, pswd_raw)
 
+    # Был случай что ошибка что акк не найден, проверяем ее, чтобы было проще видеть.
+    acc_model = annoying.functions.get_object_or_None(
+        my_uu.models.Account,
+        name = uchet_account,
+        user = user_model,
+    )
+    cat_model = annoying.functions.get_object_or_None(
+        my_uu.models.Category,
+        name = uchet_category,
+        user = user_model,
+    )
+    if acc_model is None:
+        return django.http.HttpResponseServerError(
+            u'У юзера {} не найден счет с названием {}'.format(user_model, uchet_account)
+        )
+    if cat_model is None:
+        return django.http.HttpResponseServerError(
+            u'У юзера {} не найдена категория с названием {}'.format(user_model, uchet_category)
+        )
+
     # Добавляем запись в БД
     u = my_uu.models.Uchet.objects.create(
         user = user_model,
@@ -2147,8 +2168,8 @@ def ajax_add_uchet_record_api(request):
         myum_time = pvl_datetime_format.funcs.strToTime(uchet_time),
         utype = my_uu.models.UType.objects.get(name = uchet_type),
         sum = uchet_summa,
-        account = my_uu.models.Account.objects.get(name = uchet_account, user = user_model),
-        category = my_uu.models.Category.objects.get(name = uchet_category, user = user_model),
+        account = acc_model,
+        category = cat_model,
         comment = uchet_comment,
     )
 
