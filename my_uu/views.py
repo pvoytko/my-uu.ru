@@ -1508,9 +1508,17 @@ def lk_exp_csv(request):
             com = u.comment,
         )
 
+    # Операции для экспорта
+    # Фильтр по дате используется из pvoytko.ru со страницы автоимпорта из Мой УУ чтобы не слишком долго делался импорт
+    exp_operations = request.user.uchet_set.order_by('date').all()
+    if 'ec_date_from' in request.GET:
+        date_str = request.GET['ec_date_from']
+        date_val = pvl_datetime_format.funcs.strToDate(date_str)
+        exp_operations = exp_operations.filter(date__gte = date_val)
+
     # Проходим все операции
     res = u""
-    for u in request.user.uchet_set.order_by('date').all():
+    for u in exp_operations:
         res += uchetToPlainText(u)
 
     plainTextContentType = "text/plain; charset=utf-8"
