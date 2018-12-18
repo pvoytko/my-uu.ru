@@ -6,6 +6,12 @@ import django.contrib.auth.models
 import my_uu.models
 import pvl_datetime_format.funcs
 import datetime
+import os.path
+import pvl_async.funcs
+import io
+import xlsxwriter
+import datetime
+from django.conf import settings
 
 
 # получая на вход кверисет записей учета, и ID счета и категории, фильтрует кверисет
@@ -460,3 +466,142 @@ def convertChoicesDbValueToDisplayValue(choices, db_value):
         if db_value == db_val:
             return dis_val
     raise RuntimeError(u'Попытка преобразовать неподдерживаемое значвение "' + db_value + '"')
+
+
+# Дата-время изменения фалйа.
+# источник - https://stackoverflow.com/a/237093/1412586
+# Ш-7647
+def getFileModificationDatetime(file_path):
+    tmstamp = os.path.getmtime(file_path)
+    return datetime.datetime.fromtimestamp(tmstamp)
+
+
+def pvlWriteRowInExcel(worksheet_curr, row_data, row_num):
+    """
+    Функция для записи строки в файл Эксель
+    :param worksheet_curr: книга в файле excel для записи данных
+    :param row_data: данные для строки - список
+    :param row_num: номер строки для записи
+    """
+    for col_num, value in enumerate(row_data, start=0):
+
+        # Получаем значение из словаря
+        val = value['pvr_val']
+        if 'pvr_type' in value and value['pvr_type'] == 'PVR_TYPE_NUMBER':
+            worksheet_curr.write_number(row_num, col_num, val)
+        else:
+            worksheet_curr.write(row_num, col_num, val)
+
+
+def fleGetValueTrueOrMinuses(val, functor=unicode):
+    if not val:
+        return u'--'
+    else:
+        return functor(val)
+
+def fleGetPvrValueNumberOrMinuses(val):
+    return {
+        'pvr_val': val,
+        'pvr_type': 'PVR_TYPE_NUMBER',
+    } if val is not None else {
+        'pvr_val': u'--',
+    }
+
+
+# Типы асинхронных задач в проекте
+AT_MYU_EXPORT_EXCEL = "AT_MYU_EXPORT_EXCEL"
+
+
+@pvl_async.funcs.pvlThreadApplyAsync2(AT_MYU_EXPORT_EXCEL)
+def asyncMakeExportExcel(async_task, user_model_id):
+
+    pvl_async.funcs.pvlWriteAsyncTaskLog(async_task, u'Начало формирования...')
+
+    # создание кники в памяти
+    user_model = models.User.objects.get(id=user_model_id)
+    output = io.BytesIO()
+    workbook = xlsxwriter.workbook.Workbook(output, {'in_memory': True})
+    worksheet = workbook.add_worksheet()
+
+    # Форматирование заголовков таблицы
+    header_format = workbook.add_format({
+        'bold': True,
+        'align': 'center',
+        'valign': 'vcenter',
+        'bg_color': 'silver',
+    })
+    header_format.set_text_wrap()
+    worksheet.set_row(0, 30, header_format)
+
+    # Запись в файл заголовков
+    header = (
+        {'pvr_val': u'ID заказа' },
+        {'pvr_val': u'Дата-время создания' },
+        {'pvr_val': u'Тип оерации' },
+        {'pvr_val': u'Счет' },
+        {'pvr_val': u'Сумма' },
+        {'pvr_val': u'Категория' },
+        {'pvr_val': u'Комментарий' },
+    )
+    pvlWriteRowInExcel(worksheet_curr=worksheet, row_data=header, row_num=0)
+
+    # Ширина колонок
+    worksheet.set_column(0, len(header), 10)
+
+    # Перебор заказов и формирование
+    orders_qs_all = models.Uchet.objects.filter(user = user_model).order_by('id')
+    nrow = 1
+    tcount = orders_qs_all.count()
+    for z in orders_qs_all:
+
+        created_dtm = datetime.datetime.combine(z.date, z.myum_time)
+        row_data = [
+
+            # 'ID опертации',
+            fleGetPvrValueNumberOrMinuses(z.id),
+
+            # 'Дата-время создания',
+            {'pvr_val': pvl_datetime_format.funcs.dateTimeToStr(created_dtm) },
+
+            # 'Тип операции',
+            {'pvr_val': unicode(z.utype) },
+
+            # 'Счет',
+            {'pvr_val': unicode(z.account) },
+
+            # 'Категория',
+            {'pvr_val': unicode(z.category) },
+
+            # 'Комментарий',
+            {'pvr_val': fleGetValueTrueOrMinuses(z.comment) },
+
+            # 'Сумма'
+            fleGetPvrValueNumberOrMinuses(z.sum),
+        ]
+        pvlWriteRowInExcel(worksheet_curr=worksheet, row_data=row_data, row_num=nrow)
+        if divmod(nrow, 100)[1] == 0:
+            pvl_async.funcs.pvlWriteAsyncTaskLog(
+                async_task,
+                u'Записано {} строк из {}'.format(nrow, tcount),
+            )
+
+        nrow += 1
+
+
+    # Запись сформированных данных
+    workbook.close()
+    output.seek(0)
+
+    # Запись в файл
+    pvl_async.funcs.pvlWriteAsyncTaskLog(async_task, u'Запись файла...')
+    fname = getExportExcelFileForUser(user_model)
+    with open(fname, u'wb') as f:
+        f.write(output.read())
+
+    pvl_async.funcs.pvlWriteAsyncTaskLog(async_task, u'Файл успешно сформирован и запиисан.')
+
+# Имя файла в котором на диске хранится данные для экспорта по юзеру
+def getExportExcelFileForUser(user_model):
+    fname = u'{}.xls'.format(user_model.id)
+    res = os.path.join(settings.MEDIA_ROOT, 'lk_exp_files', fname)
+    return res

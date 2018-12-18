@@ -1,0 +1,68 @@
+{% extends 'lk_base.html' %}
+
+
+{% load pvl_async_tags %}
+
+
+{% block add_to_head %}
+{% endblock %}
+
+{% block exp_active %} class="active"{% endblock %}
+
+{% block lk_content %}
+
+    {# Сообщения об успешном запуске пер. заадчи #}
+    {% if messages %}
+        <div class="messages">
+            {% for message in messages %}
+                <div class="{{ message.tags }}" style="padding: 15px;">{{ message }}</div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <h4>Экспорт данных учета в CSV</h4>
+    <div>
+        <a href="/lk/exp_csv/" style="text-decoration: underline;">Просмотреть данные в CSV</a>
+    </div>
+
+    <h4 style="margin-top: 20px;">Экспорт операций учета в Excel</h4>
+    <div>
+        {% if ple_file_dtm %}
+            <a href="/lk/exp_csv/" style="text-decoration: underline;">Загрузить файл Эксель с операциями</a>
+            (сформирован {{ ple_file_dtm }})
+        {% else %}
+            Нет файла, не сформирован ни разу, сформируйте.
+        {% endif %}
+    </div>
+
+    {# Форма с кнопкой #}
+    <form action="." method="post" style="margin-top: 10px; margin-bottom: 15px;">
+        {% csrf_token %}
+
+        {% if ple_is_running %}
+
+            {# В задисабленном инпуте стиль курсору не задется поэтому через род. контейнер #}
+            <div
+                        style="cursor: not-allowed;"
+                    >
+                <input
+                        class='btn btn-default btn-lg'
+                        disabled="disabled"
+                        type="submit"
+                        value="Сформировать файл"
+                        >
+            </div>
+        {% else %}
+            <input
+                    class='btn btn-success btn-lg'
+                    name='ple_do'
+                    type="submit"
+                    value="Сформировать файл"
+                    >
+        {% endif %}
+    </form>
+
+    {# Вывод панельки со статусом фоновой задачи #}
+    {% pvla_async_task_status ple_async_task %}
+
+{% endblock %}

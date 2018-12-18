@@ -23,7 +23,7 @@ def seom_main_menu(context):
     admin_menu_itesm = [
         {
             'smm_caption': u'Тестовый емейл',
-            'smm_url': django.core.urlresolvers.reverse('pvl_send_email.views.page_vtestemail'),
+            'smm_url': django.core.urlresolvers.reverse('page_vtestemail_url'),
         },
         {
             'smm_caption': u'Шаблоны писем',
@@ -33,6 +33,10 @@ def seom_main_menu(context):
         {
             'smm_caption': u'Операции',
             'smm_url': django.core.urlresolvers.reverse('admin:my_uu_uchet_changelist'),
+        },
+        {
+            'smm_caption': u'Группы категорий',
+            'smm_url': django.core.urlresolvers.reverse('admin:my_uu_categorygroup_changelist'),
         },
     ]
 

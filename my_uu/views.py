@@ -29,6 +29,8 @@ from django.views.decorators.csrf import csrf_exempt
 import django.http
 import pvl_http.funcs
 import pvl_datetime_format.funcs
+import os.path
+import pvl_async.funcs
 
 
 def extractAngularPostData(request, *keys):
@@ -1455,7 +1457,40 @@ def ajax_lk_ana(request):
 @uu_login_required
 @uuTrackEventDecor(my_uu.models.EventLog.EVENT_VISIT_EXP)
 def lk_exp(request):
-    return render(request, 'lk_exp.html', { 'request': request })
+
+    # Нажата кнопка выполнения - выполням команду
+    user = plogic.getAuthorizedUser(request)
+    if request.method == 'POST' and 'ple_do' in request.POST:
+
+        plogic.asyncMakeExportExcel(user.id)
+
+        # показать сообщение пользователю
+        django.contrib.messages.add_message(
+            request,
+            django.contrib.messages.SUCCESS,
+            u'Фоновая задача успешно запущена. Нажмите "обновить" ниже для просмотра лога работы.',
+        )
+
+    # Определяем есть ли файл для текущего юзера и его дату-время
+    file_path = plogic.getExportExcelFileForUser(user)
+    file_dtm_str = None
+    if os.path.exists(file_path):
+        file_dtm_val = plogic.getFileModificationDatetime(file_path)
+        file_dtm_str = pvl_datetime_format.funcs.dateTimeToStr(file_dtm_val)
+
+    # Работает ели задача, если да, то кнопка неактивна
+    async_task = pvl_async.funcs.pvlGetLastAsyncTaskOrNone(plogic.AT_MYU_EXPORT_EXCEL)
+    is_running, _ = pvl_async.funcs.pvlGetAsyncTaskStatus(async_task)
+
+    return render(
+        request,
+        'page_lk_exp.html',
+        {
+            'request': request,
+            'ple_file_dtm': file_dtm_str,
+            'ple_async_task':  async_task,
+            'ple_is_running':  is_running,
+        })
 
 
 # Импорт данных через аякс

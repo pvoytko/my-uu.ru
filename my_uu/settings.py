@@ -40,12 +40,18 @@ INSTANCE_ROOT = PROJECT_DIR
 #     False - нет, используется для демонстрационной и боевой копии
 #     (там nginx обрабатывает статику и STATIC_URL в этом случае будет такой чтобы указывать на nginx)
 #
+# INSTANCE_SPECIFIC_SITE_NAME_IN_EXCEPTION_REPORT
+#     Строка которая отображается в столбце "Хост" в отчете о 500-х ошибках.
+#     На разных копиях принимает разное значение, чтобы отличать ошибки.
+#     Строкове значение, совпадающее с основным УРл сайта.
+#
 # Все копии программистов. Что значает эта секция см. комменты чуть выше.
 if INSTANCE_ROOT.startswith('/var/www/pvoy_myuu_8') :
     INSTANCE_SPECIFIC_DJANGO_DEBUG = True
     INSTANCE_SPECIFIC_PAID_FOR_DATE = None
     INSTANCE_SPECIFIC_ADD_EMAIL_TEMPLATES = True
     INSTANCE_SPECIFIC_DJANGO_DEBUG_STATIC = True
+    INSTANCE_SPECIFIC_SITE_NAME_IN_EXCEPTION_REPORT = "http://my-uu.ru:8001"
 
 # Боевая копия
 elif INSTANCE_ROOT == '/var/www/pvoy_myuu':
@@ -53,6 +59,7 @@ elif INSTANCE_ROOT == '/var/www/pvoy_myuu':
     INSTANCE_SPECIFIC_PAID_FOR_DATE = None
     INSTANCE_SPECIFIC_ADD_EMAIL_TEMPLATES = False
     INSTANCE_SPECIFIC_DJANGO_DEBUG_STATIC = False
+    INSTANCE_SPECIFIC_SITE_NAME_IN_EXCEPTION_REPORT = "http://my-uu.ru"
 
 # Если тут возник эксепшен, значит предпринята попытка запустить новую копию сайта.
 # Для этой новой копии сайта надо прописать настройки, специфичные для этой копии, по аналогии с секциями выше.
@@ -207,13 +214,6 @@ TEMPLATES = [
 ]
 
 
-from django.conf import global_settings
-TEMPLATE_CONTEXT_PROCESSORS = list(global_settings.TEMPLATE_CONTEXT_PROCESSORS) + [
-    'django.core.context_processors.request',
-    'django.core.context_processors.static',
-]
-
-
 INSTALLED_APPS = (
 
     # Мой УУ, чтоб шаблоны находились, должно быть до DAB
@@ -229,6 +229,12 @@ INSTALLED_APPS = (
 
     # Убрать cdn
     'pvl_static_mtime',
+
+    # Для страницы экспорта
+    'pvl_async',
+
+    # Дерево в адмнике
+    'treebeard',
 
     # django
     'django.contrib.admin',

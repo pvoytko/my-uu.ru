@@ -40,6 +40,23 @@
         </style>
     {% endif %}
 
+    {# Ш-7715 стили для раздела с деревом #}
+    {# С поомщью этих стилей увеличивааем плюс-минусики и делаем подчеркивание #}
+    {# в названии услуги для перехода на карточку #}
+    <style>
+        #container .collapse.expanded{
+            background-size: 200%;
+            background-position: -7px -6px;
+        }
+        #container .collapse.collapsed{
+            background-size: 200%;
+            background-position: -7px -40px;
+        }
+        .field-kpt_name a{
+            text-decoration: underline;
+        }
+    </style>
+
 {% endblock %}
 
 {% block extrahead %}
