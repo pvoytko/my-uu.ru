@@ -35,8 +35,8 @@ def seom_main_menu(context):
             'smm_url': django.core.urlresolvers.reverse('admin:my_uu_uchet_changelist'),
         },
         {
-            'smm_caption': u'Группы категорий',
-            'smm_url': django.core.urlresolvers.reverse('admin:my_uu_categorygroup_changelist'),
+            'smm_caption': u'Категории',
+            'smm_url': django.core.urlresolvers.reverse('admin:my_uu_category_changelist'),
         },
     ]
 

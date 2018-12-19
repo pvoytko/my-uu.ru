@@ -1,10 +1,10 @@
 ﻿projectModule = angular.module('myNgApp',[]);
 
 // Для Angular меняем две фигурные скобки на скобку и бакс (чтоб с шаблонами джанги различаться)
-angular.module('myNgApp').config(function($interpolateProvider) {
-    $interpolateProvider.startSymbol('{$');
-    $interpolateProvider.endSymbol('$}');
-});
+//angular.module('myNgApp').config(function($interpolateProvider) {
+//    $interpolateProvider.startSymbol('{$');
+//    $interpolateProvider.endSymbol('$}');
+//});
 
 
 // Ш-7226 Директива pv-tooltip-directive элемента с тултипом при наведении

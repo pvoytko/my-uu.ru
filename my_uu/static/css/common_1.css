@@ -106,3 +106,93 @@
     cursor: not-allowed;
     color: #b1b1b1;
 }
+
+
+
+/* Ш-126 Этот стиль для того, чтобы бутстрап окно что всплывает */
+/* используется в частности на главной при попытке связаться с прогером неавторизованным юзеромв */
+/* чтобы этот диалог был по центру а не сверху как в обычном бутрстрап 3 */
+.modal {
+    text-align: center;
+    padding: 0!important;
+}
+
+.modal:before {
+    content: '';
+    display: inline-block;
+    height: 100%;
+    vertical-align: middle;
+    margin-right: -4px;
+}
+
+.modal-dialog {
+    display: inline-block;
+    text-align: left;
+    vertical-align: middle;
+}
+
+
+
+/* PVBLOCK: Если ошибка из формы джанго пришла, то красным выделяем поле с ошибкой */
+/* Ш-7606 */
+.isot-error-block{
+    clear: both;
+    display: block;
+    color: red;
+    margin-top: 6px;
+}
+.isot-has-error label {
+    color: red;
+}
+.isot-has-error input.ksea_green_field_border {
+    color: red;
+    border: 1px solid red;
+}
+.isot-has-error textarea.ksea_green_field_border {
+    color: red;
+    border: 1px solid red;
+}
+/* https://stackoverflow.com/a/21924857/1412586 */
+.isot-has-error input.ksea_green_field_border:focus, .isot-has-error textarea.ksea_green_field_border:focus{
+    border-color: inherit;
+    -webkit-box-shadow: 0px 0px 10px #f45b0a;
+    box-shadow: 0px 0px 10px #f45b0a;
+}
+.svir_bs_alert_danger {
+    color: red;
+    background-color: #ffd9d9;
+    border-color: red;
+}
+.svir_bs_alert_success {
+    color: #155724;
+    background-color: #d4edda;
+    border-color: #c3e6cb;
+}
+.svir_bs_alert {
+    padding: 15px;
+    margin-bottom: 20px;
+    border: 1px solid;
+    border-radius: 4px;
+}
+.btn_light_red_loading {
+    background: none;
+    background-color: grey;
+}
+
+/* Ш-7813 Надпись о загрузке в диалоге персонаал */
+.svir_loading_send_button_label{
+    height: 25px;
+    line-height: 25px;
+    vertical-align: middle;
+    padding: 0px 12px;
+    border-radius: 15px;
+    font-size: 100%;
+    color: white;
+    background-color: #26c6da;
+    display: inline-block;
+    text-align: center;
+    display: block;
+    width: 300px;
+    margin: 15px auto;
+}
+/* ENDPVBLOCK */

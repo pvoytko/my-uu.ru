@@ -32,6 +32,10 @@ import pvl_datetime_format.funcs
 import os.path
 import pvl_async.funcs
 
+import pvl_backend_ajax.funcs
+from django.views.decorators.csrf import csrf_exempt
+import annoying.decorators
+
 
 def extractAngularPostData(request, *keys):
     postData = simplejson.loads(request.body)
@@ -264,15 +268,6 @@ def uuAdmLoginRequired(f):
             raise Http404()
     return uuAdmLoginRequiredWrapper
 
-# Декоратор до вызова view сохраняет в журнал событие
-def uuTrackEventDecor(eventConstant):
-    def uuTrackEventDecorImpl(f):
-        def uuTrackEventWrapper(request, *args, **kwargs):
-            # Отслеживаем (сохраняем в журнал) это действие юзера
-            request.user.eventlog_set.create(event2 = eventConstant[0])
-            return f(request, *args, **kwargs)
-        return uuTrackEventWrapper
-    return uuTrackEventDecorImpl
 
 # Сохраняет запись о событии
 def uuTrackEventDynamic(user, eventConstant):
@@ -281,8 +276,7 @@ def uuTrackEventDynamic(user, eventConstant):
 
 # Начало
 @uu_login_required
-@uuTrackEventDecor(my_uu.models.EventLog.EVENT_VISIT_BEGIN)
-@uuRenderWith('lk_beg.html')
+@annoying.decorators.render_to('lk_beg.html')
 def lk_beg(request):
     ms = request.user.manualsteps
     showManualStepsIfNotDisplayedEarler = ms.datetime_subscribe is None and ms.datetime_cancel is None
@@ -303,15 +297,15 @@ def _getAccountBalanceList(request):
     return ll
 
 
+# Список категорий на старнице учета в окне добавления операции - без групп
 def _getCategoryList(request):
-    categoryList = my_uu.models.Category.objects.filter(user=request.user, visible=True)
+    categoryList = my_uu.models.Category.objects.filter(user=request.user, scf_visible=True, scf_is_group=False)
     categoryList = categoryList.order_by('position', 'id')
-    return list(categoryList.values('id', 'name'))
+    return list(categoryList.values('id', 'scf_name'))
 
 
 # Главная страница личного кабиета
 @uu_login_required
-@uuTrackEventDecor(my_uu.models.EventLog.EVENT_VISIT_UCH)
 def lk_uch(request, period = None, account_id = None, category_id = None):
 
     # Определяем надо ли показать юзеру сообщение что нужна оплата, и если надо, отслеживем событие.
@@ -356,7 +350,7 @@ def lk_uch(request, period = None, account_id = None, category_id = None):
         'myum_time',
         'sum',
         'account__name',
-        'category__name',
+        'category__scf_name',
         'comment',
     )
 
@@ -364,7 +358,7 @@ def lk_uch(request, period = None, account_id = None, category_id = None):
         'uchetRecordsJson': json.dumps(list(uchet_records), cls=DjangoJSONEncoder),
         'uTypeList': my_uu.models.UType.objects.all().order_by('id'),
         'accountList': my_uu.models.Account.objects.filter(user=request.user, visible=True).order_by('position', 'id'),
-        'categoryList': my_uu.models.Category.objects.filter(user=request.user, visible=True).order_by('position', 'id'),
+        'categoryList': my_uu.models.Category.objects.filter(user=request.user, scf_visible=True).order_by('position', 'id'),
         'accountBalanceListJson': json.dumps(_getAccountBalanceList(request), cls=DjangoJSONEncoder),
         'categoryListJson': json.dumps(_getCategoryList(request), cls=DjangoJSONEncoder),
         'viewPeriodSetJson': json.dumps(list(my_uu.models.UserProfile.VIEW_PERIOD_CODE_CHOICES) + addFilterPeriodChoices, cls=DjangoJSONEncoder),
@@ -384,7 +378,6 @@ def lk_uch(request, period = None, account_id = None, category_id = None):
 
 # Страница Счета личного кабиета
 @uu_login_required
-@uuTrackEventDecor(my_uu.models.EventLog.EVENT_VISIT_ACCOUNTS)
 def lk_acc(request):
 
 
@@ -405,52 +398,122 @@ def lk_acc(request):
 
 # Страница Категории личного кабиета
 @uu_login_required
-@uuTrackEventDecor(my_uu.models.EventLog.EVENT_VISIT_CATEGORIES)
 def lk_cat(request):
 
     # Получаем счета и категории с указанием количества записей
-    rowsC = my_uu.models.Category.objects.annotate(count = Count('uchet')).order_by('position', 'id')
-    rowsC = rowsC.filter(user=request.user).values(
-        'id',
-        'name',
-        'count',
-        'visible',
-        'lkcm_budget_value',
-        'lkcm_budget_period',
+    # Категории у кого задан родитель - игнорим, т.к. они будут обработаны ниже.
+    user = plogic.getAuthorizedUser(request)
+    user_categories_qs = my_uu.models.Category.objects.filter(
+        user=user,
+    ).annotate(
+        lkcm_count = Count('uchet')
+    ).order_by('position', 'id')
 
-        # дб значение типа категории
-        'lkcm_dohod_rashod_type',
+    categories_list = list(
+        user_categories_qs.filter(
+            scf_parent__isnull=True,
+        )
     )
-    category_list = []
-    for c in rowsC:
-        category_list.append(dict(c))
 
+    result = []
+    while categories_list:
+
+        # Извлекем очередную категорию
+        c = categories_list[0]
+        categories_list = categories_list[1:]
+
+        # Получаем все дочерни категории если есмть
+        childs_list = list(user_categories_qs.filter(scf_parent = c.id))
+        if childs_list:
+            categories_list = childs_list + categories_list
+
+        # Поля из БД читаем
+        dict_cat = {}
+        for f in (
+            'id',
+            'scf_name',
+            'lkcm_count',
+            'scf_visible',
+            'lkcm_budget_value',
+            'lkcm_budget_period',
+            'lkcm_dohod_rashod_type',
+        ):
+            dict_cat[f] = getattr(c, f)
+        result.append(dict_cat)
+
+        # Для группы количество не имеет смысла
+        if c.scf_is_group:
+            dict_cat['lkcm_count'] = '--'
+
+        # бюджет в виде строки
         # Если задана периодичность и значение то выводим
-        if c['lkcm_budget_period'] and c['lkcm_budget_value'] is not None:
-            category_list[-1]['lkc_budget_with_period_str'] = my_uu.plogic.getBudgetStr(
-                c['lkcm_budget_period'], c['lkcm_budget_value']
+        if c.lkcm_budget_period and c.lkcm_budget_value is not None:
+            budget_with_period_str = my_uu.plogic.getBudgetStr(
+                c.lkcm_budget_period, c.lkcm_budget_value
             )
 
-        # Расход или додход которому не задана периодиность или сумма
         else:
-            category_list[-1]['lkc_budget_with_period_str'] = u'не задано'
 
-        # строковое значение типа категории
-        category_list[-1]['lkc_cat_type_str'] = my_uu.plogic.convertChoicesDbValueToDisplayValue(
+            # Для группы не имеет смысла
+            if c.scf_is_group:
+                budget_with_period_str = u'--'
+
+            # Расход или додход которому не задана периодиность или сумма
+            else:
+                budget_with_period_str = u'не задано'
+
+
+        # строковое значение типа категории - расход или доход
+        type_val = result[-1]['lkcm_dohod_rashod_type']
+        type_str = my_uu.plogic.convertChoicesDbValueToDisplayValue(
             my_uu.models.LKCM_DOHOD_RASHOD_TYPE_CHOICES1,
-            category_list[-1]['lkcm_dohod_rashod_type'],
+            type_val,
         )
+        if c.scf_is_group:
+            type_str = u'Группа'
 
+        result[-1].update({
 
-    return render(request, 'lk_cat.html', {
-        'request': request,
+            # бюджет в виде строки
+            'lkc_budget_with_period_str': budget_with_period_str,
 
-        # Перечень категорий
-        'lkc_category_list_json': json.dumps(category_list),
+            # строковое значение типа категории - расход или доход
+            'lkc_cat_type_str': type_str,
 
-        # Варианты периодичности для бюджета категорий, кроме варианта "Все"
-        'lkc_budget_periods_choices_json': json.dumps(my_uu.models.LKCM_BUDGET_PERIOD_CHOICES1)
-    } )
+            # Флаг используется для показа разного окна редактирования - для группы свое
+            'lkc_is_group': c.scf_is_group,
+
+            # Для родительской категории в поле надо выозвращать ID
+            # а не объхект иначе не json свериализейбл
+            # Это используется для редактирования в форме (выбор текущей группыы)
+            # и для передачи обратно на сервер.
+            'scf_parent': c.scf_parent_id,
+
+            # Уровень отступа (для дочерних) - 0, 1, 2 и т.п.
+            # для отображения дерева в списке
+            'scfs_indent': my_uu.plogic.getCategoryIndentLevel(c),
+        })
+
+    # Значения для выпадающего списка групп
+    groups_qs = my_uu.models.Category.objects.filter(user=user, scf_is_group=True).order_by('position', 'id')
+    groups_choices = [ [g.id, g.scf_name] for g in groups_qs ]
+
+    return render(
+        request,
+        'lk_cat.html',
+        {
+            'request': request,
+
+            # Перечень категорий
+            'lkc_category_list_json': json.dumps(result),
+
+            # Варианты периодичности для бюджета категорий, кроме варианта "Все"
+            'lkc_budget_periods_choices_json': json.dumps(my_uu.models.LKCM_BUDGET_PERIOD_CHOICES1),
+
+            # Варианты Групп
+            'acs_group_choices_json': json.dumps(groups_choices),
+        }
+    )
 
 
 # Итератор от самой ранней недели до самой поздней.
@@ -496,7 +559,6 @@ class AnaWeekIterator(object):
 
 # Страница Анализ личного кабиета
 @uu_login_required
-@uuTrackEventDecor(my_uu.models.EventLog.EVENT_VISIT_ANA)
 def lk_ana(request):
 
     type = request.GET.get('lka_type', None)
@@ -1097,11 +1159,11 @@ def ajax_lk_ana(request):
         uchet_qs = uchet_qs.filter(date__gte = data_cur_date)
 
         # Преобразуем к формату словарей
-        uchet_list = uchet_qs.values('date', 'sum', 'category__name').order_by('date')
+        uchet_list = uchet_qs.values('date', 'sum', 'category__scf_name').order_by('date')
 
         # если включена группировка, тогда замена названия категорий на названия групп.
         for u in uchet_list:
-            u['category__name'] = plogic.convertCategoryNameToGroupNameIfGrouping(u['category__name'], is_groups_on)
+            u['category__scf_name'] = plogic.convertCategoryNameToGroupNameIfGrouping(u['category__scf_name'], is_groups_on)
 
         # Добавляем поле месяца для сортировки и группировки по нему
         for u in uchet_list:
@@ -1109,13 +1171,13 @@ def ajax_lk_ana(request):
             del u['date']
 
         # Группируем по полям
-        uchet_list = sortByFields(uchet_list, ['period_value_sort', 'category__name'])
-        uchet_list = groupByFields(uchet_list, ['period_value_sort', 'category__name'], {'sum': lambda a,b: a+b})
+        uchet_list = sortByFields(uchet_list, ['period_value_sort', 'category__scf_name'])
+        uchet_list = groupByFields(uchet_list, ['period_value_sort', 'category__scf_name'], {'sum': lambda a,b: a+b})
 
         # Преобразуем к формату pivotTable
         pivot_table = convertTableDataToPivotDate(
             uchet_list,
-            'category__name',
+            'category__scf_name',
             'period_value_sort',
             'sum',
             colsTotalFunc=lambda ll: sum([l for l in ll if l])
@@ -1141,25 +1203,49 @@ def ajax_lk_ana(request):
         categoryNames = set()
         categoryModelListFiltered1 = []
         for c in categoryModelListAll:
-            c.name = plogic.convertCategoryNameToGroupNameIfGrouping(c.name, is_groups_on)
+            c.name = plogic.convertCategoryNameToGroupNameIfGrouping(c.scf_name, is_groups_on)
 
             # Если уже добавили, то пропускаем
             if c.name in categoryNames:
                 pass
 
             # Если нет данных и невдиима - то пропускаем
-            if c.name not in pivot_table['rows'] and not c.visible:
+            if c.name not in pivot_table['rows'] and not c.scf_visible:
                 pass
 
             # В остальных случаях - добавляем
             else:
-                categoryNames.add(c.name)
+                categoryNames.add(c.scf_name)
                 categoryModelListFiltered1.append(c)
+
+        # Сейчас категории идут в порядке сортировки. А нам надо дочерние поставить под родительскими.
+        # Пример
+        #     до http://pvoytko.ru/jx/9CAgthZ36g
+        #     после http://pvoytko.ru/jx/6d5q3FUQ31
+        # Это делаем в 2 прохода
+        # Сначала по ID всех дочерникх собираем
+        # А потом их добавляем в общее
+        childs_by_id = {}
+        categoryModelListFiltered_root = []
+        for c in categoryModelListFiltered1:
+            par_id = c.scf_parent_id
+            if par_id:
+                if par_id in childs_by_id:
+                    childs_by_id[par_id].append(c)
+                else:
+                    childs_by_id[par_id] = [c]
+            else:
+                categoryModelListFiltered_root.append(c)
+        categoryModelListFiltered_tree = []
+        for c in categoryModelListFiltered_root:
+            categoryModelListFiltered_tree.append(c)
+            if c.id in childs_by_id:
+                categoryModelListFiltered_tree.extend(childs_by_id[c.id])
 
         # Если стоит фильтр по периодичности бюджета, то применяем его
         categoryModelListFiltered2 = []
         if bperiod:
-            for c in categoryModelListFiltered1:
+            for c in categoryModelListFiltered_tree:
                 if bperiod == my_uu.models.LKCM_BUDGET_PERIOD_ALL:
                     categoryModelListFiltered2.append(c)
                 elif c.lkcm_budget_period == bperiod:
@@ -1174,11 +1260,11 @@ def ajax_lk_ana(request):
         uchet_list_cur_filter = []
         allowed_categories = [c.name for c in categoryModelListFiltered2]
         for u in uchet_list:
-            if u['category__name'] in allowed_categories:
+            if u['category__scf_name'] in allowed_categories:
                 uchet_list_cur_filter.append(u)
         pivot_table = convertTableDataToPivotDate(
             uchet_list_cur_filter,
-            'category__name',
+            'category__scf_name',
             'period_value_sort',
             'sum',
             colsTotalFunc=lambda ll: sum([l for l in ll if l]),
@@ -1197,6 +1283,13 @@ def ajax_lk_ana(request):
                 budget_str = u'группировка'
                 budget_val = None
                 budget_year_str = u'группировка'
+                budget_year_val = None
+
+            # Если это группа для нее не имеет смысла
+            elif c.scf_is_group:
+                budget_str = u'--'
+                budget_val = None
+                budget_year_str = u'--'
                 budget_year_val = None
 
             # Для категории не задан бюджет
@@ -1234,6 +1327,11 @@ def ajax_lk_ana(request):
         budget_is_same_period = False
         is_first_iter = True
         for c in categoryModelListFiltered2:
+
+            # Если это группа, то ее пропускаем (не обрабатываем)
+            # Т.к. иначе итогоовые суммы выводятся как -- даже если все категории (без групп) задан бюджет.
+            if c.scf_is_group:
+                continue
 
             # Первая итерация -
             if is_first_iter:
@@ -1299,10 +1397,10 @@ def ajax_lk_ana(request):
         output_list = pageData['dataRows'][anaType + '-' + result_suffix]
         for r in categoryModelListFiltered2:
             output_list.append({
-                'category': r.name,
+                'category': r.scf_name,
                 'lka_category_id': r.id,
                 'lka_cell_data': [getFromDictDictOrEmpty(
-                    pivot_table['values'], r.name, k, '0 р.', periodCode
+                    pivot_table['values'], r.scf_name, k, '0 р.', periodCode
                 ) for k in periods_start_dates],
 
                 # Бюджет по категории за период бюджета
@@ -1312,11 +1410,14 @@ def ajax_lk_ana(request):
                 'lka_budget_year_str': budgets_by_category_id[r.id]['bbci_year_str'],
 
                 # Подсветка серым если категория не видима
-                'lka_is_category_visible': r.visible,
+                'lka_is_category_visible': r.scf_visible,
 
                 # Цвет для итогового бюджета
                 'bcbci_color': budget_colors_by_category_id[r.id]['bcbci_color'],
                 'bcbci_year_color': budget_colors_by_category_id[r.id]['bcbci_year_color'],
+
+                # Отступ
+                'bcbci_indent': my_uu.plogic.getCategoryIndentLevel(r),
             })
 
 
@@ -1455,7 +1556,6 @@ def ajax_lk_ana(request):
 
 # Страница экспорта
 @uu_login_required
-@uuTrackEventDecor(my_uu.models.EventLog.EVENT_VISIT_EXP)
 def lk_exp(request):
 
     # Нажата кнопка выполнения - выполням команду
@@ -1519,7 +1619,6 @@ def lk_exp(request):
 
 # Экспорт данных
 @uu_login_required
-@uuTrackEventDecor(my_uu.models.EventLog.EVENT_EXP)
 def lk_exp_csv(request):
 
     # получяа модель, воврает строку (одну)
@@ -1582,7 +1681,7 @@ class JsonResponseWithStatusOk(HttpResponse):
 
 # Сохранить данные учета (через Аякс вызывается)
 @uu_login_required
-def lk_save_uchet_ajax(request):
+def ajax_lk_save_uchet(request):
 
     # Делаем проверку, если нужно оплатить, значит не даем сохранять запись.
     # По идее мы должны разрешать изменять, но тогда может возникнуть хак что юзер будет вносить записи
@@ -1606,7 +1705,7 @@ def lk_save_uchet_ajax(request):
 
         # Шаг №1 - заменить названия счетов и категорий на их id в БД
         rowDbData['account'] = my_uu.models.Account.objects.get(name=r['account'], user=request.user)
-        rowDbData['category'] = my_uu.models.Category.objects.get(name=r['category'], user=request.user)
+        rowDbData['category'] = my_uu.models.Category.objects.get(scf_name=r['category'], user=request.user)
         rowDbData['utype'] = my_uu.models.UType.objects.get(name=r['utype'])
         rowDbData['date'] = datetime.datetime.strptime(r['date'], '%d.%m.%Y')
         rowDbData['user'] = request.user
@@ -1655,8 +1754,7 @@ def lk_save_uchet_ajax(request):
 
 # Удалить строку учета (через Аякс вызывается)
 @uu_login_required
-@uuTrackEventDecor(my_uu.models.EventLog.EVENT_DEL_UCH)
-def lk_delete_uchet_ajax(request):
+def ajax_lk_delete_uchet(request):
     rowForDelete = json.loads(request.POST['rowForDelete'])
     rowId = rowForDelete['serverRowId']
     my_uu.models.Uchet.objects.get(id= rowId).delete()
@@ -1665,20 +1763,6 @@ def lk_delete_uchet_ajax(request):
 
 class MyUUUIException(BaseException):
     pass
-
-
-class AccountNameValidationError(MyUUUIException):
-    def __init__(self, errText):
-        super(AccountNameValidationError, self).__init__(
-            u"Не удалось сохранить изменения. " + errText
-        )
-
-
-class AccountMustBeZeroError(MyUUUIException):
-    def __init__(self, errText):
-        super(AccountMustBeZeroError, self).__init__(
-            errText
-        )
 
 
 class DeleteAccountWithUchetRecordsException(MyUUUIException):
@@ -1781,7 +1865,7 @@ def _lk_delete_settings_ajax(request, isAccount, eventConstant):
 
 
 @uu_login_required
-def lk_save_account_ajax(request):
+def ajax_lk_save_account(request):
 
     def rowGetter(id):
         rowsA = my_uu.models.Account.objects.annotate(count = Count('uchet'), balance_current = Sum('uchet__sum')).order_by('position', 'id')
@@ -1803,17 +1887,144 @@ def _lk_save_accounts_or_category_position(request, objMgr, eventConstant):
     return JsonResponseWithStatusOk()
 
 @uu_login_required
-def lk_delete_account_ajax(request):
+def ajax_lk_delete_account(request):
     return _lk_delete_settings_ajax(request, True, my_uu.models.EventLog.EVENT_DEL_ACC)
 
 @uu_login_required
-def lk_save_accounts_order_ajax(request):
+def ajax_lk_save_accounts_order(request):
     return _lk_save_accounts_or_category_position(request, request.user.account_set, my_uu.models.EventLog.EVENT_REORDER_ACCOUNTS)
 
 
 # Вызвыается при сохранении категории со страницы категорий
 @uu_login_required
-def lk_save_category_ajax(request):
+@annoying.decorators.ajax_request
+def ajax_lk_save_category(request):
+
+    js_model, = pvl_backend_ajax.funcs.extractAngularPostData(request, 'lsca_model')
+    user = plogic.getAuthorizedUser(request)
+
+    # класс джанго-формы для валидации формы
+    class SaveCategoryForm(django.forms.Form):
+        lkcm_dohod_rashod_type = django.forms.CharField(
+            max_length=255,
+        )
+        scf_parent = django.forms.ModelChoiceField(
+            required=False,
+            queryset=my_uu.models.Category.objects.filter(user=user, scf_is_group=True),
+        )
+        scf_name = django.forms.CharField(
+            max_length=255,
+        )
+        scf_visible = django.forms.CharField(
+            max_length=255,
+        )
+        lkcm_budget_period = django.forms.CharField(
+            max_length=255,
+        )
+        lkcm_budget_value = django.forms.IntegerField(
+            min_value=0
+        )
+
+    class SaveGroupForm(django.forms.Form):
+        lkcm_dohod_rashod_type = django.forms.CharField(
+            max_length=255,
+        )
+        scf_name = django.forms.CharField(
+            max_length=255,
+        )
+
+    # Проверка того что пришло с сервера
+    is_group = js_model['lkcm_cdc_type'] == 'CDC_TYPE_GROUP'
+    if is_group:
+        frm = SaveGroupForm(js_model)
+    else:
+        frm = SaveCategoryForm(js_model)
+
+    # Пришло корректное
+    if frm.is_valid():
+
+        # Получаем объект из БД
+        is_new = 'id' not in js_model
+        if is_new:
+            if is_group:
+                obj = my_uu.models.Category()
+                obj.user = user
+                obj.scf_is_group = True
+            else:
+                obj = my_uu.models.Category()
+                obj.user = user
+                obj.scf_is_group = False
+        else:
+            obj = my_uu.models.Category.objects.get(id=js_model['id'], user=user)
+
+        # Заполняем его данными и сохраняем
+        for k in js_model.keys():
+
+            # cleaned_data важно использвоать т.к. форма поле "родителя" преобразовывает к модели
+            # если же использовать js_model там айдшиник а не модель
+            # и тогда при сохранении категории (из фронта приходит ID и при попытке записать его в
+            # scf_parent возникает ошибка.
+            # т.к. на вход приходят поля которых и нет в форме - их пропускаем иначе ошибка что клоюч не найден.
+            if k in frm.cleaned_data:
+                setattr(obj, k, frm.cleaned_data[k])
+
+        err = None
+        frm_errors = pvl_backend_ajax.funcs.getDjangoFormErrorsAsDict(frm)
+        try:
+
+            obj.full_clean()
+            obj.save()
+
+        # Если исключение в поле name, то такой вид исключений обрабатываем переделываем в наш вид
+        # который мы умеем обрабатывать.
+        except django.core.exceptions.ValidationError, e:
+
+            # Тест что это u'Category с таким User и Name уже существует.'
+            if len(e.message_dict.values()) == 1:
+
+                # пример текста в этом метсе - http://pvoytko.ru/jx/P2sgMOFGBA
+                m = e.message_dict.values()[0][0]
+                wordSet = [my_uu.models.Category.__name__, 'User', 'name']
+                if all([word in m for word in wordSet]):
+                    err = u"{0} \"{1}\" уже существует. Введите другое название (уникальное).".format(u'Категория', obj.scf_name)
+                    return my_uu.plogic.getAjaxStatusOkErrorFormError(
+                        frm_errors,
+                        "lsca_django_form_errors",
+                        "scf_name",
+                        err
+                    )
+
+            # Тест что это ошибка "Баланс не равен нулю"
+            elif len(e.message_dict.values()) == 1:
+                m = e.message_dict.values()[0][0]
+                if m == u'MUST_BE_ZERO':
+                    err = u'Текущий остаток скрываемого счета должен быть равен нулю перед скрытием. Скорректируйте остаток счета одним из способов прежде чем скрывать его и повторите попытку скрыть счет.'
+                    return my_uu.plogic.getAjaxStatusOkErrorFormError(
+                        frm_errors,
+                        "lsca_django_form_errors",
+                        "scf_name",
+                        err
+                    )
+
+            else:
+                raise
+
+        if err:
+            return pvl_backend_ajax.funcs.ajaxStatusOkError(
+                lsca_django_form_errors = frm_errors
+            )
+
+        # Возвращаем сохраненную категорию (группу)
+        return pvl_backend_ajax.funcs.ajaxStatusOkSuccess(
+            lscas_category = {}
+        )
+
+    # Пришло незаполнены поля
+    else:
+        return pvl_backend_ajax.funcs.ajaxStatusOkError(
+            lsca_django_form_errors = pvl_backend_ajax.funcs.getDjangoFormErrorsAsDict(frm)
+        )
+
     def rowGetter(id):
         rowsC = my_uu.models.Category.objects.annotate(count = Count('uchet'))
         rowsC = rowsC.filter(user=request.user, id=id).values('id', 'name', 'count', 'visible')
@@ -1829,9 +2040,66 @@ def lk_save_category_ajax(request):
         rowGetter,
     )
 
+
+# Удаляем категорию или группу
 @uu_login_required
-def lk_delete_category_ajax(request):
-    return _lk_delete_settings_ajax(request, False, my_uu.models.EventLog.EVENT_DEL_CAT)
+@annoying.decorators.ajax_request
+def ajax_lk_delete_category(request):
+
+    # класс джанго-формы для валидации формы
+    class DeleteCategoryForm(django.forms.Form):
+        pass
+    frm = DeleteCategoryForm()
+    frm_errors = pvl_backend_ajax.funcs.getDjangoFormErrorsAsDict(frm)
+
+
+    mgr = request.user.category_set
+    accountData = json.loads(request.body)['lsca_model']
+    a = mgr.get(id = accountData['id'])
+
+
+    # Нельзя удалять ккатегорию если у нее есть операции
+    # Нельзя удалять ккатегорию если она последняя
+    # Нельзя удалять группу если у нее есть дети
+    # Во всех этих случаях выдаем ошибку уровня формы
+
+
+    # Нельзя удалять если есть связанные записи учета
+    if a.uchet_set.count() != 0:
+        err = u"Есть операции учета где используется эта категория. Удалить можно только такую категорию, с которой не связано ни одной операции учета."
+        return my_uu.plogic.getAjaxStatusOkErrorFormError(
+            frm_errors,
+            "aldc_django_form_errors",
+            None,
+            err
+        )
+
+    # Нельзя удалять если это последний счет (категория).
+    # Так как в этом случае заглючит таблица учета в которой ни одного счета ни одной категории.
+    if mgr.count() == 1:
+        err = u"Нельзя удалить последнюю категорию. Должна оставаться хотя бы одна категория."
+        return my_uu.plogic.getAjaxStatusOkErrorFormError(
+            frm_errors,
+            "aldc_django_form_errors",
+            None,
+            err
+        )
+
+    # Нельзя удалять группу если у нее есть дети
+    if mgr.filter(scf_parent = a.id).exists():
+        err = u"Нельзя удалять группу если у нее есть дочерние категории. Сперва удалите категории."
+        return my_uu.plogic.getAjaxStatusOkErrorFormError(
+            frm_errors,
+            "aldc_django_form_errors",
+            None,
+            err
+        )
+
+    a.delete()
+
+    # Возвращаем OK
+    return pvl_backend_ajax.funcs.ajaxStatusOkSuccess()
+
 
 @uu_login_required
 def lk_save_categories_order_ajax(request):
@@ -1959,7 +2227,6 @@ def feedback_request_ajax(request):
 
 # Страница оплаты
 @uu_login_required
-@uuTrackEventDecor(my_uu.models.EventLog.EVENT_VISIT_PAY)
 def lk_pay(request):
     return render(request, 'lk_pay.html', {
         'payModeDescription': request.user.userprofile.getPayModeDescription(),
@@ -2066,7 +2333,6 @@ def getPaymentGatewayInitPayUrl(userEmail, cost, invId):
 # для оплаты выбранного им периода работы сервиса. УРЛ содержит параметры которые должен передать магазин
 # платежному шлюзу. Все эти параметры вычисляются в этом методе на сервере.
 @uu_login_required
-@uuTrackEventDecor(my_uu.models.EventLog.EVENT_DO_ORDER)
 def do_order_ajax(request):
 
     periodCode = json.loads(request.body)['period']
@@ -2124,8 +2390,7 @@ def adm_upay(request):
 
 # Страница оплаты
 @uu_login_required
-@uuTrackEventDecor(my_uu.models.EventLog.EVENT_SAVE_MANUAL_ANSWER)
-def lk_save_manual_answer_ajax(request):
+def ajax_lk_save_manual_answer(request):
     boolYes = json.loads(request.body)
 
     # Сохраняем ответ в БД

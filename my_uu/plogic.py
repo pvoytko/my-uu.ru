@@ -11,6 +11,7 @@ import pvl_async.funcs
 import io
 import xlsxwriter
 import datetime
+import pvl_backend_ajax.funcs
 from django.conf import settings
 
 
@@ -605,3 +606,20 @@ def getExportExcelFileForUser(user_model):
     fname = u'{}.xls'.format(user_model.id)
     res = os.path.join(settings.MEDIA_ROOT, 'lk_exp_files', fname)
     return res
+
+
+# Упрощает возврат кода ошибки
+def getAjaxStatusOkErrorFormError(form_errors, res_name, field_name, error_text):
+    if field_name:
+        form_errors['field_errors'][field_name] = [error_text]
+    else:
+        form_errors['non_field_errors'] = [error_text]
+
+    return pvl_backend_ajax.funcs.ajaxStatusOkError(
+        **{res_name: form_errors}
+    )
+
+
+# Используется на странице категорий и анализа
+def getCategoryIndentLevel(c):
+    return 1 if c.scf_parent_id else 0

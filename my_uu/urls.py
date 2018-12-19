@@ -27,8 +27,8 @@ urlpatterns = [
     # Личный кабинет учет
     url(r'^lk/$', my_uu.views.lk_uch, name='lk_uch_url'),
     url(r'^lk/(?P<period>[^/]+)/(?P<account_id>[^/]+)/(?P<category_id>[^/]+)/$', my_uu.views.lk_uch),
-    url(r'^lk/save_uchet_ajax/$', my_uu.views.lk_save_uchet_ajax),
-    url(r'^lk/delete_uchet_ajax/$', my_uu.views.lk_delete_uchet_ajax),
+    url(r'^lk/ajax_save_uchet/$', my_uu.views.ajax_lk_save_uchet, name='ajax_save_uchet_url'),
+    url(r'^lk/ajax_delete_uchet/$', my_uu.views.ajax_lk_delete_uchet, name='ajax_lk_delete_uchet_url'),
 
     # Личный кабинет анализ
     url(r'^lk/ana/$', my_uu.views.lk_ana),
@@ -37,12 +37,12 @@ urlpatterns = [
     # Личный кабинет счета и категории
     url(r'^lk/acc/$', my_uu.views.lk_acc),
     url(r'^lk/cat/$', my_uu.views.lk_cat),
-    url(r'^lk/save_account_ajax/$', my_uu.views.lk_save_account_ajax),
-    url(r'^lk/delete_account_ajax/$', my_uu.views.lk_delete_account_ajax),
-    url(r'^lk/save_accounts_order_ajax/$', my_uu.views.lk_save_accounts_order_ajax),
-    url(r'^lk/save_category_ajax/$', my_uu.views.lk_save_category_ajax),
-    url(r'^lk/delete_category_ajax/$', my_uu.views.lk_delete_category_ajax),
-    url(r'^lk/save_categories_order_ajax/$', my_uu.views.lk_save_categories_order_ajax),
+    url(r'^lk/ajax_save_account/$', my_uu.views.ajax_lk_save_account, name='ajax_lk_save_account_url'),
+    url(r'^lk/ajax_delete_account/$', my_uu.views.ajax_lk_delete_account, name='ajax_lk_delete_account_url'),
+    url(r'^lk/ajax_save_accounts_order/$', my_uu.views.ajax_lk_save_accounts_order, name='ajax_lk_save_accounts_order_url'),
+    url(r'^lk/ajax_save_category/$', my_uu.views.ajax_lk_save_category, name='ajax_save_category_url'),
+    url(r'^lk/ajax_delete_category/$', my_uu.views.ajax_lk_delete_category, name='ajax_lk_delete_category_url'),
+    url(r'^lk/ajax_save_categories_order/$', my_uu.views.lk_save_categories_order_ajax, name='lk_save_categories_order_ajax_url'),
 
     # Личный кабинет импорт
     # url(r'^lk/imp/$', 'my_uu.views.lk_imp'),
@@ -53,13 +53,13 @@ urlpatterns = [
     url(r'^lk/exp_csv/$', my_uu.views.lk_exp_csv),
 
     # Личный кабинет оплата (инфо об оплате, и страница возврата после оплаты и страница отмены и страница уведомления)
-    url(r'^lk/pay/$', my_uu.views.lk_pay),
+    url(r'^lk/pay/$', my_uu.views.lk_pay, name='lk_pay_url'),
     url(r'^robokassa_result_url/$', my_uu.views.robokassa_result_url),
     url(r'^zpayment_result_url/$', my_uu.views.zpayment_result_url),
     url(r'^do_order_ajax/$', my_uu.views.do_order_ajax),
 
     # Личный кабинет руководство
-    url(r'^lk/lk_save_manual_answer_ajax/$', my_uu.views.lk_save_manual_answer_ajax),
+    url(r'^lk/ajax_lk_save_manual_answer/$', my_uu.views.ajax_lk_save_manual_answer, name='ajax_lk_save_manual_answer_url'),
 
     # Административная часть (Павел Войтко)
     url(r'^adm/act/$', my_uu.views.adm_act),

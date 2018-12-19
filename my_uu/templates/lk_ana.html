@@ -270,7 +270,7 @@
                             ng-class="{ 'active': ac_budget_period == p[0] }"
                             ng-click="acGoToAnaUrl(undefined, undefined, undefined, p[0] )"
                             >
-                        {$ p[1] $}
+                        {% ng p[1] %}
                     </button>
 
                 </div>
@@ -297,7 +297,7 @@
                                 <th
                                         style="background-color: #f0f0f0; text-align: center; height: 75px; vertical-align: top; border-top: 1px solid #ddd; width: 200px;"
                                         >
-                                    {$ getCatCaption() $}
+                                    {% ng getCatCaption() %}
                                 </th>
 
                                 {# Отступ #}
@@ -320,7 +320,7 @@
                                         style="background-color: #f0f0f0; width: 101px; text-align: center; height: 75px; vertical-align: top; border-top: 1px solid #ddd;"
                                         ng-repeat="p in getPeriods()"
                                         >
-                                    {$ p.first $}<br /><span style="font-weight: normal;">{$ p.second $}</span>
+                                    {% ng p.first %}<br /><span style="font-weight: normal;">{% ng p.second %}</span>
                                 </th>
 
                                 {# Отступ #}
@@ -354,13 +354,13 @@
                             <tr ng-repeat="row in getDataRowList()">
                                 <td style="background-color: #f0f0f0; ">
                                     <div
-                                            style="text-overflow: ellipsis; white-space: nowrap; overflow: hidden; width: 200px;"
+                                            style="text-overflow: ellipsis; white-space: nowrap; overflow: hidden; width: 200px; margin-left: {% ng row.bcbci_indent ? '40px' : '0px' %} "
                                             pv-tooltip-directive='row.category'
 
                                             {# Если категория не видима то подсветка цветом #}
                                             ng-style="{'color': row.lka_is_category_visible ? 'auto' : '#dddddd'}"
                                             >
-                                        {$ row.category $}
+                                        {% ng row.category %}
                                     </div>
                                 </td>
 
@@ -370,7 +370,7 @@
 
                                 <td ng-repeat="i in row.lka_cell_data track by $index" style="text-align: right;">
                                     <a
-                                            href="/lk/{$ i.lka_cell_period $}/None/{$ row.lka_category_id $}/"
+                                            href="/lk/{% ng i.lka_cell_period %}/None/{% ng row.lka_category_id %}/"
                                             class="lka_sum_link"
 
                                             {# Проход к учету возможен только без группировки #}
@@ -378,7 +378,7 @@
                                                 onclick="alert('Включена группировка. Переход к учету при клике на сумму возможен только при отключенной группировке. Отключите группировку, пожалуйста, и повторите попытку.'); return false;"
                                             {% endif %}
                                             >
-                                        {$ i.lka_cell_val $}
+                                        {% ng i.lka_cell_val %}
                                     </a>
                                 </td>
 
@@ -386,17 +386,17 @@
                                 <td style="border: none;">
                                 </td>
 
-                                <td style="text-align: left;" class="{$ row.bcbci_color $}">
-                                    {$ row.lka_budget_str $}
+                                <td style="text-align: left;" class="{% ng row.bcbci_color %}">
+                                    {% ng row.lka_budget_str %}
                                 </td>
-                                <td style="text-align: left;" class="{$ row.bcbci_year_color $}">
-                                    {$ row.lka_budget_year_str $}
+                                <td style="text-align: left;" class="{% ng row.bcbci_year_color %}">
+                                    {% ng row.lka_budget_year_str %}
                                 </td>
 
                             </tr>
                             <tr>
                                 <td style="background-color: #f0f0f0; font-weight: bold; text-align: right;">
-                                    <span>{$ getTotCaption() $}</span>
+                                    <span>{% ng getTotCaption() %}</span>
                                 </td>
 
                                 <td style="border: none;">
@@ -406,7 +406,7 @@
                                         ng-repeat="i in getTotalRow() track by $index"
                                         style="background-color: #f0f0f0; text-align: right; font-weight: bold;"
                                         >
-                                    {$ i $}
+                                    {% ng i %}
                                 </td>
 
                                 <td style="border: none;">
@@ -414,10 +414,10 @@
 
                                 {# Итоговая сумма по всей таблице #}
                                 <td style="background-color: #f0f0f0; text-align: left; font-weight: bold;">
-                                    {$ getSimplePageData().pa_budget_summ $}
+                                    {% ng getSimplePageData().pa_budget_summ %}
                                 </td>
                                 <td style="background-color: #f0f0f0; text-align: left; font-weight: bold;">
-                                    {$ getSimplePageData().pa_budget_year_summ $}
+                                    {% ng getSimplePageData().pa_budget_year_summ %}
                                 </td>
 
                             </tr>
@@ -429,7 +429,7 @@
                                 <td style="border: none;"></td>
                                 <td style="border: none;"></td>
                                 <td style="background-color: #f0f0f0; text-align: left; font-weight: bold;">
-                                    {$ getSimplePageData().pa_budget_quart_summ $}
+                                    {% ng getSimplePageData().pa_budget_quart_summ %}
                                 </td>
                             </tr>
                             <tr>
@@ -438,7 +438,7 @@
                                 <td style="border: none;"></td>
                                 <td style="border: none;"></td>
                                 <td style="background-color: #f0f0f0; text-align: left; font-weight: bold;">
-                                    {$ getSimplePageData().pa_budget_month_summ $}
+                                    {% ng getSimplePageData().pa_budget_month_summ %}
                                 </td>
                             </tr>
                             <tr>
@@ -447,7 +447,7 @@
                                 <td style="border: none;"></td>
                                 <td style="border: none;"></td>
                                 <td style="background-color: #f0f0f0; text-align: left; font-weight: bold;">
-                                    {$ getSimplePageData().pa_budget_week_summ $}
+                                    {% ng getSimplePageData().pa_budget_week_summ %}
                                 </td>
                             </tr>
                             <tr>
@@ -456,7 +456,7 @@
                                 <td style="border: none;"></td>
                                 <td style="border: none;"></td>
                                 <td style="background-color: #f0f0f0; text-align: left; font-weight: bold;">
-                                    {$ getSimplePageData().pa_budget_day_summ $}
+                                    {% ng getSimplePageData().pa_budget_day_summ %}
                                 </td>
                             </tr>
 

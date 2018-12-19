@@ -80,15 +80,15 @@
                     hdr: 'Счета',
                     id: 'accountList',
                     list: $scope.accountList,
-                    saveUrl: '{% url "my_uu.views.lk_save_account_ajax" %}',
-                    deleteUrl: '{% url "my_uu.views.lk_delete_account_ajax" %}'
+                    saveUrl: '{% url "ajax_lk_save_account_url" %}',
+                    deleteUrl: '{% url "ajax_lk_delete_account_url" %}'
                 },
                 {
                     hdr: 'Категории',
                     id: 'categoryList',
                     list: $scope.categoryList,
-                    saveUrl: '{% url "my_uu.views.lk_save_category_ajax" %}',
-                    deleteUrl: '{% url "my_uu.views.lk_delete_category_ajax" %}'
+                    saveUrl: '{% url "ajax_save_category_url" %}',
+                    deleteUrl: '{% url "ajax_lk_delete_category_url" %}'
                 }
             ];
 

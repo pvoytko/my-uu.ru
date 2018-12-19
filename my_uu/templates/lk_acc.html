@@ -1,5 +1,9 @@
 {% extends 'lk_base.html' %}
 
+
+{% load pvl_angular %}
+
+
 {% block add_to_head %}
 
     <!-- Перетаскивание строк таблицы -->
@@ -101,7 +105,7 @@
                 // Шлем на сервер
                 httpObj = $http({
                     method: 'POST',
-                    url: '{% url "my_uu.views.lk_save_account_ajax" %}',
+                    url: '{% url "ajax_lk_save_account_url" %}',
                     data: JSON.stringify($scope.model),
                     cache: false,
                     timeout: 15000
@@ -190,7 +194,7 @@
                 $timeout(function(){
                     uuInitTableDragAndDrop(
                         "#table-1",
-                        "{% url 'my_uu.views.lk_save_accounts_order_ajax' %}",
+                        "{% url 'ajax_lk_save_accounts_order_url' %}",
                         'Новый порядок счетов не сохранен.'
                     );
                 });
@@ -298,14 +302,14 @@
                             ng-repeat="a in accountList"
                             ng-if="a.visible || lkc_is_show_hided"
                             ng-class="{ 'row_not_visible': !a.visible }"
-                            id="{$ a.id $}"
+                            id="{% ng a.id %}"
                             >
                         <td class="move_panel" title="Потяните, чтобы изменить порядок"><div>↕</div></td>
-                        <td class="ellipsis">{$ a.name $}</td>
-                        <td style="text-align: center;">{$ display(a).balanceStart $}</td>
-                        <td style="text-align: center;">{$ display(a).opCount $}</td>
-                        <td style="text-align: center;">{$ display(a).balanceCurrent $}</td>
-                        <td style="text-align: center;">{$ display(a).visible $}</td>
+                        <td class="ellipsis">{% ng a.name %}</td>
+                        <td style="text-align: center;">{% ng display(a).balanceStart %}</td>
+                        <td style="text-align: center;">{% ng display(a).opCount %}</td>
+                        <td style="text-align: center;">{% ng display(a).balanceCurrent %}</td>
+                        <td style="text-align: center;">{% ng display(a).visible %}</td>
                         <td style="cursor: default;"><span ng-click="changeDlg(a)" class="dotted_link">изменить</span></td>
                     </tr>
                 </tbody>

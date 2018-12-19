@@ -1,5 +1,9 @@
 {% extends 'lk_base.html' %}
 
+
+{% load pvl_angular %}
+
+
 {% block add_to_head %}
 
     <!-- Перетаскивание строк таблицы -->
@@ -18,131 +22,116 @@
         angular.module('myNgApp').controller('ChangeDlgCtrl', function($scope, $element, $http){
 
             // Вызывается из другого контроллера для показа диалога
-            $scope.showForChange = function(resultHolderObject, resultHolderArray){
-                $scope._init('Изменить категорию', resultHolderObject, resultHolderArray);
+            $scope.showForChangeCategory = function(resultHolderObject, resultHolderArray){
+                $scope._init('Изменить категорию', resultHolderObject, resultHolderArray, 'CDC_TYPE_CATEGORY');
             }
-            $scope.showForAdd = function(resultHolderArray){
-                $scope._init('Добавить категорию', null, resultHolderArray);
+            $scope.showForChangeGroup = function(resultHolderObject, resultHolderArray){
+                $scope._init('Изменить группу', resultHolderObject, resultHolderArray, 'CDC_TYPE_GROUP');
             }
-            $scope._init = function(capt, resultHolderObject, resultHolderArray){
+            $scope.showForAddCategory = function(resultHolderArray){
+                $scope._init('Добавить категорию', null, resultHolderArray, 'CDC_TYPE_CATEGORY');
+            }
+            $scope.showForAddGroup = function(resultHolderArray){
+                $scope._init('Добавить группу', null, resultHolderArray, 'CDC_TYPE_GROUP');
+            }
+            $scope._init = function(capt, resultHolderObject, resultHolderArray, cdc_type){
 
-                // Показываем JQuery диалог
-                $($element).dialog({
-                    modal: true,
-                    width: 590,
-                    resizable: false,
-                    title: capt,
-                    dialogClass: "change-dlg"
-                });
-                $($element).parent().find(".ui-dialog-titlebar-close").html("<span style='position: relative; top: -3px;'>&times;</span>");
+                // Тип окна - правим категорию или группу
+                $scope.cdc_header = capt;
+                $scope.cdc_type = cdc_type;
 
-                // Состояние диалога
-                $scope.loading = false;
-                $scope.errorText = "";
+                // Показываем диалог
+                $('#myuu_change_category_dlg_id').modal();
 
                 // В диалоге редачим копию модели а не саму модель
                 $scope.lkcat_model = {
 
                     // В диалоге добавления для новых категорий - по дефолту - видима категория
-                    visible: true,
+                    'scf_visible': true,
 
                     // В диалоге добавления для новых категорий - по дефолту - тип - расход
-                    lkcm_dohod_rashod_type: "LKCM_DOHOD_RASHOD_TYPE_RASHOD"
+                    'lkcm_dohod_rashod_type': "LKCM_DOHOD_RASHOD_TYPE_RASHOD",
+
+                    // Тип - группа или категория
+                    'lkcm_cdc_type': $scope.cdc_type
 
                 };
                 if (resultHolderObject){
-                    $scope.lkcat_model = jQuery.extend({}, resultHolderObject);
+                    $scope.lkcat_model = jQuery.extend($scope.lkcat_model, resultHolderObject);
                 }
 
                 // Сохраняем либо ссылку на исходную модель либо на массив в который аппендим.
                 // Сюда мы поместим отредаченную модель при закрытии диалога.
                 $scope.resultHolderObject = resultHolderObject;
                 $scope.resultHolderArray = resultHolderArray;
+
+                {# Класс для работы с ошибками из-под джанго-формы #}
+                $scope.cdc_dj_errors = new PvlDjangoFormErrors();
             };
 
             // Вызывается из этого контроллера для удаления на сервер значений из диалога и закрытия при успехе
-            $scope.deleteOnServerAndClose = function(){
-                $scope.loading = true;
-                $scope.errorText = "";
+            $scope.lkcDeleteOnServerAndClose = function(){
 
                 // Шлем на сервер
-                httpObj = $http({
-                    method: 'POST',
-                    url: '{% url "my_uu.views.lk_delete_category_ajax" %}',
-                    data: JSON.stringify($scope.lkcat_model),
-                    cache: false,
-                    timeout: 15000
-                }).then(
-                    function(data, status){
-                        var data = data.data;
-                        $scope.loading = false;
-                        if (data.status == "ok"){
-
-                            $scope.resultHolderArray.splice($scope.resultHolderArray.indexOf($scope.resultHolderObject), 1);
-                            $scope.close();
-                        }
-                        else {
-                            $scope.errorText = data.text;
-                        }
+                backendAjaxPostStatu2({
+                    baps_http: $http,
+                    baps_ajax_url: '{% url "ajax_lk_delete_category_url" %}',
+                    baps_dj_errors: $scope.cdc_dj_errors,
+                    baps_response_dj_errors_field: "aldc_django_form_errors",
+                    baps_loading_status: [$scope, 'cdcs_loading'],
+                    baps_post_parameters: {
+                        'lsca_model': $scope.lkcat_model
                     },
-                    function(data, status){
-                        $scope.loading = false;
-                        uuAngReqFail('Удалить категорию не удалось.');
+                    baps_success_callback: function(server_response){
+
+                        $scope.resultHolderArray.splice($scope.resultHolderArray.indexOf($scope.resultHolderObject), 1);
+                        $scope.cdcClose();
+
                     }
-                );
+                });
 
             }
 
             // Вызывается из этого контроллера для сохранения на сервер значений из диалога и закрытия при успехе
-            $scope.updateOnServerAndClose = function(){
-                $scope.loading = true;
-                $scope.errorText = "";
+            $scope.lkcUpdateOnServerAndClose = function(){
 
-                // Шлем на сервер
-                httpObj = $http({
-                    method: 'POST',
-                    url: '{% url "my_uu.views.lk_save_category_ajax" %}',
-                    data: JSON.stringify($scope.lkcat_model),
-                    cache: false,
-                    timeout: 15000
-                }).then(
-                    function(data, status){
-                        var data = data.data;
-                        $scope.loading = false;
-                        if (data.status == "ok"){
-
-                            // Сохраняем модель из диалога в модель что была в странице
-                            $scope.lkcat_model = data.data;
-                            if ($scope.resultHolderObject){
-                                for (var attr in $scope.resultHolderObject) {
-                                    $scope.resultHolderObject[attr] = $scope.lkcat_model[attr];
-                                };
-                            } else {
-                                $scope.resultHolderArray.push($scope.lkcat_model);
-                            };
-
-                            // Закрываем диалог
-                            $scope.close();
-
-                        }
-                        else {
-                            $scope.errorText = data.text;
-                        }
+                // Ш-140
+                backendAjaxPostStatu2({
+                    baps_http: $http,
+                    baps_ajax_url: '{% url "ajax_save_category_url" %}',
+                    baps_dj_errors: $scope.cdc_dj_errors,
+                    baps_response_dj_errors_field: "lsca_django_form_errors",
+                    baps_loading_status: [$scope, 'cdcs_loading'],
+                    baps_post_parameters: {
+                        'lsca_model': $scope.lkcat_model
                     },
-                    function(data, status){
-                        $scope.loading = false;
-                        uuAngReqFail('Сохранить изменения категории не удалось.');
+                    baps_success_callback: function(server_response){
+
+                        // Сохраняем модель из диалога в модель что была в странице
+                        $scope.lkcat_model = server_response.lscas_category;
+                        if ($scope.resultHolderObject){
+                            for (var attr in $scope.resultHolderObject) {
+                                $scope.resultHolderObject[attr] = $scope.lkcat_model[attr];
+                            };
+                        } else {
+                            $scope.resultHolderArray.push($scope.lkcat_model);
+                        };
+
+                        // Закрываем диалог
+                        $scope.cdcClose();
                     }
-                );
+                });
+
             };
 
             // Закрытие диалога по кнопке "Отмена" а также после сохранения на сервере.
-            $scope.close = function(){
-                $($element).dialog('close');
+            $scope.cdcClose = function(){
+                $($element).modal('toggle');
             }
 
             // Периоды для бюдждетов
             $scope.ac_choices_list = {{ lkc_budget_periods_choices_json|safe }};
+            $scope.ac_group_choices = {{ acs_group_choices_json|safe }};
 
         });
     </script>
@@ -239,20 +228,29 @@
             // Форматирование счета для отображения в листинге
             $scope.acGetDisplayInfo = function(account){
                 var res = {}
-                res.opCount = account.count;
-                res.visible = (account.visible) ? 'да': 'нет';
+                res.opCount = account.lkcm_count;
+                res.gdi_visible = (account.scf_visible) ? 'да': 'нет';
                 res.agd_budget = account.lkc_budget_with_period_str;
                 return res;
             }
 
             // Показать диалог изменения
             $scope.changeDlg = function(item){
-                $( "#change-dialog-modal").scope().showForChange(item, $scope.lcca_accountList);
+                if (item.lkc_is_group){
+                    $( "#myuu_change_category_dlg_id").scope().showForChangeGroup(item, $scope.lcca_accountList);
+                } else {
+                    $( "#myuu_change_category_dlg_id").scope().showForChangeCategory(item, $scope.lcca_accountList);
+                }
             }
 
-            // Показать диалог добавления
-            $scope.addDlg = function(){
-                $( "#change-dialog-modal").scope().showForAdd($scope.lcca_accountList);
+            // Показать диалог добавления категории
+            $scope.addCategoryDlg = function(){
+                $( "#myuu_change_category_dlg_id").scope().showForAddCategory($scope.lcca_accountList);
+            }
+
+            // Показать диалог добавления группы
+            $scope.addGroupDlg = function(){
+                $( "#myuu_change_category_dlg_id").scope().showForAddGroup($scope.lcca_accountList);
             }
 
             // Вызывается при клике галочки, чтобы оновить jquery обработчики, иначе скрытые
@@ -262,7 +260,7 @@
                 $timeout(function(){
                     uuInitTableDragAndDrop(
                         "#table-1",
-                        "{% url 'my_uu.views.lk_save_categories_order_ajax' %}",
+                        "{% url 'lk_save_categories_order_ajax_url' %}",
                         'Новый порядок категорий не сохранен.'
                     );
                 });
@@ -271,9 +269,7 @@
             // Возвращает список категорий для показа
             $scope.lkcGetCategoriesListFiltered = function(){
                 var res = $scope.lcca_accountList;
-
                 res = pvlGetElemArrayByAttr(res, 'lkcm_dohod_rashod_type', $scope.lkc_filter_categories_type);
-
                 return res;
             }
 
@@ -285,7 +281,7 @@
     <div
             style="display: flex; flex-flow: row nowrap;"
             ng-controller="AccountsCtrl"
-            ng-doc-ins="addDlg()"
+            ng-doc-ins="addCategoryDlg()"
             ng-cloak
             >
 
@@ -342,24 +338,28 @@
 
                         <tr
                                 ng-repeat="a in lkcGetCategoriesListFiltered()"
-                                ng-if="a.visible || lkc_is_show_hided"
-                                ng-class="{ 'row_not_visible': !a.visible }"
-                                id="{$ a.id $}"
+                                ng-if="a.scf_visible || lkc_is_show_hided"
+                                ng-class="{ 'row_not_visible': !a.scf_visible }"
+                                id="{% ng a.id %}"
                                 >
                             <td class="move_panel" title="Потяните, чтобы изменить порядок"><div>↕</div></td>
                             <td
                                     >
-                                {$ a.lkc_cat_type_str $}
+                                {% ng a.lkc_cat_type_str %}
                             </td>
                             <td
                                     >
-                                <div pv-tooltip-directive="a.name" class="ellipsis">
-                                    {$ a.name $}
+                                <div
+                                        pv-tooltip-directive="a.scf_name"
+                                        class="ellipsis"
+                                        style="margin-left: {% ng a.scfs_indent ? '40px' : '0px' %}"
+                                        >
+                                    {% ng a.scf_name %}
                                 </div>
                             </td>
-                            <td style="text-align: center;">{$ acGetDisplayInfo(a).opCount $}</td>
-                            <td style="text-align: center;">{$ acGetDisplayInfo(a).visible $}</td>
-                            <td style="text-align: left;">{$ acGetDisplayInfo(a).agd_budget $}</td>
+                            <td style="text-align: center;">{% ng acGetDisplayInfo(a).opCount %}</td>
+                            <td style="text-align: center;">{% ng acGetDisplayInfo(a).gdi_visible %}</td>
+                            <td style="text-align: left;">{% ng acGetDisplayInfo(a).agd_budget %}</td>
                             <td style="cursor: default;"><span ng-click="changeDlg(a)" class="dotted_link">изменить</span></td>
                         </tr>
 
@@ -375,7 +375,8 @@
 
                     </tbody>
                 </table>
-                <button class="btn btn-info" style="margin-left: 47px; top: -15px; position: relative;" ng-click="addDlg()">Добавить категорию (Ins)</button>
+                <button class="btn btn-info" style="margin-left: 47px; top: -15px; position: relative;" ng-click="addCategoryDlg()">Добавить категорию (Ins)</button>
+                <button class="btn btn-info" style="margin-left: 47px; top: -15px; position: relative;" ng-click="addGroupDlg()">Добавить группу</button>
 
                 <div style="padding-top: 50px;"></div>
 
@@ -388,114 +389,156 @@
     </div>
 
 
-    {# Диалог редактирования #}
-    <div id="change-dialog-modal" style="display: none; padding-top: 20px; z-index: 110;" ng-controller="ChangeDlgCtrl">
+    {# Ш-126 Всплывающий диалог модальный #}
+    <div class="modal fade" id="myuu_change_category_dlg_id" ng-controller="ChangeDlgCtrl">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                    <h4 class="modal-title">{% ng cdc_header %}</h4>
+                </div>
+                <div class="modal-body">
 
-        <form class="form-horizontal form-condensed" ng-enter="updateOnServerAndClose()" ng-esc="close()">
+                    <form class="form-horizontal form-condensed" ng-enter="lkcUpdateOnServerAndClose()" ng-esc="close()">
 
-            <div class="form-group">
-                <label class="control-label col-xs-4">Тип категории</label>
-                <div class="col-xs-8">
-                    <div>
-                        <button
-                                type="button"
-                                class="btn btn-default"
-                                ng-class="{active: lkcat_model.lkcm_dohod_rashod_type == 'LKCM_DOHOD_RASHOD_TYPE_RASHOD' }"
-                                ng-click="lkcat_model.lkcm_dohod_rashod_type = 'LKCM_DOHOD_RASHOD_TYPE_RASHOD'"
-                                >
-                            Расход
-                        </button>
-                        <button
-                                type="button"
-                                class="btn btn-default"
-                                ng-class="{active: lkcat_model.lkcm_dohod_rashod_type == 'LKCM_DOHOD_RASHOD_TYPE_DOHOD' }"
-                                ng-click="lkcat_model.lkcm_dohod_rashod_type = 'LKCM_DOHOD_RASHOD_TYPE_DOHOD'"
-                                >
-                            Доход
-                        </button>
+                        <div ng-if="cdc_type=='CDC_TYPE_GROUP'">
+
+                            <sili-form-field-choices-buttons-directive
+                                siffd-label="Тип группы:"
+                                siffd-help-text='Только в категориях этого типа (расход/доход) будет показываться эта группа.'
+                                siffd-model="lkcat_model.lkcm_dohod_rashod_type"
+                                siffd-choices="[['LKCM_DOHOD_RASHOD_TYPE_RASHOD', 'Расход'], ['LKCM_DOHOD_RASHOD_TYPE_DOHOD', 'Доход']]"
+                                siffd-is-req="true"
+                                siffd-is-disabled="false"
+                                siffd-django-form-errors="cdc_dj_errors"
+                                siffd-field-name="lkcm_dohod_rashod_type"
+                                    >
+                            </sili-form-field-choices-buttons-directive>
+
+                            <sili-form-field-input-directive
+                                siffd-label="Название группы:"
+                                siffd-help-text=''
+                                siffd-model="lkcat_model.scf_name"
+                                siffd-is-req="true"
+                                siffd-is-disabled="false"
+                                siffd-django-form-errors="cdc_dj_errors"
+                                siffd-field-name="scf_name"
+                                    >
+                            </sili-form-field-input-directive>
+
+                        </div>
+
+                        <div ng-if="cdc_type=='CDC_TYPE_CATEGORY'">
+
+                            <sili-form-field-choices-buttons-directive
+                                siffd-label="Тип категории:"
+                                siffd-help-text='Зачем нужен тип? для удобства анализа, чтобы на странице анализа не видеть <br /> не нужных нулевых категорий расходов  при анализе доходов и наоборот <a href="http://pvoytko.ru/jx/NE7inIlFrq" target="_blank" style="text-decoration: underline;" class="logout__link">скриншот</a>'
+                                siffd-model="lkcat_model.lkcm_dohod_rashod_type"
+                                siffd-choices="[['LKCM_DOHOD_RASHOD_TYPE_RASHOD', 'Расход'], ['LKCM_DOHOD_RASHOD_TYPE_DOHOD', 'Доход']]"
+                                siffd-is-req="true"
+                                siffd-is-disabled="false"
+                                siffd-django-form-errors="cdc_dj_errors"
+                                siffd-field-name="lkcm_dohod_rashod_type"
+                                    >
+                            </sili-form-field-choices-buttons-directive>
+
+                            <sili-form-field-dropdown-directive
+                                siffd-label="Группа:"
+                                siffd-help-text='Несколько категорий можно сгруппировать выбрав тут одинаковое значение группы.'
+                                siffd-model="lkcat_model.scf_parent"
+                                siffd-choices="ac_group_choices"
+                                siffd-is-req="true"
+                                siffd-is-disabled="false"
+                                siffd-django-form-errors="cdc_dj_errors"
+                                siffd-field-name="scf_parent"
+                                    >
+                            </sili-form-field-dropdown-directive>
+
+                            <sili-form-field-input-directive
+                                siffd-label="Название категории:"
+                                siffd-help-text=''
+                                siffd-model="lkcat_model.scf_name"
+                                siffd-is-req="true"
+                                siffd-is-disabled="false"
+                                siffd-django-form-errors="cdc_dj_errors"
+                                siffd-field-name="scf_name"
+                                    >
+                            </sili-form-field-input-directive>
+
+                            <sili-form-field-choices-buttons-directive
+                                siffd-label="Видима:"
+                                siffd-help-text='Показывать ли эту категорию в списке при внесении операций учета. Скрывайте старые больше ненужные категории.'
+                                siffd-model="lkcat_model.scf_visible"
+                                siffd-choices="[[false, 'Нет'], [true, 'Да']]"
+                                siffd-is-req="true"
+                                siffd-is-disabled="false"
+                                siffd-django-form-errors="cdc_dj_errors"
+                                siffd-field-name="scf_visible"
+                                    >
+                            </sili-form-field-choices-buttons-directive>
+
+                            {# Бюджет категории #}
+                            <sili-form-field-choices-buttons-directive
+                                siffd-label="Периодичность бюджета:"
+                                siffd-help-text='С какой периодичностью повторяются данные расходы (или доходы). <br />Используется для отображения на странице "Анализ".'
+                                siffd-model="lkcat_model.lkcm_budget_period"
+                                siffd-choices="ac_choices_list"
+                                siffd-is-req="true"
+                                siffd-is-disabled="false"
+                                siffd-django-form-errors="cdc_dj_errors"
+                                siffd-field-name="lkcm_budget_period"
+                                    >
+                            </sili-form-field-choices-buttons-directive>
+
+                            <sili-form-field-input-directive
+                                siffd-label="Бюджет категории:"
+                                siffd-help-text='Не более скольки планируется расход (или доход) за указанный период по этой категории. Используется для отображения на странице "Анализ".'
+                                siffd-model="lkcat_model.lkcm_budget_value"
+                                siffd-is-req="true"
+                                siffd-is-disabled="false"
+                                siffd-django-form-errors="cdc_dj_errors"
+                                siffd-field-name="lkcm_budget_value"
+                                    >
+                            </sili-form-field-input-directive>
+
+                        </div>
+
+                    </form>
+
+                    <div
+                            ng-if="cdc_dj_errors.hasDjangoFormAnyFieldErrors()"
+                            class="alert alert-danger"
+                            style="margin-bottom: 0px; margin-top: 10px;"
+                            >
+                        Исправьте ошибки в форме выше, пожалуйста.
                     </div>
-                    <div class="help-block">
-                        Зачем нужен тип? для удобства анализа, чтобы на странице анализа не видеть <br />
-                        не нужных нулевых категорий расходов  при анализе доходов и наоборот
-                        <a
-                                href="http://pvoytko.ru/jx/NE7inIlFrq"
-                                target="_blank"
-                                style="text-decoration: underline;"
-                                class="logout__link"
-                                >
-                            скриншот
-                        </a>
+
+                    {# Ошибки уровня формы такие как: нельзя удалить категорию если в ней есть операции #}
+                    <div
+                            ng-if="cdc_dj_errors.hasDjangoFormNonFieldErrors()"
+                            class="alert alert-danger"
+                            style="margin-bottom: 0px; margin-top: 10px;"
+                            >
+                        <div ng-repeat="err in cdc_dj_errors.getDjangoFormNonFieldErrors()">
+                            {% ng err %}
+                        </div>
                     </div>
+
+                    <div ng-show="cdcs_loading" class="alert alert-info">
+                        Выполняется сохранение, ждите до 15 секунд...
+                    </div>
+
+
+                </div>
+                <div class="modal-footer" style="text-align: center;">
+                    <button class="btn btn-success pull-right" ng-click="lkcUpdateOnServerAndClose()" ng-disabled="cdcs_loading">Сохранить (Enter)</button>
+                    <button class="btn pull-right btn-default" style="margin-right: 15px;" ng-click="cdcClose()">Отмена (Esc)</button>
+                    <button class="btn btn-danger pull-right" ng-click="lkcDeleteOnServerAndClose()" style="margin-right: 15px;" ng-if="resultHolderObject" ng-disabled="cdcs_loading">Удалить</button>
                 </div>
             </div>
-            <div class="form-group">
-                <label class="control-label col-xs-4">Название категории</label>
-                <div class="col-xs-8">
-                    <input type="text" ng-model="lkcat_model.name" class="form-control">
-                </div>
-            </div>
-            <div class="form-group">
-                <label class="control-label col-xs-4">Видима</label>
-                <div class="col-xs-8">
-                    <div>
-                        <button type="button" class="btn btn-default" ng-class="{active: lkcat_model.visible}" ng-click="lkcat_model.visible=true">да</button>
-                        <button type="button" class="btn btn-default" ng-class="{active: !lkcat_model.visible}" ng-click="lkcat_model.visible=false">нет</button>
-                    </div>
-                    <div class="help-block">Показывать ли эту категорию в списке при внесении операций учета. Скрывайте старые больше ненужные категории.</div>
-                </div>
-            </div>
-
-            {# Бюджет категории #}
-            <div
-                class="form-group"
-                    >
-                <label class="control-label col-xs-4">Периодичность бюджета</label>
-                <div class="col-xs-8">
-                    <div>
-                        <button
-                                ng-repeat="p in ac_choices_list"
-                                style="margin: 3px;"
-                                type="button"
-                                class="btn btn-default"
-                                ng-class="{ 'active': lkcat_model.lkcm_budget_period == p[0] }"
-                                ng-click="lkcat_model.lkcm_budget_period = p[0]"
-                                >
-                            {$ p[1] $}
-                        </button>
-                    </div>
-                    <div class="help-block">
-                        С какой периодичностью повторяются данные расходы (или доходы).
-                        Используется для отображения на странице "Анализ".
-                    </div>
-                </div>
-            </div>
-            <div class="form-group">
-                <label class="control-label col-xs-4">Бюджет категории</label>
-                <div class="col-xs-8">
-                    <input type="text" ng-model="lkcat_model.lkcm_budget_value" class="form-control">
-                    <div class="help-block">
-                        Не более скольки планируется расход (или доход) за указанный период по этой категории.
-                        Используется для отображения на странице "Анализ".
-                    </div>
-                </div>
-            </div>
-
-        </form>
-
-        <div ng-show="errorText" class="alert alert-danger" ng-bind="errorText">
         </div>
-        <div ng-show="loading" class="alert alert-info">
-            Выполняется сохранение, ждите до 15 секунд...
-        </div>
-
-        <div class="row" style="margin-bottom: 5px;">
-            <div class="col-xs-12">
-                <button class="btn btn-success pull-right" ng-click="updateOnServerAndClose()" ng-disabled="loading">Сохранить (Enter)</button>
-                <button class="btn pull-right btn-default" style="margin-right: 15px;" ng-click="close()">Отмена (Esc)</button>
-                <button class="btn btn-danger pull-right" ng-click="deleteOnServerAndClose()" style="margin-right: 15px;" ng-if="resultHolderObject" ng-disabled="loading">Удалить</button>
-            </div>
-        </div>
-
     </div>
 
 {% endblock %}

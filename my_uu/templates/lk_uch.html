@@ -1,5 +1,9 @@
 {% extends 'lk_base.html' %}
 
+
+{% load pvl_angular %}
+
+
 {% block add_to_head %}
 
     <!-- jqxGrid -->
@@ -195,7 +199,7 @@
                 <div class="alert alert-info">
                     Режим "Оплаченный" будет действовать сегодня и <strong>еще {{ get5DaysPaidLeft }} дней</strong>.
                     Затем потребуется произвести оплату для добавления новых операций учета.
-                    Для оплаты пройдите на страницу <a href="{% url 'my_uu.views.lk_pay' %}"><strong>"Оплата"</strong></a>.
+                    Для оплаты пройдите на страницу <a href="{% url 'lk_pay_url' %}"><strong>"Оплата"</strong></a>.
                 </div>
             {% endifnotequal %}
 
@@ -250,7 +254,7 @@
                         <div class="form-group">
                             <label class="control-label col-xs-4">Категория</label>
                             <div class="col-xs-8">
-                                <select class="form-control" style="width: 310px;" ng-model="$parent.category" ng-options="c.name as c.name for c in $parent.categories">
+                                <select class="form-control" style="width: 310px;" ng-model="$parent.category" ng-options="c.scf_name as c.scf_name for c in $parent.categories">
                                 </select>
                             </div>
                         </div>
@@ -281,7 +285,7 @@
             </form>
 
             <div class="alert alert-error" ng-show="error">
-                {$ error $}
+                {% ng error %}
             </div>
         </div>
         <div class="modal-footer" ng-show="showAddUchetDialog" style="margin-top: 0px;">
@@ -308,7 +312,7 @@
                 В "Оплаченном" режиме работы какие-либо ограничения отсутствуют.
             </p>
             <p>
-                Для оплаты пройдите на страницу <a href="{% url 'my_uu.views.lk_pay' %}" style="text-decoration: underline;"><strong>"Оплата"</strong></a>.
+                Для оплаты пройдите на страницу <a href="{% url 'lk_pay_url' %}" style="text-decoration: underline;"><strong>"Оплата"</strong></a>.
             </p>
 
         </div>
@@ -545,7 +549,7 @@
 
                     // Отправляем запрос и принимаем ответ
                     $.post(
-                        "{% url 'my_uu.views.lk_save_uchet_ajax' %}",
+                        "{% url 'ajax_save_uchet_url' %}",
                         { rows_json: JSON.stringify(
                             self._editedRows.slice(0, this._editedRowsCountBeforeSynchronization)
                         )}
@@ -606,7 +610,7 @@
                     row['utype'] = u['utype__name'];
                     row['sum'] = String(u['sum']).replace('.', ',');
                     row['account'] = u['account__name'];
-                    row['category'] = u['category__name'];
+                    row['category'] = u['category__scf_name'];
                     row['comment'] = u['comment'];
                     data1[j] = row;
                 }
@@ -1081,7 +1085,7 @@
                             // Просто шлем запрос на сервер.
                             // Отправляем запрос и принимаем ответ
                             $.post(
-                                "{% url 'my_uu.views.lk_delete_uchet_ajax' %}",
+                                "{% url 'ajax_lk_delete_uchet_url' %}",
                                 { rowForDelete: JSON.stringify(rowData) }
                             ).done(function(data, textStatus, jqXHR){
 
@@ -1196,7 +1200,7 @@
                     </style>
                     <div class="btn-group">
                         <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">
-                            {$ vpr(viewPeriodCode, viewPeriodSet.concat(viewPeriodMonthSet)) $}
+                            {% ng vpr(viewPeriodCode, viewPeriodSet.concat(viewPeriodMonthSet)) %}
                             <span class="caret"></span>
                         </button>
                         <ul class="dropdown-menu">
@@ -1207,7 +1211,7 @@
                                             class="dropdown-toggle"
                                             data-toggle="dropdown"
                                             ng-style="{ 'font-weight': viewPeriodCode.substr(1, 4) == y ? 'bold' : 'normal' }">
-                                        {$ y $}
+                                        {% ng y %}
                                     </a>
                                     <ul class="dropdown-menu">
                                         <li ng-repeat="p in gcGetMonthsForYear(y)">
@@ -1215,7 +1219,7 @@
                                                     ng-click="$parent.$parent.gcGoToUchUrl(p[0])"
                                                     ng-style="{ 'font-weight': viewPeriodCode == p[0] ? 'bold' : 'normal' }"
                                                     href>
-                                                {$ p[1] $}
+                                                {% ng p[1] %}
                                             </a>
                                         </li>
                                     </ul>
@@ -1231,7 +1235,7 @@
                                             ng-click="$parent.gcGoToUchUrl(p[0])"
                                             ng-style="{ 'font-weight': viewPeriodCode == p[0] ? 'bold' : 'normal' }"
                                             href>
-                                        {$ p[1] $}
+                                        {% ng p[1] %}
                                     </a>
                                 </li>
                             </li>

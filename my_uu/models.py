@@ -309,13 +309,30 @@ class Category(models.Model):
     user = models.ForeignKey(django.contrib.auth.models.User)
 
     # Имя
-    name = models.CharField(max_length=255, error_messages={
-        'blank': u'Название категории не должно быть пустым.',
-        'max_length': u'Название категории не должно быть более 255 символов длинной.'
-    })
+    scf_parent = models.ForeignKey(
+        'my_uu.Category',
+        null=True,
+        default=None,
+        blank=True,
+    )
+
+    # Имя
+    scf_name = models.CharField(
+        max_length=255,
+        error_messages={
+            'blank': u'Название категории не должно быть пустым.',
+            'max_length': u'Название категории не должно быть более 255 символов длинной.'
+        }
+    )
+
+    # Группа
+    # Эта же модель используется для создания групп. У них тут флаг True.
+    scf_is_group = models.BooleanField(
+        default=False,
+    )
 
     # Видимость, по умолчанию (при регистрации) - категории создаются видимыми
-    visible = models.BooleanField(default=True)
+    scf_visible = models.BooleanField(default=True)
 
     # Дефолтова позиция = 1000, т.о. при добавлениии она всегда бдует в конец ставиться.
     position = models.PositiveIntegerField(default=1000)
@@ -338,7 +355,40 @@ class Category(models.Model):
 
     # Уникальность имени счета только в рамках одного юзера
     class Meta:
-        unique_together = ('user', 'name',)
+        unique_together = ('user', 'scf_name',)
+
+
+# Раздел в админке
+class CategoryAdmin(admin.ModelAdmin):
+
+    list_display = (
+        'id',
+        'user',
+        'scf_name',
+        'scf_visible',
+    )
+
+    # Блок пакетных действий обычно не нужен/
+    actions = None
+
+    # ссылки на карточку
+    list_display_links = (
+        'scf_name',
+    )
+
+    # Пагинатор
+    list_per_page = 30
+
+    list_filter = (
+        'user',
+        'scf_is_group',
+        'scf_visible',
+    )
+
+    raw_id_fields = (
+        'user',
+    )
+
 
 # Тип записи учета - расход доход или перевод
 class UType(models.Model):
@@ -464,86 +514,6 @@ class UchetAdmin(admin.ModelAdmin):
     list_per_page = 50
 
 
-
-# Раздел подкатегорий в админке. Названо группа чтобы не путать с классом Category который уже есть.
-# Ш-7715 - древовидный раздел
-class CategoryGroup(treebeard.mp_tree.MP_Node):
-
-    # Поля модели
-    kgr_datetime_created = django.db.models.DateTimeField(
-        verbose_name=u'Дата-время создания',
-        auto_now_add=True,
-    )
-    kgr_datetime_edited = django.db.models.DateTimeField(
-        verbose_name=u'Дата-время изменения',
-        auto_now=True,
-    )
-    kgr_name = django.db.models.CharField(
-        verbose_name=u'Название категории / подкатегории',
-        max_length=250,
-    )
-    kgr_slug = django.db.models.CharField(
-        verbose_name=u'Slug (часть УРЛ)',
-        max_length=250,
-        unique=True,
-    )
-    kgr_is_visible = django.db.models.BooleanField(
-        verbose_name=u'Отображать на сайте',
-        default=False,
-    )
-
-
-    # в крошках и в заголовке окна
-    def __str__(self):
-        return u'#{id} {lg}'.format(
-            id = self.id,
-            lg = self.kgr_name
-        )
-
-    # На кнопке добавления
-    class Meta:
-        verbose_name = u'Подкатегория'
-        verbose_name_plural = u'"4. Дерево подкатегорий"'
-
-
-# Раздел в админке для редактирования прайса в виде таблицы (дерева)
-# Ш-7715 - древовидный раздел
-class CategoryGroupAdmin(treebeard.admin.TreeAdmin):
-
-    # Подсказка на странице в админке над таблицей. Ш-7259
-    pv_changelist_top_text = u'''
-        <p>
-            В этом разделе админки можно ввести дерево подкатегорий, <br />
-            путем кнопки добавления справа и перетаскивания строк мышью за значек крестика слева. <br />
-            Это дерево используется для отображения меню на публичных страницах сайта.
-        </p>
-    '''
-
-    # Без этой строки карточка отображается так что ей нельзя пользоваться
-    form = treebeard.forms.movenodeform_factory(CategoryGroup)
-
-    list_display = (
-        'kgr_name',
-        'kgr_slug',
-        'kgr_is_visible',
-        'kgr_datetime_created',
-        'kgr_datetime_edited',
-        'id',
-    )
-
-    # Блок пакетных действий обычно не нужен/
-    actions = None
-
-    # ссылки на карточку
-    list_display_links = (
-        'kgr_name',
-    )
-
-    # Пагинатор
-    list_per_page = 30
-
-
-
 # Данная функция создана для того чтобы исключить ошибки что забыли указать требование авторизации админа
 # для доступа в админку. С помощью этой функции надо всегда явно указать роль
 # при регистрации интерфейса админки.
@@ -555,4 +525,4 @@ def registerModelAndAdmin(model_class, admin_class):
 
 
 registerModelAndAdmin(Uchet, UchetAdmin)
-registerModelAndAdmin(CategoryGroup, CategoryGroupAdmin)
+registerModelAndAdmin(Category, CategoryAdmin)

@@ -25,7 +25,7 @@
                 // Отправляем на сервер порядок для сохранения
                 $scope.saving = true;
                 var prom = $.post(
-                    "{% url 'my_uu.views.lk_save_manual_answer_ajax' %}",
+                    "{% url 'ajax_lk_save_manual_answer_url' %}",
                     JSON.stringify(boolYes)
                 ).done(function(){
                     $scope.$apply(function($scope){

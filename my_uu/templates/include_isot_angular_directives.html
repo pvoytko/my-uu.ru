@@ -1,0 +1,489 @@
+{% load pvl_angular %}
+{# Ш-7523 #}
+{# Файл для размещения в нем всех ангулар-директив проекта #}
+
+
+{# Директива isot-errors-block - выводит ошибку под полем ввода #}
+{# Используется в Диалоге добавления техники - под полями ошибки #}
+{# Ш-7606 #}
+<script type="text/ng-template" id="ieb_template_id">
+    <div class="isot-error-block" ng-if="iebIffcCtrl.iffcDjangoFormErrors.hasDjangoFormFieldError(iebIffcCtrl.iffcFieldName)">
+        <div ng-repeat="e in iebIffcCtrl.iffcDjangoFormErrors.getDjangoFormFieldErrors(iebIffcCtrl.iffcFieldName)" ng-bind="e" style="margin-top: 2px;">
+        </div>
+    </div>
+</script>
+<script>
+    angular.module('myNgApp').directive('isotErrorsBlock', function($sce, $timeout) {
+        return {
+            restrict: "E",
+            scope: {
+                iebDjangoFormErrors: '=',
+                iebFieldName: '@'
+            },
+            templateUrl: 'ieb_template_id',
+            link: function link($scope, element, attrs, iffcCtrl) {
+
+                // Таким образом получаем ссылку на вышестоящий контроллер директивы isotFormFieldDirective
+                $scope.iebIffcCtrl = $scope.$parent.$parent;
+            }
+        }
+    });
+</script>
+
+
+{# Директива isot-form-field-directive - контейнет стиль ошибки устанавливает полю #}
+{# Атрибуты: #}
+{# * iffDjangoFormErrors скоуп-переменная в которой ошибки формы #}
+{# * iffFieldName имя поля #}
+{# Используется в Диалоге добавления техники - для полей #}
+{# при наличии ошибки от сервера для поля - #}
+{# создаст css класс контейнеру (подсветка красным) и покажет текст ошибки под полем #}
+{# Ш-7606 #}
+<script type="text/ng-template" id="isot_form_field_template_id">
+    <div class="profile-item-form-inner" ng-class="{ 'isot-has-error': iffcDjangoFormErrors.hasDjangoFormFieldError(iffcFieldName) }">
+        <ng-transclude></ng-transclude>
+    </div>
+</script>
+<script>
+    angular.module('myNgApp').directive('isotFormFieldDirective', function($sce, $timeout) {
+        return {
+            restrict: "E",
+            transclude: true,
+            scope: {
+                iffcDjangoFormErrors: '=',
+                iffcFieldName: '@'
+            },
+            templateUrl: 'isot_form_field_template_id',
+            link: function link($scope, element, attrs, controller) {
+            }
+        }
+    });
+</script>
+
+
+{# Ш-140 #}
+{# Директива sili-form-field-input-directive - поле ввода на форме #}
+{# Атрибуты: #}
+{# * siffdModel скоуп-переменная в которой значение #}
+{# * siffdLabel подпись к полю #}
+{# * siffdHelpText подпись к полю #}
+{# * siffdIsReq true или false - обязательно ли (установка метки) #}
+{# * siffdIsDisabled true или false - только для чтения или нет #}
+{# * siffdDjangoFormErrors класс ошибок джанго #}
+{# * siffdFieldName название поля в классе ошибок и при отправке на сервер #}
+<script type="text/ng-template" id="sili_form_field_input_directive_template_id">
+
+    <isot-form-field-directive
+        iffc-django-form-errors="siffdDjangoFormErrors"
+        iffc-field-name="{% ng siffdFieldName %}"
+            >
+
+        <div
+                class="form-group"
+                style="margin-bottom: 10px;"
+                >
+            <div
+                    class="control-label col-xs-4 "
+                    style="font-weight: bold;"
+                    >
+                <label
+                    for="ieftf_inp_id__{% ng $id %}"
+                        >
+                    {% ng siffdLabel %}
+                </label>
+            </div>
+            <div class=" col-xs-8 ">
+                <input
+                        class="ksea_green_field_border form-control"
+                        id="ieftf_inp_id__{% ng $id %}"
+                        type="text"
+                        pv-model="siffdModel"
+                        style="width: 20em;"
+                        name="{% ng siffdFieldName %}"
+
+                        {# Только для чтения если стоит свойство #}
+                        ng-class="{ 'sv_input_read_only': siffdIsDisabled }"
+
+                        {# disabled коментим т.к. иначе это поле не считывается из формы #}
+                        {# и н е записываться в модель #}
+                        {# ng-disabled="siffdIsDisabled" #}
+                        >
+
+                <isot-errors-block></isot-errors-block>
+
+                <span class="help-block">
+                    {% ng siffdHelpText %}
+                </span>
+
+            </div>
+        </div>
+
+    </isot-form-field-directive>
+
+</script>
+<script>
+    angular.module('myNgApp').directive('siliFormFieldInputDirective', function($sce, $timeout) {
+        return {
+            restrict: "E",
+            scope: {
+                siffdModel: '=',
+                siffdLabel: '@',
+                siffdHelpText: '@',
+                siffdIsReq: '=',
+                siffdIsDisabled: '=',
+                siffdDjangoFormErrors: '=',
+                siffdFieldName: '@'
+            },
+            templateUrl: 'sili_form_field_input_directive_template_id',
+            link: function link($scope, element, attrs, controller, transcludeFn) {
+
+
+            }
+        }
+    });
+</script>
+
+
+{# Ш-140 #}
+{# Директива sili-form-field-checkbox-directive - галка на форме #}
+{# Атрибуты: #}
+{# * siffdLabel подпись к полю #}
+{# * siffdModel скоуп-переменная в которой значение true false #}
+{# * siffdDjangoFormErrors класс ошибок джанго #}
+{# * siffdFieldName название поля в классе ошибок и при отправке на сервер #}
+<script type="text/ng-template" id="sili_form_field_checkbox_directive_template_id">
+
+    <isot-form-field-directive
+        iffc-django-form-errors="siffdDjangoFormErrors"
+        iffc-field-name="{% ng siffdFieldName %}"
+            >
+
+        <div
+                class="col-md-12 form-group"
+                style="margin-bottom: 5px;"
+                >
+            <div
+                    class="control-label col-lg-4 vCheckboxLabel"
+                    style="font-weight: bold;"
+                    >
+                <label
+                    for="ieftf_inp_id__{% ng $id %}"
+                        >
+                    {% ng siffdLabel %}
+                </label>
+            </div>
+
+            <div class="controls col-md-8">
+                <div class="checkbox" style="margin-left: 5px;">
+                    <input
+                        id="ieftf_inp_id__{% ng $id %}"
+                        type="checkbox"
+                        name="{% ng siffdFieldName %}"
+                        pv-model="siffdModel"
+                        value="True"
+                        >
+                </div>
+
+                <isot-errors-block></isot-errors-block>
+
+                <ng-transclude></ng-transclude>
+
+            </div>
+
+        </div>
+
+    </isot-form-field-directive>
+
+</script>
+<script>
+    angular.module('myNgApp').directive('siliFormFieldCheckboxDirective', function($timeout) {
+        return {
+            restrict: "E",
+            transclude: true,
+            scope: {
+                siffdLabel: '@',
+                siffdModel: '=',
+                siffdDjangoFormErrors: '=',
+                siffdFieldName: '@'
+            },
+            templateUrl: 'sili_form_field_checkbox_directive_template_id',
+            link: function link($scope, element, attrs, controller, transcludeFn) {
+
+                // Таймаут чтобы этот код вызвать после формирования html иначе не работает
+                $timeout(function(){
+                    $(element).find('input')
+                        // Считываем значение из jQuery, т.к. через ng-model оно глючит не всегда считывается.
+                        .change(function(){
+                            $scope.$apply(function(){
+                                $scope.siffdModel = $(element).find('input').is(':checked');
+                            });
+                        });
+                });
+            }
+        }
+    });
+</script>
+
+
+{# Ш-140 #}
+{# Директива sili-form-field-choices-buttons-directive - несколько кнопок для выбора #}
+{# (да нет, желтый-зеленый-красный, ...) #}
+{# Атрибуты: #}
+{# * siffdModel скоуп-переменная в которой значение #}
+{# * siffdChoices массив пар код-значение #}
+{# * siffdLabel подпись к полю #}
+{# * siffdHelpText подпись к полю #}
+{# * siffdIsReq true или false - обязательно ли (установка метки) #}
+{# * siffdIsDisabled true или false - только для чтения или нет #}
+{# * siffdDjangoFormErrors класс ошибок джанго #}
+{# * siffdFieldName название поля в классе ошибок и при отправке на сервер #}
+<script type="text/ng-template" id="sili_form_field_choices_buttons_directive_template_id">
+
+    <isot-form-field-directive
+        iffc-django-form-errors="siffdDjangoFormErrors"
+        iffc-field-name="{% ng siffdFieldName %}"
+            >
+
+        <div
+                class="form-group"
+                style="margin-bottom: 10px;"
+                >
+            <div
+                    class="control-label col-xs-4 "
+                    style="font-weight: bold;"
+                    >
+                <label
+                    for="ieftf_inp_id__{% ng $id %}"
+                        >
+                    {% ng siffdLabel %}
+                </label>
+            </div>
+            <div class=" col-xs-8 ">
+
+
+                <div
+                    id="ieftf_inp_id__{% ng $id %}"
+                        >
+                    <button
+                            ng-repeat="c in siffdChoices"
+                            type="button"
+                            class="btn btn-default"
+                            ng-class="{active: c[0]==siffdModel}"
+                            ng-click="siffdClick(c[0])"
+                            style="margin-right: 5px;  margin-top: 5px;"
+                            >
+                        {% ng c[1] %}
+                    </button>
+                </div>
+
+                <isot-errors-block></isot-errors-block>
+
+                <div class="help-block" ng-if="siffdHelpText" pv-compile="siffdHelpText">
+                </div>
+
+            </div>
+        </div>
+
+    </isot-form-field-directive>
+
+</script>
+<script>
+    angular.module('myNgApp').directive('siliFormFieldChoicesButtonsDirective', function($sce, $timeout) {
+        return {
+            restrict: "E",
+            scope: {
+                siffdModel: '=',
+                siffdChoices: '=',
+                siffdLabel: '@',
+                siffdHelpText: '@',
+                siffdIsReq: '=',
+                siffdIsDisabled: '=',
+                siffdDjangoFormErrors: '=',
+                siffdFieldName: '@'
+            },
+            templateUrl: 'sili_form_field_choices_buttons_directive_template_id',
+            link: function link($scope, element, attrs, controller, transcludeFn) {
+
+                $scope.siffdClick = function(val){
+                    $scope.siffdModel = val;
+                }
+
+            }
+        }
+    });
+</script>
+
+
+{# Ш-140 #}
+{# Директива sili-form-field-dropdown-directive - выпадающий список #}
+{# Например: желтый-зеленый-красный-синий- ... #}
+{# Атрибуты: #}
+{# * siffdModel скоуп-переменная в которой значение #}
+{# * siffdChoices массив пар код-значение #}
+{# * siffdLabel подпись к полю #}
+{# * siffdHelpText подпись к полю #}
+{# * siffdIsReq true или false - обязательно ли (установка метки) #}
+{# * siffdIsDisabled true или false - только для чтения или нет #}
+{# * siffdDjangoFormErrors класс ошибок джанго #}
+{# * siffdFieldName название поля в классе ошибок и при отправке на сервер #}
+<script type="text/ng-template" id="sili_form_field_dropdown_directive_template_id">
+
+    <isot-form-field-directive
+        iffc-django-form-errors="siffdDjangoFormErrors"
+        iffc-field-name="{% ng siffdFieldName %}"
+            >
+
+        <div
+                class="form-group"
+                style="margin-bottom: 10px;"
+                >
+            <div
+                    class="control-label col-xs-4 "
+                    style="font-weight: bold;"
+                    >
+                <label
+                    for="ieftf_inp_id__{% ng $id %}"
+                        >
+                    {% ng siffdLabel %}
+                </label>
+            </div>
+            <div class=" col-xs-8 ">
+
+
+                <div
+                    id="ieftf_inp_id__{% ng $id %}"
+                        >
+
+                    <select
+                            class="form-control"
+                            ng-model="$parent.$parent.siffdModel"
+                            ng-options="choice_item[0] as choice_item[1] for choice_item in siffdChoices"
+                            style="width: 200px;"
+                            >
+                        <option value="">-- Не задано --</option>
+                    </select>
+
+                </div>
+
+                <isot-errors-block></isot-errors-block>
+
+                <div class="help-block" ng-if="siffdHelpText" pv-compile="siffdHelpText">
+                </div>
+
+            </div>
+        </div>
+
+    </isot-form-field-directive>
+
+</script>
+<script>
+    angular.module('myNgApp').directive('siliFormFieldDropdownDirective', function($sce, $timeout) {
+        return {
+            restrict: "E",
+            scope: {
+                siffdModel: '=',
+                siffdChoices: '=',
+                siffdLabel: '@',
+                siffdHelpText: '@',
+                siffdIsReq: '=',
+                siffdIsDisabled: '=',
+                siffdDjangoFormErrors: '=',
+                siffdFieldName: '@'
+            },
+            templateUrl: 'sili_form_field_dropdown_directive_template_id',
+            link: function link($scope, element, attrs, controller, transcludeFn) {
+
+            }
+        }
+    });
+</script>
+
+
+
+<script>
+    // Ш-7205
+    // Директива pv-compile,
+    // Истончик: http://stackoverflow.com/a/17426614
+    angular.module('myNgApp').directive('pvCompile', ['$compile', function ($compile) {
+        return function(scope, element, attrs) {
+            scope.$watch(
+                function(scope) {
+                    // watch the 'pv_compile' expression for changes
+                    return scope.$eval(attrs.pvCompile);
+                },
+                function(value) {
+                    // when the 'compile' expression changes
+                    // assign it into the current DOM
+                    element.html(value);
+
+                    // compile the new DOM and link it to the current
+                    // scope.
+                    // NOTE: we only compile .childNodes so that
+                    // we don't get into infinite loop compiling ourselves
+                    $compile(element.contents())(scope);
+                }
+            );
+        };
+    }]);
+</script>
+
+
+<script>
+    // Ш-7833
+    // Директива pv-model,
+    // Аналог ng-model только исключения:
+    //     если указанное свойство не существует в скоуп то кинет ошибку
+    //     указанное свойство может существовать в любом родителе (первое найденое используется)
+    // Это для того чтобы избежать подобных кнструкций http://pvoytko.ru/jx/LLwIVJTS8G
+    // и не тратить время на поиск в них багов.
+    angular.module('myNgApp').directive('pvModel', ['$compile', '$timeout', function ($compile, $timeout) {
+        return function($scope, element, attrs) {
+
+            // Находим scope в котором объявлена эта переменная
+            var connected_scope_candidate = $scope;
+            var connected_scope_founded = null;
+            while (connected_scope_candidate){
+                if (connected_scope_candidate.hasOwnProperty(attrs.pvModel)){
+                    connected_scope_founded = connected_scope_candidate;
+                    break;
+                }
+                else{
+                    connected_scope_candidate = connected_scope_candidate.$parent;
+                }
+            }
+            if (!connected_scope_founded){
+                pvlAlertAndThrow("Ошибка использования директивы pv-model, в этом и вышестоящих скоупах не найдено свойство с именем '" + attrs.pvModel + "'");
+            }
+
+            // При изменении js-модели - обновляем DOM
+            $scope.$watch(
+
+                function($scope) {
+                    // watch the expression for changes
+                    return connected_scope_founded[attrs.pvModel];
+                },
+                function(value) {
+
+                    // when the expression changes
+                    // assign it into the current input value
+                    element.val(value);
+
+                }
+
+            );
+
+            // При изменении DOM - обновляем JS
+            // "select" for browser suggestion
+            // источник - https://stackoverflow.com/a/17759257/1412586
+            // тут используется bind а не on т.к. в SVIR старая версия jquery
+            // и On выдавало ошибку а bind сработала вот в этом месте: http://pvoytko.ru/jx/tHGucluy1n
+            $(element).bind('change paste keydown select', function(){
+                $timeout(function(){
+                    connected_scope_founded.$apply(function(){
+                        connected_scope_founded[attrs.pvModel] = $(element).val();
+                    });
+                });
+            });
+        };
+    }]);
+</script>

@@ -2,6 +2,7 @@
 *.pyc
 *.log
 /emails
+/media
 
 # Ш-80
 .cache_dir_pvl_cdn_to_static/pvl_cdn_to_static*
