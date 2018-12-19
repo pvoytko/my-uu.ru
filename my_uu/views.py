@@ -1638,7 +1638,7 @@ def lk_exp_csv(request):
             typ = typeStr,
             smm = u.sum,
             acc = u.account.name,
-            cat = u.category.name,
+            cat = u.category.scf_name,
             com = u.comment,
         )
 
