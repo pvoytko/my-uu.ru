@@ -2457,7 +2457,7 @@ def ajax_add_uchet_record_api(request):
     )
     cat_model = annoying.functions.get_object_or_None(
         my_uu.models.Category,
-        name = uchet_category,
+        scf_name = uchet_category,
         user = user_model,
     )
     if acc_model is None:
