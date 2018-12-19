@@ -65,7 +65,7 @@ def _main_imp(request, templateName):
 
     # Если юзер уже прошел аутентификацию посылаем его в ЛК
     if request.user.id is not None:
-        return HttpResponseRedirect(reverse('my_uu.views.lk_uch'))
+        return HttpResponseRedirect(reverse('page_lk_uch_url'))
 
     # Эта страница используется вместо главной пока
     return render(request, templateName, {
@@ -250,7 +250,7 @@ def begin(request):
 
     # Если юзер уже прошел аутентификацию посылаем его в ЛК
     if request.user.id is not None:
-        return HttpResponseRedirect(reverse('my_uu.views.lk_uch'))
+        return HttpResponseRedirect(reverse('page_lk_uch_url'))
 
     return render(request, 'begin.html')
 
@@ -306,7 +306,7 @@ def _getCategoryList(request):
 
 # Главная страница личного кабиета
 @uu_login_required
-def lk_uch(request, period = None, account_id = None, category_id = None):
+def page_lk_uch(request, period = None, account_id = None, category_id = None):
 
     # Определяем надо ли показать юзеру сообщение что нужна оплата, и если надо, отслеживем событие.
     showAddUchetDialog = request.user.userprofile.showAddUchetDialog()
@@ -354,7 +354,7 @@ def lk_uch(request, period = None, account_id = None, category_id = None):
         'comment',
     )
 
-    return render(request, 'lk_uch.html', {
+    return render(request, 'page_lk_uch.html', {
         'uchetRecordsJson': json.dumps(list(uchet_records), cls=DjangoJSONEncoder),
         'uTypeList': my_uu.models.UType.objects.all().order_by('id'),
         'accountList': my_uu.models.Account.objects.filter(user=request.user, visible=True).order_by('position', 'id'),

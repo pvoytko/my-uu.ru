@@ -764,7 +764,7 @@
                     ];
                     window.categoryList = [
                         {% for c in categoryList %}
-                            '{{ c.name }}'
+                            '{{ c.scf_name }}'
                             {% if not forloop.last %}
                                 ,
                             {% endif %}

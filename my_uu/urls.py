@@ -25,8 +25,8 @@ urlpatterns = [
     url(r'^lk/beg/$', my_uu.views.lk_beg),
 
     # Личный кабинет учет
-    url(r'^lk/$', my_uu.views.lk_uch, name='lk_uch_url'),
-    url(r'^lk/(?P<period>[^/]+)/(?P<account_id>[^/]+)/(?P<category_id>[^/]+)/$', my_uu.views.lk_uch),
+    url(r'^lk/$', my_uu.views.page_lk_uch, name='page_lk_uch_url'),
+    url(r'^lk/(?P<period>[^/]+)/(?P<account_id>[^/]+)/(?P<category_id>[^/]+)/$', my_uu.views.page_lk_uch),
     url(r'^lk/ajax_save_uchet/$', my_uu.views.ajax_lk_save_uchet, name='ajax_save_uchet_url'),
     url(r'^lk/ajax_delete_uchet/$', my_uu.views.ajax_lk_delete_uchet, name='ajax_lk_delete_uchet_url'),
 
