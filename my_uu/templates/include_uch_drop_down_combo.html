@@ -20,7 +20,7 @@
                 <option value='None' data-content="{% if 'None' == cur_id %}<strong>-- Все --</strong>{% else %}-- Все --{% endif %}">
                 </option>
                 {% for a in list %}
-                    <option value='{{ a.id }}' data-content="{% if a.id == cur_id %}<strong>{{ a.name }}</strong>{% else %}{{ a.name }}{% endif %}">
+                    <option value='{{ a.id }}' data-content="{% if a.id == cur_id %}<strong>{{ a.scf_name }}</strong>{% else %}{{ a.name }}{% endif %}">
                     </option>
                 {% endfor %}
             </select>
