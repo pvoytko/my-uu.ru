@@ -547,11 +547,12 @@ def asyncMakeExportExcel(async_task, user_model_id):
     pvlWriteRowInExcel(worksheet_curr=worksheet, row_data=header, row_num=0)
 
     # Ширина колонокю
-    worksheet.set_column(0, 3, 10) # id дата-время тип
-    worksheet.set_column(3, 4, 20) # счет
+    worksheet.set_column(0, 1, 10) # id
+    worksheet.set_column(1, 3, 20) # дата-время тип
+    worksheet.set_column(3, 4, 30) # счет
     worksheet.set_column(4, 5, 10) # сумма
-    worksheet.set_column(5, 6, 20) # категория
-    worksheet.set_column(6, 7, 30) # коммент
+    worksheet.set_column(5, 6, 30) # категория
+    worksheet.set_column(6, 7, 60) # коммент
 
     # Перебор заказов и формирование
     orders_qs_all = models.Uchet.objects.filter(user = user_model).order_by('id')
