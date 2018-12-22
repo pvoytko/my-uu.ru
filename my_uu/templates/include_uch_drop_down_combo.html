@@ -20,8 +20,12 @@
                 <option value='None' data-content="{% if 'None' == cur_id %}<strong>-- Все --</strong>{% else %}-- Все --{% endif %}">
                 </option>
                 {% for a in list %}
-                    <option value='{{ a.id }}' data-content="{% if a.id == cur_id %}<strong>{{ a.scf_name }}</strong>{% else %}{{ a.name }}{% endif %}">
+
+                    {# Чтобы работало и для счета и для категории тут исползьуется  #}
+                    {# выражение "{{ a.name }}{{ a.scf_name }}" #}
+                    <option value='{{ a.id }}' data-content="{% if a.id == cur_id %}<strong>{{ a.name }}{{ a.scf_name }}</strong>{% else %}{{ a.name }}{{ a.scf_name }}{% endif %}">
                     </option>
+
                 {% endfor %}
             </select>
 
