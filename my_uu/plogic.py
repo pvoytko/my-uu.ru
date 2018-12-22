@@ -532,13 +532,13 @@ def asyncMakeExportExcel(async_task, user_model_id):
         'bg_color': 'silver',
     })
     header_format.set_text_wrap()
-    worksheet.set_row(0, 60, header_format)
+    worksheet.set_row(0, 30, header_format)
 
     # Запись в файл заголовков
     header = (
-        {'pvr_val': u'ID заказа' },
-        {'pvr_val': u'Дата-время создания' },
-        {'pvr_val': u'Тип оерации' },
+        {'pvr_val': u'ID операции' },
+        {'pvr_val': u'Дата-время операции' },
+        {'pvr_val': u'Тип операции' },
         {'pvr_val': u'Счет' },
         {'pvr_val': u'Сумма' },
         {'pvr_val': u'Категория' },
@@ -547,7 +547,9 @@ def asyncMakeExportExcel(async_task, user_model_id):
     pvlWriteRowInExcel(worksheet_curr=worksheet, row_data=header, row_num=0)
 
     # Ширина колонок
-    worksheet.set_column(0, len(header), 10)
+    worksheet.set_column(0, 5, 10)
+    worksheet.set_column(5, 6, 20)
+    worksheet.set_column(6, 7, 30)
 
     # Перебор заказов и формирование
     orders_qs_all = models.Uchet.objects.filter(user = user_model).order_by('id')
@@ -561,7 +563,7 @@ def asyncMakeExportExcel(async_task, user_model_id):
             # 'ID опертации',
             fleGetPvrValueNumberOrMinuses(z.id),
 
-            # 'Дата-время создания',
+            # 'Дата-время операции',
             {'pvr_val': pvl_datetime_format.funcs.dateTimeToStr(created_dtm) },
 
             # 'Тип операции',
@@ -570,15 +572,16 @@ def asyncMakeExportExcel(async_task, user_model_id):
             # 'Счет',
             {'pvr_val': unicode(z.account.name) },
 
+            # 'Сумма'
+            fleGetPvrValueNumberOrMinuses(z.sum),
+
             # 'Категория',
             {'pvr_val': unicode(z.category.scf_name) },
 
             # 'Комментарий',
             {'pvr_val': fleGetValueTrueOrMinuses(z.comment) },
-
-            # 'Сумма'
-            fleGetPvrValueNumberOrMinuses(z.sum),
         ]
+
         pvlWriteRowInExcel(worksheet_curr=worksheet, row_data=row_data, row_num=nrow)
         if divmod(nrow, 100)[1] == 0:
             pvl_async.funcs.pvlWriteAsyncTaskLog(
