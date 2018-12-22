@@ -28,7 +28,7 @@
     <h4 style="margin-top: 20px;">Экспорт операций учета в Excel</h4>
     <div>
         {% if ple_file_dtm %}
-            <a href="/lk/exp_csv/" style="text-decoration: underline;">Загрузить файл Эксель с операциями</a>
+            <a href="{% url 'file_export_excel_url' %}" style="text-decoration: underline;">Загрузить файл Эксель с операциями</a>
             (сформирован {{ ple_file_dtm }})
         {% else %}
             Нет файла, не сформирован ни разу, сформируйте.

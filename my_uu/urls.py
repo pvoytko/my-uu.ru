@@ -51,6 +51,7 @@ urlpatterns = [
     # Личный кабинет экспорт
     url(r'^lk/exp/$', my_uu.views.lk_exp),
     url(r'^lk/exp_csv/$', my_uu.views.lk_exp_csv),
+    url(r'^lk/file_export_excel/$', my_uu.views.file_export_excel, name='file_export_excel_url'),
 
     # Личный кабинет оплата (инфо об оплате, и страница возврата после оплаты и страница отмены и страница уведомления)
     url(r'^lk/pay/$', my_uu.views.lk_pay, name='lk_pay_url'),

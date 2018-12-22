@@ -532,7 +532,7 @@ def asyncMakeExportExcel(async_task, user_model_id):
         'bg_color': 'silver',
     })
     header_format.set_text_wrap()
-    worksheet.set_row(0, 30, header_format)
+    worksheet.set_row(0, 60, header_format)
 
     # Запись в файл заголовков
     header = (
@@ -565,13 +565,13 @@ def asyncMakeExportExcel(async_task, user_model_id):
             {'pvr_val': pvl_datetime_format.funcs.dateTimeToStr(created_dtm) },
 
             # 'Тип операции',
-            {'pvr_val': unicode(z.utype) },
+            {'pvr_val': unicode(z.utype.name) },
 
             # 'Счет',
-            {'pvr_val': unicode(z.account) },
+            {'pvr_val': unicode(z.account.name) },
 
             # 'Категория',
-            {'pvr_val': unicode(z.category) },
+            {'pvr_val': unicode(z.category.scf_name) },
 
             # 'Комментарий',
             {'pvr_val': fleGetValueTrueOrMinuses(z.comment) },
@@ -595,17 +595,27 @@ def asyncMakeExportExcel(async_task, user_model_id):
 
     # Запись в файл
     pvl_async.funcs.pvlWriteAsyncTaskLog(async_task, u'Запись файла...')
-    fname = getExportExcelFileForUser(user_model)
+    fname = getExportExcelFileForUserPathOnly(user_model)
     with open(fname, u'wb') as f:
         f.write(output.read())
 
     pvl_async.funcs.pvlWriteAsyncTaskLog(async_task, u'Файл успешно сформирован и запиисан.')
 
 # Имя файла в котором на диске хранится данные для экспорта по юзеру
-def getExportExcelFileForUser(user_model):
+def getExportExcelFileForUserPathOnly(user_model):
     fname = u'{}.xls'.format(user_model.id)
     res = os.path.join(settings.MEDIA_ROOT, 'lk_exp_files', fname)
     return res
+
+
+# Имя файла в котором на диске хранится данные для экспорта по юзеру
+def getExportExcelFileForUserAndDateTime(user_model):
+    file_path = getExportExcelFileForUserPathOnly(user_model)
+    file_dtm_str = None
+    if os.path.exists(file_path):
+        file_dtm_val = getFileModificationDatetime(file_path)
+        file_dtm_str = pvl_datetime_format.funcs.dateTimeToStr(file_dtm_val)
+    return file_path, file_dtm_str
 
 
 # Упрощает возврат кода ошибки

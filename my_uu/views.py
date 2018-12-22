@@ -15,6 +15,7 @@ from django.conf import settings
 from django import forms
 import utils
 import simplejson
+import io
 import calendar
 import annoying.decorators
 import annoying.functions
@@ -1572,11 +1573,7 @@ def lk_exp(request):
         )
 
     # Определяем есть ли файл для текущего юзера и его дату-время
-    file_path = plogic.getExportExcelFileForUser(user)
-    file_dtm_str = None
-    if os.path.exists(file_path):
-        file_dtm_val = plogic.getFileModificationDatetime(file_path)
-        file_dtm_str = pvl_datetime_format.funcs.dateTimeToStr(file_dtm_val)
+    file_path, file_dtm_str = plogic.getExportExcelFileForUserAndDateTime(user)
 
     # Работает ели задача, если да, то кнопка неактивна
     async_task = pvl_async.funcs.pvlGetLastAsyncTaskOrNone(plogic.AT_MYU_EXPORT_EXCEL)
@@ -2485,3 +2482,25 @@ def ajax_add_uchet_record_api(request):
     return {
         "aaura_record_id": u.id,
     }
+
+
+
+# Экспорт данных Excel
+@uu_login_required
+def file_export_excel(request):
+
+    user_model = plogic.getAuthorizedUser(request)
+    file_path, file_datetime_str = plogic.getExportExcelFileForUserAndDateTime(user_model)
+    if not os.path.exists(file_path):
+        raise RuntimeError(u'Ошибка, не должен вызываться этот метод если файла нет.')
+
+    fdtmstr2 = file_datetime_str.replace(':', '_').replace('.', '_').replace(' ', '__')
+    file_name_for_user = u"myuu_operations_excel__{}.xlsx".format(fdtmstr2)
+
+    with open(file_path, 'rb') as input_file:
+        response = django.http.HttpResponse(
+            input_file.read(),
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+    response['Content-Disposition'] = u"attachment; filename={}".format(file_name_for_user)
+    return response
