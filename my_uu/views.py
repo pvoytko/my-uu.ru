@@ -280,8 +280,10 @@ def uuTrackEventDynamic(user, eventConstant):
 @uu_login_required
 @annoying.decorators.render_to('lk_beg.html')
 def lk_beg(request):
-    ms = request.user.manualsteps
-    showManualStepsIfNotDisplayedEarler = ms.datetime_subscribe is None and ms.datetime_cancel is None
+
+    # ms = request.user.manualsteps
+    # showManualStepsIfNotDisplayedEarler = ms.datetime_subscribe is None and ms.datetime_cancel is None
+    
     return locals()
 
 
