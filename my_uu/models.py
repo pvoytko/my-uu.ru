@@ -325,10 +325,26 @@ class Category(models.Model):
         }
     )
 
+    scf_comment = models.CharField(
+        verbose_name=u'Примечание',
+        max_length=255,
+        blank=True,
+        default=None,
+        null=True,
+    )
+
     # Группа
     # Эта же модель используется для создания групп. У них тут флаг True.
     scf_is_group = models.BooleanField(
         default=False,
+    )
+
+    scf_is_expanded = models.BooleanField(
+        default=True,
+        help_text=u"""
+            Признак используется только для групп.
+            Отображение на странице Анализа - свернуто или развернуто.
+        """
     )
 
     # Видимость, по умолчанию (при регистрации) - категории создаются видимыми

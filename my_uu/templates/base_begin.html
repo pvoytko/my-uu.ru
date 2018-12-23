@@ -35,9 +35,7 @@
 
     <div class="page_content_container" style="position: relative;">
 
-        <a class="logo__text" style="margin-top: 22px; padding: 0px;" href="{% url 'my_uu.views.main' %} " >
-            «Мой Удобный Учет»
-        </a>
+        {% include "include_logo_myuu.html" %}
 
         <div class="logo__descr">
             Онлайн-сервис для учета личных расходов и доходов

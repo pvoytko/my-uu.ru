@@ -13,7 +13,7 @@ urlpatterns = [
     url(r'^mydjadmin/', admin.site.urls),
 
     # Главная сервиса
-    url(r'^$', my_uu.views.main),
+    url(r'^$', my_uu.views.page_main, name='page_main_url'),
 
     # Регистрация логин и выход
     url(r'^register_user/$', my_uu.views.register_user_ajax),
@@ -43,6 +43,11 @@ urlpatterns = [
     url(r'^lk/ajax_save_category/$', my_uu.views.ajax_lk_save_category, name='ajax_save_category_url'),
     url(r'^lk/ajax_delete_category/$', my_uu.views.ajax_lk_delete_category, name='ajax_lk_delete_category_url'),
     url(r'^lk/ajax_save_categories_order/$', my_uu.views.lk_save_categories_order_ajax, name='lk_save_categories_order_ajax_url'),
+
+    url(
+        r'^ajax_save_category_expand_status/$',
+        my_uu.views.ajax_save_category_expand_status,
+    ),
 
     # Личный кабинет импорт
     # url(r'^lk/imp/$', 'my_uu.views.lk_imp'),

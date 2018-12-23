@@ -196,3 +196,19 @@
     margin: 15px auto;
 }
 /* ENDPVBLOCK */
+
+
+/* На странице категорий желтй цвет под строкой группы */
+.row_cat_group_bg{
+    background-color: #eff17f9e;
+}
+
+.myuu_ana_row_header{
+    background-color: #f0f0f0;
+}
+.myuu_ana_row_group{
+    background-color: #eff17f9e;
+}
+.table-hover>tbody>tr:hover>td.myuu_ana_row_group{
+    background-color: #dfd382c4;
+}

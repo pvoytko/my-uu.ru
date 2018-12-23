@@ -339,7 +339,7 @@
                         <tr
                                 ng-repeat="a in lkcGetCategoriesListFiltered()"
                                 ng-if="a.scf_visible || lkc_is_show_hided"
-                                ng-class="{ 'row_not_visible': !a.scf_visible }"
+                                ng-class="{ 'row_not_visible': !a.scf_visible, 'row_cat_group_bg': a.lkc_is_group }"
                                 id="{% ng a.id %}"
                                 >
                             <td class="move_panel" title="Потяните, чтобы изменить порядок"><div>↕</div></td>
@@ -428,6 +428,17 @@
                                     >
                             </sili-form-field-input-directive>
 
+                            <sili-form-field-input-directive
+                                siffd-label="Примечание:"
+                                siffd-help-text='В этом поле можно сохранить любую полезную для себя информацию об этой группе, чтобы не забыть, на будущее. Например, какие операции к ней планируется относить или для чего эта группа была создана.'
+                                siffd-model="lkcat_model.scf_comment"
+                                siffd-is-req="false"
+                                siffd-is-disabled="false"
+                                siffd-django-form-errors="cdc_dj_errors"
+                                siffd-field-name="scf_comment"
+                                    >
+                            </sili-form-field-input-directive>
+
                         </div>
 
                         <div ng-if="cdc_type=='CDC_TYPE_CATEGORY'">
@@ -446,7 +457,7 @@
 
                             <sili-form-field-dropdown-directive
                                 siffd-label="Группа:"
-                                siffd-help-text='Несколько категорий можно сгруппировать выбрав тут одинаковое значение группы.'
+                                siffd-help-text='Если выбрать тут одинаковую группу для нескольких категорий, то такие категории будут сгруппированы на странице "Анализ" для более удобного анализа. '
                                 siffd-model="lkcat_model.scf_parent"
                                 siffd-choices="ac_group_choices"
                                 siffd-is-req="true"
@@ -464,6 +475,17 @@
                                 siffd-is-disabled="false"
                                 siffd-django-form-errors="cdc_dj_errors"
                                 siffd-field-name="scf_name"
+                                    >
+                            </sili-form-field-input-directive>
+
+                            <sili-form-field-input-directive
+                                siffd-label="Примечание:"
+                                siffd-help-text='В этом поле можно сохранить любую полезную для себя информацию об этой категории, чтобы не забыть, на будущее. Например, какие операции к ней планируется относить или для чего эта категория была создана.'
+                                siffd-model="lkcat_model.scf_comment"
+                                siffd-is-req="false"
+                                siffd-is-disabled="false"
+                                siffd-django-form-errors="cdc_dj_errors"
+                                siffd-field-name="scf_comment"
                                     >
                             </sili-form-field-input-directive>
 

@@ -16,6 +16,7 @@ from django import forms
 import utils
 import simplejson
 import io
+import decimal
 import calendar
 import annoying.decorators
 import annoying.functions
@@ -75,7 +76,7 @@ def _main_imp(request, templateName):
 
 
 # Главная страница 2.
-def main(request):
+def page_main(request):
     return _main_imp(request, 'lpgen_main.html')
 
 
@@ -243,7 +244,7 @@ def login_user_ajax(request):
 def logout_user(request):
     import django.contrib.auth.views
     uuTrackEventDynamic(request.user, my_uu.models.EventLog.EVENT_LOGOUT)
-    return django.contrib.auth.views.logout(request, next_page = reverse('my_uu.views.main'))
+    return django.contrib.auth.views.logout(request, next_page = reverse('page_main_url'))
 
 
 # Страница регистрации или входа
@@ -433,6 +434,7 @@ def lk_cat(request):
         for f in (
             'id',
             'scf_name',
+            'scf_comment',
             'lkcm_count',
             'scf_visible',
             'lkcm_budget_value',
@@ -951,11 +953,23 @@ def ajax_lk_ana(request):
         period_id = plogic.convertPeriodCodeAndStartDateToPeriodId(periodCode, key2)
 
         if key1 not in dicti:
-            return {'lka_cell_val': empty_val, 'lka_cell_period': period_id}
+            return {
+                'lka_cell_val': empty_val,
+                'lka_cell_nval_str': '0',
+                'lka_cell_period': period_id,
+            }
         elem1 = dicti[key1]
         if key2 not in elem1:
-            return {'lka_cell_val': empty_val, 'lka_cell_period': period_id}
-        return {'lka_cell_val': my_uu.utils.formatMoneyValue(elem1[key2]), 'lka_cell_period': period_id}
+            return {
+                'lka_cell_val': empty_val,
+                'lka_cell_nval_str': '0',
+                'lka_cell_period': period_id,
+            }
+        return {
+            'lka_cell_val': my_uu.utils.formatMoneyValue(elem1[key2]),
+            'lka_cell_nval_str': str(elem1[key2]),
+            'lka_cell_period': period_id,
+            }
 
 
     def getValFormattedOrZero(dictionary, key):
@@ -1413,6 +1427,15 @@ def ajax_lk_ana(request):
                 # Подсветка серым если категория не видима
                 'lka_is_category_visible': r.scf_visible,
 
+                # Подсветка цветом если это группа
+                'lka_is_ana_group': r.scf_is_group,
+
+                # ID Родительсткой строки. Это нужно для сворачивания-разворачивания.
+                'lka_parent_id': r.scf_parent_id if r.scf_parent else None,
+
+                # Флаг должна она быть развернута или свернута
+                'alka_is_collapsed': not r.scf_is_expanded,
+
                 # Цвет для итогового бюджета
                 'bcbci_color': budget_colors_by_category_id[r.id]['bcbci_color'],
                 'bcbci_year_color': budget_colors_by_category_id[r.id]['bcbci_year_color'],
@@ -1420,6 +1443,38 @@ def ajax_lk_ana(request):
                 # Отступ
                 'bcbci_indent': my_uu.plogic.getCategoryIndentLevel(r),
             })
+
+
+        # Тепреь для каждой категории которая является группой (содержит подкатегрии)
+        # нам надо посчитать сумму по бюджетам.
+        # До http://pvoytko.ru/jx/Bm7AtDFfrt
+        # Нам надо чтобы была сумма
+        # Сначаа строим словарь, ключ - ID категории, значение - строкад ля отображения
+        # при втором проходе - считаем сумму
+        output_rows_by_cat_id = {}
+        for row in output_list:
+
+            cur_cat_id = row['lka_category_id']
+            output_rows_by_cat_id[cur_cat_id] = row
+        for row in output_list:
+
+            # Если эта категория имеет дочерние
+            cur_cat_id = row['lka_category_id']
+            if cur_cat_id in childs_by_id:
+
+                # Тогда для этой категории - для каждого столбца
+                for col_num, col_val in enumerate(periods_start_dates):
+
+                    # Вычисляем сумму по дочерним категориям
+                    childs_sum = decimal.Decimal('0')
+                    for child_catergory in childs_by_id[cur_cat_id]:
+                        child_row = output_rows_by_cat_id[child_catergory.id]
+                        val_str = child_row['lka_cell_data'][col_num]['lka_cell_nval_str']
+                        childs_sum += decimal.Decimal(val_str)
+
+                    # Заносим вычисленную сумму в итоговую таблицу
+                    row['lka_cell_data'][col_num]['lka_cell_nval_str'] = str(childs_sum)
+                    row['lka_cell_data'][col_num]['lka_cell_val'] = my_uu.utils.formatMoneyValue(childs_sum)
 
 
         # можем ли мотать влево и вправо (есть ли еще периоды) и какой аргумент в урл для этого передавать
@@ -1921,12 +1976,20 @@ def ajax_lk_save_category(request):
         lkcm_budget_value = django.forms.IntegerField(
             min_value=0
         )
+        scf_comment = django.forms.CharField(
+            required=False,
+            max_length=255,
+        )
 
     class SaveGroupForm(django.forms.Form):
         lkcm_dohod_rashod_type = django.forms.CharField(
             max_length=255,
         )
         scf_name = django.forms.CharField(
+            max_length=255,
+        )
+        scf_comment = django.forms.CharField(
+            required=False,
             max_length=255,
         )
 
@@ -2101,6 +2164,21 @@ def ajax_lk_delete_category(request):
 @uu_login_required
 def lk_save_categories_order_ajax(request):
     return _lk_save_accounts_or_category_position(request, request.user.category_set, my_uu.models.EventLog.EVENT_REORDER_CATEGORIES)
+
+
+# Вызывается чтобы сохранить в БД статус сворачивания по категории
+@uu_login_required
+@annoying.decorators.ajax_request
+def ajax_save_category_expand_status(request):
+
+    cat_id, new_expanded_status = pvl_backend_ajax.funcs.extractAngularPostData(
+        request, 'asces_category_id', 'asces_new_expanded_status',
+    )
+    category_model = my_uu.models.Category.objects.get(id = cat_id)
+    category_model.scf_is_expanded = new_expanded_status
+    category_model.save()
+
+    return {}
 
 
 # Страница Анализ личного кабиета

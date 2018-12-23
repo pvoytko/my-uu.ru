@@ -16,64 +16,6 @@
 
     <script>
 
-
-        /* Класс объединяет в себе код, предназначенный для обращения на сервер, загрузке ответа с сервера,
-           и установке флага успешности загрузки: успешно загрузили или была ошибка.
-        */
-        function FromServerLoader(serverApiUrl, $http, postData){
-
-            var self = this;
-
-            // Метод начала загрузки
-            this.load = function(serverApiUrl, $http, postData){
-                self.api = undefined;
-                self._isSuccessFlag = false;
-                self._isErrorFlag = false;
-                self._serverErrorCode = 0;
-                var httpMethod = function(url){
-                    if (postData){
-                        return $http.post(url, postData);
-                    }
-                    else{
-                        return $http.get(url);
-                    }
-                };
-                httpMethod(serverApiUrl).
-                    then(
-                        function(data) {
-                            self.api = data.data;
-                            self._isSuccessFlag = true;
-                        },
-                        function(data, code){
-                            self._isErrorFlag = true;
-
-                            // Если отпал инет или отменена загрузка (клик по ссылке) или упал сервер то код будет 0
-                            self._serverErrorCode = code;
-                        }
-                    );
-            }
-            // Выдает true пока ждем ответ от сервера
-            this.isLoading = function(){
-                return (!self._isErrorFlag && ! self._isSuccessFlag);
-            }
-            // Выдает true когда получен 200 ответ от сервера
-            this.isSuccess = function(){
-                return self._isSuccessFlag;
-            }
-            // Выдает true когда ответ от сервера не получен
-            this.isUnknownError = function(){
-                return self._isErrorFlag && (self._serverErrorCode == 0);
-            }
-            // Выдает true когда от сервера получен ответ с кодом ошибки
-            this.isServerError = function(){
-                return self._isErrorFlag && (self._serverErrorCode != 0);
-            }
-
-            // Начальная загрузка
-            this.load(serverApiUrl, $http, postData);
-        }
-
-
         angular.module('myNgApp').controller('AnaController', function($scope, $http){
 
             // какие открыть в таблице
@@ -134,28 +76,63 @@
             };
 
             // Загрузка данных с сервера
-            $scope.load = function(){
-                $scope.loader = new FromServerLoader('/ajax_lk_ana/', $http, {
-                    periodCode: $scope.periodCode,
-                    anaType: $scope.anaType,
-                    lkax_is_grouping: $scope.ac_is_grouping,
-                    lkax_bperiod: $scope.ac_budget_period,
-                    lkax_end_date: $scope.ac_end_date
+            $scope.lkafLoad = function(){
+
+                // Ш-140
+                $scope.lkafl_is_server_error = false;
+                backendAjaxPostStatu2({
+                    baps_http: $http,
+                    baps_ajax_url: '/ajax_lk_ana/',
+                    baps_dj_errors: false,
+                    baps_response_dj_errors_field: false,
+                    baps_loading_status: [$scope, 'lkafl_is_loading'],
+                    baps_post_parameters: {
+                        periodCode: $scope.periodCode,
+                        anaType: $scope.anaType,
+                        lkax_is_grouping: $scope.ac_is_grouping,
+                        lkax_bperiod: $scope.ac_budget_period,
+                        lkax_end_date: $scope.ac_end_date
+                    },
+                    baps_error_callback: function(server_response){
+
+                        // При ошибке свервера - включем флаг чтобы показалось сообщение
+                        $scope.lkafl_is_server_error = true;
+
+                    },
+                    baps_success_callback: function(server_response){
+
+                        $scope.loader_api_pageData = server_response.pageData;
+
+                        // После загрузки данных - просатвляем ссылки на родитсельсткую строку
+                        // это нужно для механизма сворачивания-разворачивания
+                        // Сначала для этого строим список строк по ID
+                        var rows_by_id = {}
+                        for (i = 0; i<$scope.getDataRowList().length; ++i){
+                            var row = $scope.getDataRowList()[i];
+                            rows_by_id[row.lka_category_id] = row;
+                        }
+                        for (i = 0; i<$scope.getDataRowList().length; ++i){
+                            var row = $scope.getDataRowList()[i];
+                            row['lka_parent_row'] = rows_by_id[row.lka_parent_id];
+                        }
+                    }
                 });
+
+
             };
-            $scope.load();
+            $scope.lkafLoad();
 
             $scope.getDataRowList = function(){
-                return $scope.loader.api.pageData['dataRows'][$scope.anaType + '-' + $scope.periodCode]
+                return $scope.loader_api_pageData['dataRows'][$scope.anaType + '-' + $scope.periodCode]
             };
             $scope.getTotalRow = function(){
-                return $scope.loader.api.pageData['totalRow'][$scope.anaType + '-' + $scope.periodCode];
+                return $scope.loader_api_pageData['totalRow'][$scope.anaType + '-' + $scope.periodCode];
             };
             $scope.getPeriods = function(){
-                return $scope.loader.api.pageData['periods'][$scope.anaType + '-' + $scope.periodCode];
+                return $scope.loader_api_pageData['periods'][$scope.anaType + '-' + $scope.periodCode];
             };
             $scope.getSimplePageData = function(){
-                return $scope.loader.api.pageData;
+                return $scope.loader_api_pageData;
             };
             $scope.getCatCaption = function(){
                 return "Категории";
@@ -189,6 +166,29 @@
                 url = pvlGetUrlReplaceParam(url, 'lka_end_date', end_date, true);
                 window.location.href = url;
             }
+
+            // Вызывается чтобч свернуть-разрвернуть строку и сохранить новый статус на сервер
+            $scope.lkaafExpandCollapseRowAndSaveToServer = function(row){
+
+                // Сверхнуть-развернуть
+                row.alka_is_collapsed=!row.alka_is_collapsed;
+
+                // Сохранить новый статус на сервер
+                // Ш-140
+                backendAjaxPostStatu2({
+                    baps_http: $http,
+                    baps_ajax_url: '/ajax_save_category_expand_status/',
+                    baps_dj_errors: false,
+                    baps_response_dj_errors_field: false,
+                    baps_loading_status: false,
+                    baps_post_parameters: {
+                        asces_category_id: row.lka_category_id,
+                        asces_new_expanded_status: !row.alka_is_collapsed
+                    }
+                });
+
+            };
+
         });
     </script>
 
@@ -281,10 +281,10 @@
 
             <div ng-cloak>
 
-                <div ng-if="loader.isLoading()" class="alert alert-warning">
+                <div ng-if="lkafl_is_loading" class="alert alert-warning">
                     Загрузка данных с сервера, подождите, пожалуйста, до 30 секунд...
                 </div>
-                <div ng-if="loader.isSuccess()">
+                <div ng-if="!lkafl_is_loading">
 
                     <!-- Таблица с периодами, категориями, суммами -->
                     <table
@@ -348,11 +348,22 @@
                             </tr>
                         </thead>
                         <tbody>
+
+                            {# Если нет строк - то показ спец. строки #}
                             <tr ng-show="getDataRowList().length == 0">
                                 <td colspan="7" style="text-align: center; padding: 50px;">Нет операций для отображения.</td>
                             </tr>
-                            <tr ng-repeat="row in getDataRowList()">
-                                <td style="background-color: #f0f0f0; ">
+
+                            {# Далее показывем строки, но только если это дочерняяя и родитель свернут - то не показываем #}
+                            <tr
+                                    ng-repeat="row in getDataRowList()"
+                                    ng-show="row.lka_is_ana_group || !row.lka_parent_row || !row.lka_parent_row.alka_is_collapsed"
+                                    >
+                                <td
+                                        class="myuu_ana_row_header"
+                                        ng-class="{ 'myuu_ana_row_group': row.lka_is_ana_group }"
+                                        >
+
                                     <div
                                             style="text-overflow: ellipsis; white-space: nowrap; overflow: hidden; width: 200px; margin-left: {% ng row.bcbci_indent ? '40px' : '0px' %} "
                                             pv-tooltip-directive='row.category'
@@ -360,7 +371,28 @@
                                             {# Если категория не видима то подсветка цветом #}
                                             ng-style="{'color': row.lka_is_category_visible ? 'auto' : '#dddddd'}"
                                             >
-                                        {% ng row.category %}
+
+                                        {# Либо просто название либо название кликабельное с плюсиком #}
+                                        {# смотря это группа или не группа #}
+                                        <span
+                                            ng-if="row.lka_is_ana_group"
+                                            style="cursor: pointer;"
+                                            ng-click="lkaafExpandCollapseRowAndSaveToServer(row)"
+                                                >
+
+                                            <i class="far fa-minus-square" ng-if="!row.alka_is_collapsed"></i>
+                                            <i class="far fa-plus-square" ng-if="row.alka_is_collapsed"></i>
+                                            {% ng row.category %}
+
+                                        </span>
+                                        <span
+                                            ng-if="!row.lka_is_ana_group"
+                                                >
+
+                                            {% ng row.category %}
+
+                                        </span>
+
                                     </div>
                                 </td>
 
@@ -368,7 +400,11 @@
                                 <td style="border: none;">
                                 </td>
 
-                                <td ng-repeat="i in row.lka_cell_data track by $index" style="text-align: right;">
+                                <td
+                                        ng-repeat="i in row.lka_cell_data track by $index"
+                                        style="text-align: right;"
+                                        ng-class="{ 'myuu_ana_row_group': row.lka_is_ana_group }"
+                                        >
                                     <a
                                             href="/lk/{% ng i.lka_cell_period %}/None/{% ng row.lka_category_id %}/"
                                             class="lka_sum_link"
@@ -386,10 +422,18 @@
                                 <td style="border: none;">
                                 </td>
 
-                                <td style="text-align: left;" class="{% ng row.bcbci_color %}">
+                                <td
+                                        style="text-align: left;"
+                                        class="{% ng row.bcbci_color %}"
+                                        ng-class="{ 'myuu_ana_row_group': row.lka_is_ana_group }"
+                                        >
                                     {% ng row.lka_budget_str %}
                                 </td>
-                                <td style="text-align: left;" class="{% ng row.bcbci_year_color %}">
+                                <td
+                                        style="text-align: left;"
+                                        class="{% ng row.bcbci_year_color %}"
+                                        ng-class="{ 'myuu_ana_row_group': row.lka_is_ana_group }"
+                                        >
                                     {% ng row.lka_budget_year_str %}
                                 </td>
 
@@ -464,10 +508,7 @@
                     </table>
 
                 </div>
-                <div ng-if="loader.isUnknownError()" class="alert alert-danger">
-                    Нет связи с сервером. Повторите попытку позже, пожалуйста, или обратитесь в службу поддержки.
-                </div>
-                <div ng-if="loader.isServerError()" class="alert alert-danger">
+                <div ng-if="lkafl_is_server_error" class="alert alert-danger">
                     Ошибка на сервере. Повторите попытку позже, пожалуйста, или обратитесь в службу поддержки.
                 </div>
 
