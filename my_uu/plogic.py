@@ -639,3 +639,17 @@ def getAjaxStatusOkErrorFormError(form_errors, res_name, field_name, error_text)
 # Используется на странице категорий и анализа
 def getCategoryIndentLevel(c):
     return 1 if c.scf_parent_id else 0
+
+
+# Возвращает список списков из 2 элементов: код месяца (YYYY-MM) и русскоязычное "январь 2014"
+# Это для поля view_period_code
+def getUchetMonthSet(user_model):
+    months = user_model.uchet_set.dates('date', 'month')
+    def verboseMonth(d):
+        months = [
+            u'январь', u'февраль', u'март', u'апрель', u'май', u'июнь',
+            u'июль', u'август', u'сентябрь', u'октябрь', u'ноябрь', u'декабрь'
+            ]
+        return months[d.month-1] + " " + str(d.year)
+    return [["m{0}-{1:02}".format(m.year, m.month), verboseMonth(m)] for m in months]
+

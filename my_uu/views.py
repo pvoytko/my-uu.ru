@@ -311,14 +311,15 @@ def _getCategoryList(request):
 def page_lk_uch(request, period = None, account_id = None, category_id = None):
 
     # Определяем надо ли показать юзеру сообщение что нужна оплата, и если надо, отслеживем событие.
-    showAddUchetDialog = request.user.userprofile.showAddUchetDialog()
-    if not showAddUchetDialog:
-        uuTrackEventDynamic(request.user, my_uu.models.EventLog.EVENT_PAYMENT_NEED_DIALOG)
+    # тут была ошибка что нет профиля так что удаляем
+    # showAddUchetDialog = request.user.userprofile.showAddUchetDialog()
+    # if not showAddUchetDialog:
+    #     uuTrackEventDynamic(request.user, my_uu.models.EventLog.EVENT_PAYMENT_NEED_DIALOG)
 
     # Определяем надо ли показать юзеру сообщение что осталось менее 5 дней
-    get5DaysPaidLeft = request.user.userprofile.get5DaysPaidLeft()
-    if not (get5DaysPaidLeft is None):
-        uuTrackEventDynamic(request.user, my_uu.models.EventLog.EVENT_5DAYS_PAID_LEFT_MESSAGE)
+    # get5DaysPaidLeft = request.user.userprofile.get5DaysPaidLeft()
+    # if not (get5DaysPaidLeft is None):
+    #     uuTrackEventDynamic(request.user, my_uu.models.EventLog.EVENT_5DAYS_PAID_LEFT_MESSAGE)
 
     # ID выбранного account_id и category_id для фильтра или None
     period_id, account_id, category_id = plogic.getAccountIdAndCategoryIdFromUchetPageUrl(request.path)
@@ -364,9 +365,9 @@ def page_lk_uch(request, period = None, account_id = None, category_id = None):
         'accountBalanceListJson': json.dumps(_getAccountBalanceList(request), cls=DjangoJSONEncoder),
         'categoryListJson': json.dumps(_getCategoryList(request), cls=DjangoJSONEncoder),
         'viewPeriodSetJson': json.dumps(list(my_uu.models.UserProfile.VIEW_PERIOD_CODE_CHOICES) + addFilterPeriodChoices, cls=DjangoJSONEncoder),
-        'viewPeriodMonthSetJson': json.dumps((request.user.userprofile.getUchetMonthSet()), cls=DjangoJSONEncoder),
-        'showAddUchetDialog': 1 if showAddUchetDialog else 1, # 1 или 0 - т.к. JS не понимает True / False
-        'get5DaysPaidLeft': get5DaysPaidLeft,
+        'viewPeriodMonthSetJson': json.dumps(my_uu.plogic.getUchetMonthSet(request.user), cls=DjangoJSONEncoder),
+        # 'showAddUchetDialog': 1 if showAddUchetDialog else 1, # 1 или 0 - т.к. JS не понимает True / False
+        # 'get5DaysPaidLeft': get5DaysPaidLeft,
 
         # ID счета, который был выбран в фильтре в списке счетов, и передан в параметре УРЛ
         # преобразование к целому нужно т.к. сравнние с id не работает иначе.

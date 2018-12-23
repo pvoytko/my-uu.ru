@@ -131,7 +131,7 @@
         angular.module('myNgApp').controller('AddRecordCtrl', function($scope, $element){
 
             // Флаг сбрасывается если сработало ограничение на внесение и больше вносить нельзя.
-            $scope.showAddUchetDialog = {{ showAddUchetDialog }};
+            // $scope.showAddUchetDialog = {{ showAddUchetDialog }};
 
             // Список счетов и категорий
             $scope.accounts = {{ accountBalanceListJson|safe }};

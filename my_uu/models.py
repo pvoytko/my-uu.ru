@@ -79,18 +79,6 @@ class UserProfile(models.Model):
     )
     view_period_code = models.CharField(max_length=10, default='last3')
 
-    # Возвращает список списков из 2 элементов: код месяца (YYYY-MM) и русскоязычное "январь 2014"
-    # Это для поля view_period_code
-    def getUchetMonthSet(self):
-        months = self.user.uchet_set.dates('date', 'month')
-        def verboseMonth(d):
-            months = [
-                u'январь', u'февраль', u'март', u'апрель', u'май', u'июнь',
-                u'июль', u'август', u'сентябрь', u'октябрь', u'ноябрь', u'декабрь'
-                ]
-            return months[d.month-1] + " " + str(d.year)
-        return [["m{0}-{1:02}".format(m.year, m.month), verboseMonth(m)] for m in months]
-
     # Вычисляет дату по которую у юзера оплачено.
     # На основании информации о платежах из базы.
     # Либо None если оплаты нет или оплата уже не действует.
