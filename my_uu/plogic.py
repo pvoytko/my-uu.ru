@@ -637,8 +637,18 @@ def getAjaxStatusOkErrorFormError(form_errors, res_name, field_name, error_text)
 
 
 # Используется на странице категорий и анализа
+# Для корневой вернет 0 для следуюего уровня 1 и т.п.
 def getCategoryIndentLevel(c):
-    return 1 if c.scf_parent_id else 0
+    lev = 0
+    cur_par = c
+    while True:
+        cur_par = cur_par.scf_parent
+        if not cur_par:
+            return lev
+        lev += 1
+
+        if lev >= 20:
+            raise RuntimeError("Вложенность более чем 20 не поддерживается, наверное циклическая ошибка.")
 
 
 # Возвращает список списков из 2 элементов: код месяца (YYYY-MM) и русскоязычное "январь 2014"

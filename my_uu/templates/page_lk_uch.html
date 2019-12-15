@@ -119,6 +119,18 @@
             opacity: 0.5;
             cursor: default;
         }
+        .uchRowEditIcon {
+            color: green;
+            opacity: 0.2;
+            cursor: pointer;
+            padding-top: 2px;
+            font-weight: bold;
+            font-size: 15px;
+            text-shadow: 0 1px 0 #fff;
+        }
+        .uchRowEditIcon:hover {
+            opacity: 0.8;
+        }
     </style>
 
 {% endblock %}
@@ -134,37 +146,165 @@
             // $scope.showAddUchetDialog = {{ showAddUchetDialog }};
 
             // Список счетов и категорий
+            // для категорий длва списка - полный и согласно выбранного типа (доход расход)
             $scope.accounts = {{ accountBalanceListJson|safe }};
-            $scope.categories = {{ categoryListJson|safe }};
+            $scope.categoriesNoGroupAll = {{ categoryListNoGroupJson|safe }};
+            $scope.categoriesNoGroupFiltered = $scope.categoriesNoGroupAll;
 
-            $scope.showError = function(errText){
+            // Возвращает список категорий для показа в окне учета
+            $scope.pluGetCategoriesDlgList = function(){
+                return $scope.categoriesNoGroupFiltered;
+            };
+
+            $scope.acrShowError = function(errText){
                 $scope.error = errText;
             };
 
             // Что делать при клике на кнопку OK
-            $scope.closeDlg = function() {
-                if ($scope.onModelSuccessCallback($scope, $scope.showError) !== false){
+            $scope.acrCloseDlg = function() {
+
+                // onModelSuccessCallback - коллбек
+                // который вызывается при закрытии модального окна по кнопке ОК.
+                // Обработчик успешного закрытия вызываем при клике на кнопку ВНЕСТИ
+                function onModelSuccessCallback(){
+
+                    // Валидируем данные
+                    dateValRes = uuValidateDate($scope.date);
+                    if (dateValRes !== true){
+                        $scope.acrShowError(dateValRes);
+                        return false;
+                    }
+                    sumValRes = uuValidateSum($scope.sum);
+                    if (sumValRes !== true){
+                        $scope.acrShowError(sumValRes);
+                        return false;
+                    }
+
+                    // parseFloat вернет число даже для случая 55ss тогда как при передаче
+                    // на сервер этого значения сервер сообщит об ошибке. Поэтому тут мы корректируем.
+                    // кроме того грид ждет что число бует строкой потому форматируем как строку.
+                    // Решаем сразу неск. задач.
+                    // 1. Преобразуем в строку (хотя исходная итак строка)
+                    // 2. Точки меняем на запятые (чтобы результат всегда был с запятыми)
+                    // 3. Делаем только 2 знака после запятой.
+                    // 4. Удаляем лишние символы кроме того что скушала parseFloat
+                    // 5. Если тип операции - расход, то введенную сумму берем со знаком минус.
+                    var origStrVal = $scope.sum;
+                    var strValWithPt = String(origStrVal).replace(',', '.');
+                    var floatVal = parseFloat(strValWithPt);
+                    var strValCleanedPlus = String(floatVal.toFixed(2));
+                    var strValCleanedMinus = String((-floatVal).toFixed(2));
+                    var strValWithComma = String(strValCleanedPlus).replace('.', ',');
+                    var strValWithCommaMinus = String(strValCleanedMinus).replace('.', ',');
+
+                    // Далее просто вносим правки из полей диалога в контрол грида
+                    // (при добавлении - добавляем строку, при редактировании - меняем)
+                    // а уже сам грид отвественен за вызов метода синхронизации с сервером
+                    // т.е. так был сделан грид...
+                    if ($scope.acr_is_edit_row){
+
+                        $('#uuGrid').jqxGrid('updaterow', $scope.acr_edited_row_grid_id, {
+                            'date': $scope.date,
+                            'lkud_time': $scope.lkud_time,
+                            'utype': uTypeList[$scope.plu_type],
+                            'sum': strValWithComma,
+                            'account': $scope.account,
+                            'category': $scope.category,
+                            'comment': $scope.comment,
+                            'serverRowId': $scope.acr_server_row_id
+                        });
+
+                    }
+                    else {
+
+                        // Добавляем строку в грид, перед этим увеличив высоту грида
+                        // (чтобы избежать его собственного скроллинга)
+                        // Либо 2 если это операция перевода.
+                        var cur_dtm = new Date();
+                        var cur_time_str = cur_dtm.getHours() + ":" + cur_dtm.getMinutes();
+                        if (dlgScope.plu_type == '2'){
+                            var newHeight = adjustGridHeightToNewRowsCount($('#uuGrid').jqxGrid('getrows').length + 2);
+                            $('#uuGrid').jqxGrid('addrow', null, {
+                                'date': dlgScope.date,
+                                'lkud_time': cur_time_str,
+                                'utype': uTypeList[dlgScope.plu_type],
+                                'sum': strValWithCommaMinus,
+                                'account': dlgScope.account,
+                                'category': dlgScope.category,
+                                'comment': dlgScope.comment
+                            });
+                            $('#uuGrid').jqxGrid('addrow', null, {
+                                'date': dlgScope.date,
+                                'lkud_time': cur_time_str,
+                                'utype': uTypeList[dlgScope.plu_type],
+                                'sum': strValWithComma,
+                                'account': dlgScope.account_to,
+                                'category': dlgScope.category,
+                                'comment': dlgScope.comment
+                            });
+                        }else{
+                            var newHeight = adjustGridHeightToNewRowsCount($('#uuGrid').jqxGrid('getrows').length + 1);
+                            $('#uuGrid').jqxGrid('addrow', null, {
+                                'date': dlgScope.date,
+                                'lkud_time': cur_time_str,
+                                'utype': uTypeList[dlgScope.plu_type],
+                                'sum': (dlgScope.plu_type == '0') ? strValWithCommaMinus : strValWithComma,
+                                'account': dlgScope.account,
+                                'category': dlgScope.category,
+                                'comment': dlgScope.comment
+                            });
+                        }
+
+                        // Снимаем выделение (ранее имевшееся) и выделяем первый столбец у добавленной строки
+                        $("#uuGrid").jqxGrid('clearselection');
+                        $("#uuGrid").jqxGrid('selectcell', $("#uuGrid").jqxGrid("getrows").length-1, 'sum');
+
+                        // Скроллинг к последнему пикселю.
+                        $(window).scrollTop(1000 + newHeight);
+
+                    }
+
+                    // Эта пара вызовов делает grid активным (клавишы влево вправо вверх вниз начинают
+                    // работать на нем). Если убрать эти вызовы то клавишы не работают пока не кликнем в грид.
+                    $("#contentuuGrid").attr('tabindex', 2);
+                    $("#contentuuGrid").focus();
+                }
+
+                if (onModelSuccessCallback() !== false){
                     $($element).modal('hide');
                 };
             }
 
-            $scope.testDlg = function() {
-                console.log($scope);
-            }
-
             // Функция вызывается извне для открытия модального окна
-            // onModelSuccessCallback - коллбек с одним аргументом (скоуп с данными)
-            // который вызывается при закрытии модального окна по кнопке ОК.
-            $scope.openModal = function(onModelSuccessCallback){
+            // если rowdata то редактируем строку, если не передано - то добавляем новую
+            $scope.arcOpenModal = function(rowdata, edited_row_grid_id){
 
-                // Инициализируем данные бизнес-логики
-                $scope.type = 0;
-                $scope.date = moment().format('DD.MM.YYYY');
-                $scope.sum = '0.00';
-                $scope.comment = '';
-                $scope.account = $scope.accounts[0].name;
-                $scope.account_to = $scope.accounts[0].name;
-                $scope.category = $scope.categories[0].name;
+                // true - если редачим строку, false - если добавляем в грид новую
+                $scope.acr_is_edit_row = !!rowdata;
+                if ($scope.acr_is_edit_row){
+                    $scope.acr_edited_row_grid_id = edited_row_grid_id;
+                    $scope.acr_server_row_id = rowdata.serverRowId;
+                };
+
+                // Инициализируем начальными значениями (или полями из редактируемой строки)
+                if ($scope.acr_is_edit_row){
+                    $scope.plu_type = converUchetTypeStrToNum(uTypeList, rowdata.utype);
+                    $scope.date = rowdata.date;
+                    $scope.lkud_time = rowdata.lkud_time;
+                    $scope.sum = rowdata.sum;
+                    $scope.account = rowdata.account;
+                    $scope.account_to = rowdata.account;
+                    $scope.category = rowdata.category;
+                    $scope.comment = rowdata.comment;
+                } else {
+                    $scope.plu_type = 0;
+                    $scope.date = moment().format('DD.MM.YYYY');
+                    $scope.sum = '0.00';
+                    $scope.account = $scope.accounts[0].name;
+                    $scope.category = $scope.categoriesNoGroupAll[0].name;
+                    $scope.account_to = $scope.accounts[0].name;
+                    $scope.comment = '';
+                }
 
                 // Текст ошибки (неверная сумма или дата)
                 $scope.error = null;
@@ -178,9 +318,27 @@
                 $('#sumFocused').focus();
                 $('#sumFocused').select();
 
-                // Обработчик успешного закрытия вызываем при клике на кнопку ВНЕСТИ
-                $scope.onModelSuccessCallback = onModelSuccessCallback;
             }
+
+            // При изменении значения выбранного в диалоге (расход доход перевод) - обновляем список категорий
+            // выпадающий - только расходы, только доходы, только переводы
+            $scope.$watch('plu_type', function(new_value, old_value){
+                $scope.categoriesNoGroupFiltered = [];
+                for (var i=0; i<$scope.categoriesNoGroupAll.length; ++i){
+                    var cat = $scope.categoriesNoGroupAll[i];
+
+                    if (new_value == '1'){
+                        var exp_type = 'LKCM_DOHOD_RASHOD_TYPE_DOHOD';
+                    }
+                    else { // 1 и 2
+                        var exp_type = 'LKCM_DOHOD_RASHOD_TYPE_RASHOD';
+                    }
+                    if (cat.lkcm_dohod_rashod_type == exp_type){
+                        $scope.categoriesNoGroupFiltered.push(cat);
+                    }
+
+                }
+            });
         });
 
     </script>
@@ -191,7 +349,15 @@
         <div class="modal-content">
         <div class="modal-header">
             <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
-            <h4 style="margin: 0px;">Внесение операции учета</h4>
+            <h4 style="margin: 0px;">
+                <span ng-if="acr_is_edit_row">
+                    Редактирование
+                </span>
+                <span ng-if="!acr_is_edit_row">
+                    Внесение
+                </span>
+                операции учета
+            </h4>
         </div>
         <div class="modal-body" style="padding-bottom: 0px;">
 
@@ -203,13 +369,13 @@
                 </div>
             {% endifnotequal %}
 
-            <form class="form-horizontal" ng-enter="closeDlg()">
+            <form class="form-horizontal" ng-enter="acrCloseDlg()">
                 <div class="form-group">
                     <label class="control-label col-xs-4">Операция</label>
                     <div class="col-xs-8" class="btn-group" data-toggle="buttons-radio">
-                      <button type="button" class="btn btn-default" ng-class="{active: type==0}" ng-click="type=0">Расход</button>
-                      <button type="button" class="btn btn-default" ng-class="{active: type==1}" ng-click="type=1">Доход</button>
-                      <button type="button" class="btn btn-default" ng-class="{active: type==2}" ng-click="type=2">Перевод</button>
+                      <button type="button" class="btn btn-default" ng-class="{active: plu_type==0}" ng-click="plu_type=0">Расход</button>
+                      <button type="button" class="btn btn-default" ng-class="{active: plu_type==1}" ng-click="plu_type=1">Доход</button>
+                      <button type="button" class="btn btn-default" ng-class="{active: plu_type==2}" ng-click="plu_type=2">Перевод</button>
                     </div>
                 </div>
                 <div class="form-group">
@@ -218,7 +384,7 @@
                         <input class="form-control" type="text" placeholder="Дата" ng-model="date">
                     </div>
                 </div>
-                <div ng-switch="type">
+                <div ng-switch="plu_type">
                     <div ng-switch-when="0" class="form-group">
                         <label class="control-label col-xs-4">Сумма расхода</label>
                         <div class="col-xs-8">
@@ -242,7 +408,7 @@
                         </div>
                     </div>
                 </div>
-                <div ng-switch="type" >
+                <div ng-switch="plu_type" >
                     <div ng-switch-default>
                         <div class="form-group">
                             <label class="control-label col-xs-4">Счет</label>
@@ -254,7 +420,7 @@
                         <div class="form-group">
                             <label class="control-label col-xs-4">Категория</label>
                             <div class="col-xs-8">
-                                <select class="form-control" style="width: 310px;" ng-model="$parent.category" ng-options="c.scf_name as c.scf_name for c in $parent.categories">
+                                <select class="form-control" style="width: 310px;" ng-model="$parent.category" ng-options="c.scf_name as c.scf_name for c in $parent.pluGetCategoriesDlgList()">
                                 </select>
                             </div>
                         </div>
@@ -289,7 +455,7 @@
             </div>
         </div>
         <div class="modal-footer" style="margin-top: 0px;">
-            <button ng-click="closeDlg()" class="btn btn-lg btn-info pull-right">Внести (Enter)</button>
+            <button ng-click="acrCloseDlg()" class="btn btn-lg btn-info pull-right">Внести (Enter)</button>
             <button href="#" class="btn btn-default pull-right" style="margin-top: 5px; margin-right: 15px;" data-dismiss="modal">Отмена (Esc)</button>
         </div>
 
@@ -474,7 +640,7 @@
                         }
 
                         // Сохраняем новый баланс (и таблица счетов авто-обновится)
-                        var abl = adjustServerBalance(JSON.parse(httpSuccessData).accountBalanceList)
+                        var abl = adjustServerBalance(JSON.parse(httpSuccessData).accountBalanceList);
                         $scope = $('#mainScope').scope();
                         $scope.accountBalanceList2 = abl;
                         $scope.$apply();
@@ -819,6 +985,17 @@
                                 "<span title='Удалить' class='deleteIcon' " + dis + "uu-row-id='" + id + "'>&times;</span>");
                     }
 
+                    // Выводит точки кликая на который можно отредачиь строку.
+                    var editRowCellRenderer = function (row, columnfield, value, defaulthtml, columnproperties) {
+                        var id = $("#uuGrid").jqxGrid('getrowid', row);
+                        var dis = "";
+                        if (deletedRowsServerSync.isRowDisabled(id)){
+                            dis = " disabled = 'disabled' ";
+                        }
+                        return replateCellHtmlOldValueWithNewValue(defaulthtml, value,
+                                "<span title='Редактировать' class='uchRowEditIcon' uu-row-id='" + id + "'>...</span>");
+                    }
+
                     // Форматирует значение даты в красивый вид.
                     var dateCellsRenderer = function (row, columnfield, value, defaulthtml, columnproperties) {
 
@@ -937,7 +1114,14 @@
                                 text: 'Комментарий',
                                 cellclassname: editedRowsServerSync.getCellClassNameGridCallback,
                                 datafield: 'comment'
-                            }
+                            },
+                            {
+                                text: '',
+                                datafield: null,
+                                width: 25,
+                                editable: false,
+                                cellsrenderer: editRowCellRenderer
+                            },
                         ]
                     });
 
@@ -1090,7 +1274,18 @@
 
                         }
 
-                    })
+                    });
+
+                    // Устанавливаем обработчик на клик рдактирование строки
+                    $("#uuGrid").on('click', '[class = "uchRowEditIcon"]', function (event) {
+
+                        var grid_row_id = $(event.target).attr('uu-row-id');
+
+                        var rowData = $("#uuGrid").jqxGrid("getrowdatabyid", grid_row_id);
+
+                        addUchetRecordOrEdit(rowData, grid_row_id);
+
+                    });
 
                 });
 
@@ -1263,89 +1458,11 @@
                     <!-- Добалвение новой строки учета -->
                     <script>
 
-                        function addUchetRecord(){
+                        function addUchetRecordOrEdit(rowdata, edited_row_grid_id){
+
                             // Показываем диалог внесения модальный
-                            $('#addRecordDialog').scope().openModal(function(dlgScope, errorHandler){
+                            $('#addRecordDialog').scope().arcOpenModal(rowdata, edited_row_grid_id);
 
-                                // Валидируем данные
-                                dateValRes = uuValidateDate(dlgScope.date);
-                                if (dateValRes !== true){
-                                    errorHandler(dateValRes);
-                                    return false;
-                                }
-                                sumValRes = uuValidateSum(dlgScope.sum);
-                                if (sumValRes !== true){
-                                    errorHandler(sumValRes);
-                                    return false;
-                                }
-
-                                // parseFloat вернет число даже для случая 55ss тогда как при передаче
-                                // на сервер этого значения сервер сообщит об ошибке. Поэтому тут мы корректируем.
-                                // кроме того грид ждет что число бует строкой потому форматируем как строку.
-                                // Решаем сразу неск. задач.
-                                // 1. Преобразуем в строку (хотя исходная итак строка)
-                                // 2. Точки меняем на запятые (чтобы результат всегда был с запятыми)
-                                // 3. Делаем только 2 знака после запятой.
-                                // 4. Удаляем лишние символы кроме того что скушала parseFloat
-                                // 5. Если тип операции - расход, то введенную сумму берем со знаком минус.
-                                var origStrVal = dlgScope.sum;
-                                var strValWithPt = String(origStrVal).replace(',', '.');
-                                var floatVal = parseFloat(strValWithPt);
-                                var strValCleanedPlus = String(floatVal.toFixed(2));
-                                var strValCleanedMinus = String((-floatVal).toFixed(2));
-                                var strValWithComma = String(strValCleanedPlus).replace('.', ',');
-                                var strValWithCommaMinus = String(strValCleanedMinus).replace('.', ',');
-
-
-                                // Добавляем строку, перед этим увеличив высоту грида (чтобы избежать его собственного скроллинга)
-                                // Либо 2 если это операция перевода.
-                                var cur_dtm = new Date();
-                                var cur_time_str = cur_dtm.getHours() + ":" + cur_dtm.getMinutes();
-                                if (dlgScope.type == '2'){
-                                    var newHeight = adjustGridHeightToNewRowsCount($('#uuGrid').jqxGrid('getrows').length + 2);
-                                    $('#uuGrid').jqxGrid('addrow', null, {
-                                        'date': dlgScope.date,
-                                        'lkud_time': cur_time_str,
-                                        'utype': uTypeList[dlgScope.type],
-                                        'sum': strValWithCommaMinus,
-                                        'account': dlgScope.account,
-                                        'category': dlgScope.category,
-                                        'comment': dlgScope.comment
-                                    });
-                                    $('#uuGrid').jqxGrid('addrow', null, {
-                                        'date': dlgScope.date,
-                                        'lkud_time': cur_time_str,
-                                        'utype': uTypeList[dlgScope.type],
-                                        'sum': strValWithComma,
-                                        'account': dlgScope.account_to,
-                                        'category': dlgScope.category,
-                                        'comment': dlgScope.comment
-                                    });
-                                }else{
-                                    var newHeight = adjustGridHeightToNewRowsCount($('#uuGrid').jqxGrid('getrows').length + 1);
-                                    $('#uuGrid').jqxGrid('addrow', null, {
-                                        'date': dlgScope.date,
-                                        'lkud_time': cur_time_str,
-                                        'utype': uTypeList[dlgScope.type],
-                                        'sum': (dlgScope.type == '0') ? strValWithCommaMinus : strValWithComma,
-                                        'account': dlgScope.account,
-                                        'category': dlgScope.category,
-                                        'comment': dlgScope.comment
-                                    });
-                                }
-
-                                // Снимаем выделение (ранее имевшееся) и выделяем первый столбец у добавленной строки
-                                $("#uuGrid").jqxGrid('clearselection');
-                                $("#uuGrid").jqxGrid('selectcell', $("#uuGrid").jqxGrid("getrows").length-1, 'sum');
-
-                                // Эта пара вызовов делает grid активным (клавишы влево вправо вверх вниз начинают
-                                // работать на нем). Если убрать эти вызовы то клавишы не работают пока не кликнем в грид.
-                                $("#contentuuGrid").attr('tabindex', 2);
-                                $("#contentuuGrid").focus();
-
-                                // Скроллинг к последнему пикселю.
-                                $(window).scrollTop(1000 + newHeight);
-                            });
                         }
 
                         $(document).on('keydown', function(event){
@@ -1354,12 +1471,12 @@
                             // Если нажать Ins, то which будет 45 и charCode 0
                             // Если нажать "-", то which будет 45 и charCode 45
                             if ((event.which == 45) && (event.charCode==0)){
-                                addUchetRecord();
+                                addUchetRecordOrEdit();
                             };
                         });
 
                         $('#btnAdd').on('click', function(){
-                            addUchetRecord();
+                            addUchetRecordOrEdit();
                         });
                     </script>
 

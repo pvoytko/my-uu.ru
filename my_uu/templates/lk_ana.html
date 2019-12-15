@@ -294,6 +294,8 @@
                             >
                         <thead>
                             <tr>
+
+                                {# Заголовок "категории" #}
                                 <th
                                         style="background-color: #f0f0f0; text-align: center; height: 75px; vertical-align: top; border-top: 1px solid #ddd; width: 200px;"
                                         >
@@ -354,10 +356,10 @@
                                 <td colspan="7" style="text-align: center; padding: 50px;">Нет операций для отображения.</td>
                             </tr>
 
-                            {# Далее показывем строки, но только если это дочерняяя и родитель свернут - то не показываем #}
+                            {# Далее показывем строки, но если есть родитель и родитель свернут - то эту (дочернюю) не показываем #}
                             <tr
                                     ng-repeat="row in getDataRowList()"
-                                    ng-show="row.lka_is_ana_group || !row.lka_parent_row || !row.lka_parent_row.alka_is_collapsed"
+                                    ng-show="!row.lka_parent_row || !row.lka_parent_row.alka_is_collapsed"
                                     >
                                 <td
                                         class="myuu_ana_row_header"
@@ -365,7 +367,7 @@
                                         >
 
                                     <div
-                                            style="text-overflow: ellipsis; white-space: nowrap; overflow: hidden; width: 200px; margin-left: {% ng row.bcbci_indent ? '40px' : '0px' %} "
+                                            style="text-overflow: ellipsis; white-space: nowrap; overflow: hidden; width: 200px; margin-left: {% ng row.bcbci_indent * '40' + 'px' %} "
                                             pv-tooltip-directive='row.category'
 
                                             {# Если категория не видима то подсветка цветом #}

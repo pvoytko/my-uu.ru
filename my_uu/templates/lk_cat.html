@@ -352,7 +352,7 @@
                                 <div
                                         pv-tooltip-directive="a.scf_name"
                                         class="ellipsis"
-                                        style="margin-left: {% ng a.scfs_indent ? '40px' : '0px' %}"
+                                        style="margin-left: {% ng a.scfs_indent * 40 + 'px' %}"
                                         >
                                     {% ng a.scf_name %}
                                 </div>
@@ -416,6 +416,18 @@
                                 siffd-field-name="lkcm_dohod_rashod_type"
                                     >
                             </sili-form-field-choices-buttons-directive>
+
+                            <sili-form-field-dropdown-directive
+                                siffd-label="Родительская группа:"
+                                siffd-help-text='Ддля создания дерева групп. Можно оставить пустой. Для корневой группы.'
+                                siffd-model="lkcat_model.scf_parent"
+                                siffd-choices="ac_group_choices"
+                                siffd-is-req="false"
+                                siffd-is-disabled="false"
+                                siffd-django-form-errors="cdc_dj_errors"
+                                siffd-field-name="scf_parent"
+                                    >
+                            </sili-form-field-dropdown-directive>
 
                             <sili-form-field-input-directive
                                 siffd-label="Название группы:"

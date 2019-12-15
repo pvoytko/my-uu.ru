@@ -305,7 +305,7 @@ def _getAccountBalanceList(request):
 def _getCategoryList(request):
     categoryList = my_uu.models.Category.objects.filter(user=request.user, scf_visible=True, scf_is_group=False)
     categoryList = categoryList.order_by('position', 'id')
-    return list(categoryList.values('id', 'scf_name'))
+    return list(categoryList.values('id', 'scf_name', 'lkcm_dohod_rashod_type'))
 
 
 # Главная страница личного кабиета
@@ -365,7 +365,7 @@ def page_lk_uch(request, period = None, account_id = None, category_id = None):
         'accountList': my_uu.models.Account.objects.filter(user=request.user, visible=True).order_by('position', 'id'),
         'categoryList': my_uu.models.Category.objects.filter(user=request.user, scf_visible=True).order_by('position', 'id'),
         'accountBalanceListJson': json.dumps(_getAccountBalanceList(request), cls=DjangoJSONEncoder),
-        'categoryListJson': json.dumps(_getCategoryList(request), cls=DjangoJSONEncoder),
+        'categoryListNoGroupJson': json.dumps(_getCategoryList(request), cls=DjangoJSONEncoder),
         'viewPeriodSetJson': json.dumps(list(my_uu.models.UserProfile.VIEW_PERIOD_CODE_CHOICES) + addFilterPeriodChoices, cls=DjangoJSONEncoder),
         'viewPeriodMonthSetJson': json.dumps(my_uu.plogic.getUchetMonthSet(request.user), cls=DjangoJSONEncoder),
         # 'showAddUchetDialog': 1 if showAddUchetDialog else 1, # 1 или 0 - т.к. JS не понимает True / False
@@ -1130,6 +1130,51 @@ def ajax_lk_ana(request):
 
         return res
 
+
+    # Получая на вход строку группы, задача этой функции - заполнить по ней сумму.
+    # А если дочерние тоже группы, то вызыват рекурсивно, чтобы заполнить сперва в них
+    # а потом уже в самой группе.
+    def fillSumForGroupOrSubgroup(periods_start_dates, childs_by_id, output_rows_by_cat_id, cat_id, row):
+
+        # Тогда для этой категории - для каждого столбца
+        for col_num, col_val in enumerate(periods_start_dates):
+
+            # Вычисляем сумму по дочерним категориям
+            childs_sum = decimal.Decimal('0')
+            for child_catergory in childs_by_id[cat_id]:
+                cur_cat_id = child_catergory.id
+                cur_row = output_rows_by_cat_id[cur_cat_id]
+
+                # Если дочерная группа тоже явялется подгруппой, то по ней рекурсивно считаем
+                if cur_cat_id in childs_by_id:
+                    fillSumForGroupOrSubgroup(
+                        periods_start_dates,
+                        childs_by_id,
+                        output_rows_by_cat_id,
+                        cur_cat_id,
+                        cur_row,
+                    )
+
+                val_str = cur_row['lka_cell_data'][col_num]['lka_cell_nval_str']
+                childs_sum += decimal.Decimal(val_str)
+
+            # Заносим вычисленную сумму в итоговую таблицу
+            row['lka_cell_data'][col_num]['lka_cell_nval_str'] = str(childs_sum)
+            row['lka_cell_data'][col_num]['lka_cell_val'] = my_uu.utils.formatMoneyValue(childs_sum)
+
+
+    # Вызывается чтобы в список добавить категорию и все ее подкатегории (и их подкатегории), рекурсивно
+    def addCategoryListAndAllSubcategoriesToList(categoryModelListFiltered_tree, childs_by_id, cat_list):
+        for c in cat_list:
+            categoryModelListFiltered_tree.append(c)
+            if c.id in childs_by_id:
+                child_cat_list = childs_by_id[c.id]
+                addCategoryListAndAllSubcategoriesToList(
+                    categoryModelListFiltered_tree,
+                    childs_by_id,
+                    child_cat_list,
+                )
+
     # format_header_from_val_func = Функция, применяемая к первой дате периода, возвращает словарь first second для оторажения в заголовке
     # period_count = Число периодов для отображения
     # get_first_period_date_func Функция, применяемая к дате, получает первый день требуемого периода
@@ -1255,10 +1300,11 @@ def ajax_lk_ana(request):
             else:
                 categoryModelListFiltered_root.append(c)
         categoryModelListFiltered_tree = []
-        for c in categoryModelListFiltered_root:
-            categoryModelListFiltered_tree.append(c)
-            if c.id in childs_by_id:
-                categoryModelListFiltered_tree.extend(childs_by_id[c.id])
+        addCategoryListAndAllSubcategoriesToList(
+            categoryModelListFiltered_tree,
+            childs_by_id,
+            categoryModelListFiltered_root,
+        )
 
         # Если стоит фильтр по периодичности бюджета, то применяем его
         categoryModelListFiltered2 = []
@@ -1454,6 +1500,7 @@ def ajax_lk_ana(request):
         # Нам надо чтобы была сумма
         # Сначаа строим словарь, ключ - ID категории, значение - строкад ля отображения
         # при втором проходе - считаем сумму
+        # делаем несколкьо повторов, поднимаясь на уровень выше, пока не дойдем до верха
         output_rows_by_cat_id = {}
         for row in output_list:
 
@@ -1462,23 +1509,18 @@ def ajax_lk_ana(request):
         for row in output_list:
 
             # Если эта категория имеет дочерние
+            # и является коневой то для нее вызываем расчет суммы, а он в свою очередь рекурсивоно посчитает
+            # расчет суммы для остальных (дочяерних). Поэтому и нужна проверка чтобы вызвать только для корневых.
             cur_cat_id = row['lka_category_id']
-            if cur_cat_id in childs_by_id:
-
-                # Тогда для этой категории - для каждого столбца
-                for col_num, col_val in enumerate(periods_start_dates):
-
-                    # Вычисляем сумму по дочерним категориям
-                    childs_sum = decimal.Decimal('0')
-                    for child_catergory in childs_by_id[cur_cat_id]:
-                        child_row = output_rows_by_cat_id[child_catergory.id]
-                        val_str = child_row['lka_cell_data'][col_num]['lka_cell_nval_str']
-                        childs_sum += decimal.Decimal(val_str)
-
-                    # Заносим вычисленную сумму в итоговую таблицу
-                    row['lka_cell_data'][col_num]['lka_cell_nval_str'] = str(childs_sum)
-                    row['lka_cell_data'][col_num]['lka_cell_val'] = my_uu.utils.formatMoneyValue(childs_sum)
-
+            cur_cat_par_id = row['lka_parent_id']
+            if cur_cat_id in childs_by_id and not cur_cat_par_id:
+                fillSumForGroupOrSubgroup(
+                    periods_start_dates,
+                    childs_by_id,
+                    output_rows_by_cat_id,
+                    cur_cat_id,
+                    row,
+                )
 
         # можем ли мотать влево и вправо (есть ли еще периоды) и какой аргумент в урл для этого передавать
         pageData['lka_is_can_left'] = True
@@ -1754,6 +1796,13 @@ def ajax_lk_save_uchet(request):
     # Если в полученных данны нет serverRecordId, значит эту строку надо insert
     for r in rowsForUpdateAndInsert:
 
+        # хз иногда во входных данных передавалось свойство Undefined,
+        # при редактировании строки, пример http://pvoytko.ru/jx/R2ev1Z2cNk
+        # так и не понял откуда оно так что просто его удаляю
+        # если этого не делать ниже будет ошибка
+        if 'undefined' in r:
+            del r['undefined']
+
         # На основе пришедших данных делаем стркоу для вставки в БД
         import copy
         rowDbData = copy.copy(r)
@@ -1987,6 +2036,10 @@ def ajax_lk_save_category(request):
     class SaveGroupForm(django.forms.Form):
         lkcm_dohod_rashod_type = django.forms.CharField(
             max_length=255,
+        )
+        scf_parent = django.forms.ModelChoiceField(
+            required=False,
+            queryset=my_uu.models.Category.objects.filter(user=user, scf_is_group=True),
         )
         scf_name = django.forms.CharField(
             max_length=255,

@@ -287,3 +287,17 @@ function pvlGetElemArrayByAttr(list, attrib_name, attrib_value){
     var t_result = $.grep(list, function(e){ return e[attrib_name] == attrib_value });
     return t_result;
 }
+
+
+// Преобразует числовой тип (1, 2) к строке и сроку к типу (расход, доход, перевод)
+function converUchetTypeNumToStr(uTypeList, uchet_type_num){
+    return uTypeList[uchet_type_num];
+}
+function converUchetTypeStrToNum(uTypeList, uchet_type_str){
+    for (var i=0; i<uTypeList.length; ++i){
+        if (uTypeList[i] == uchet_type_str){
+            return i;
+        }
+    }
+    return -1;
+}
