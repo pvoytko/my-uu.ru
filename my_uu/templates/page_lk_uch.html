@@ -222,36 +222,36 @@
                         // Либо 2 если это операция перевода.
                         var cur_dtm = new Date();
                         var cur_time_str = cur_dtm.getHours() + ":" + cur_dtm.getMinutes();
-                        if (dlgScope.plu_type == '2'){
+                        if ($scope.plu_type == '2'){
                             var newHeight = adjustGridHeightToNewRowsCount($('#uuGrid').jqxGrid('getrows').length + 2);
                             $('#uuGrid').jqxGrid('addrow', null, {
-                                'date': dlgScope.date,
+                                'date': $scope.date,
                                 'lkud_time': cur_time_str,
-                                'utype': uTypeList[dlgScope.plu_type],
+                                'utype': uTypeList[$scope.plu_type],
                                 'sum': strValWithCommaMinus,
-                                'account': dlgScope.account,
-                                'category': dlgScope.category,
-                                'comment': dlgScope.comment
+                                'account': $scope.account,
+                                'category': $scope.category,
+                                'comment': $scope.comment
                             });
                             $('#uuGrid').jqxGrid('addrow', null, {
-                                'date': dlgScope.date,
+                                'date': $scope.date,
                                 'lkud_time': cur_time_str,
-                                'utype': uTypeList[dlgScope.plu_type],
+                                'utype': uTypeList[$scope.plu_type],
                                 'sum': strValWithComma,
-                                'account': dlgScope.account_to,
-                                'category': dlgScope.category,
-                                'comment': dlgScope.comment
+                                'account': $scope.account_to,
+                                'category': $scope.category,
+                                'comment': $scope.comment
                             });
                         }else{
                             var newHeight = adjustGridHeightToNewRowsCount($('#uuGrid').jqxGrid('getrows').length + 1);
                             $('#uuGrid').jqxGrid('addrow', null, {
-                                'date': dlgScope.date,
+                                'date': $scope.date,
                                 'lkud_time': cur_time_str,
-                                'utype': uTypeList[dlgScope.plu_type],
-                                'sum': (dlgScope.plu_type == '0') ? strValWithCommaMinus : strValWithComma,
-                                'account': dlgScope.account,
-                                'category': dlgScope.category,
-                                'comment': dlgScope.comment
+                                'utype': uTypeList[$scope.plu_type],
+                                'sum': ($scope.plu_type == '0') ? strValWithCommaMinus : strValWithComma,
+                                'account': $scope.account,
+                                'category': $scope.category,
+                                'comment': $scope.comment
                             });
                         }
 
