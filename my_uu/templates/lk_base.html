@@ -10,13 +10,8 @@
     {# Ш-9. Подключаем ангулар #}
     {# Ангулар #}
     {# jQuery #}
-    <script src="https://code.jquery.com/jquery-2.1.3.js"></script>
-    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.10/angular.min.js"></script>
-    <script src="{% pvl_cdn_to_static 'http://code.jquery.com/ui/1.10.3/jquery-ui.min.js' %}"></script>
-    <link rel="stylesheet" href="{% pvl_cdn_to_static 'http://code.jquery.com/ui/1.10.3/themes/redmond/jquery-ui.css' %}" />
-
-    <!-- Настройка приложения Ангулар -->
-    <script src="/static/js/angular_project.js"></script>
+    {# Ш-111 Код вызова и верстка окна с ошибкой при асинхронных запросах #}
+    {% include "include_head_angular_and_jquery_publick_and_cabinet.html" %}
 
     {# Ш-111 Код вызова и верстка окна с ошибкой при асинхронных запросах #}
     {% include "include_pvl_backend_ajax_jquery.html" %}

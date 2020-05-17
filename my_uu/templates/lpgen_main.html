@@ -170,33 +170,27 @@
 
     <script>
 
-        function RegCtrl($scope, $http){
+        /* Ш-9 Контроллер всей страницы. */
+        angular.module('myNgApp').controller('RegCtrl', function($scope, $http){
             $scope.errorText = null;
             $scope.loading = false;
             $scope.email = "";
             $scope.password = "";
 
-            $scope.register = function(){
+            $scope.myUuRegister = function(){
                 $scope.loading = true;
                 $scope.errorText = '';
-                httpObj = $http({
-                    method: 'POST',
-                    url: '/register_user/',
-                    data: $scope._getDataDictFromScope(),
-                    cache: false,
-                    timeout: 25000
-                });
-                $scope._setupServerCallbacks(httpObj);
-            }
-            $scope._getDataDictFromScope = function(){
-                return {
-                    email: $scope.email,
-                    password: $scope.password
-                };
-            }
-            $scope._setupServerCallbacks = function(httpObj){
-                  httpObj.success(function(resp, status) {
-                      if (resp.status_ok){
+
+                // Ш-140
+                backendAjaxPostStatu2({
+                    baps_http: $http,
+                    baps_ajax_url: '/register_user/',
+                    baps_dj_errors: false,
+                    baps_response_dj_errors_field: false,
+                    baps_loading_status: false,
+                    baps_post_parameters: $scope._getDataDictFromScope(),
+                    baps_success_callback: function(server_response){
+                      if (server_response.status_ok){
 
                           // Регистрация события-цели
                           ga('send', 'event', 'goal', 'GOAL_REGISTERED');
@@ -204,25 +198,33 @@
 
                           window.location = '/lk/beg/';
                       } else {
-                          $scope.errorText = resp.response;
+                          $scope.errorText = server_response.response;
                           $scope.loading = false;
                       }
-                  }).
-                  error(function(data, status) {
-                      // Статус 0 приходит если нет соединения с севером.
-                      if (status == 0){
-                          $scope.errorText = 'Отсутствует соединение с сервером.';
-                      }else{
-                          $scope.errorText = 'Ошибка на сервере. Пожалуйста, повторите попытку позднее или уточние состояние обратившись в службу поддержки.';
-                      }
-                      $scope.loading = false;
+                    },
+                    baps_error_callback: function(server_response){
+                       $scope.loading = false;
+                    }
                 });
             }
-        }
+            $scope._getDataDictFromScope = function(){
+                return {
+                    email: $scope.email,
+                    password: $scope.password
+                };
+            }
+        });
 
     </script>
 
-    <div class="panel panel-warning" style="position: absolute; left: 560px; top: 250px; z-index: 3000; width: 300px;" ng-controller="RegCtrl">
+    {# Калькулятор #}
+    {# размещен сверху т.к. синуз он должен плавать кгда в форме показывается ошибка #}
+    <div style="position: absolute; left: 560px; top: 200px; z-index: 3000; width: 300px; font-size: 16px; background-color: rgb(255, 251, 117); padding: 5px 10px; border-radius: 5px;">
+        <a href="/fin_calc/">Калькулятор финансовой свободы →</a>
+    </div>
+
+
+    <div class="panel panel-warning" style="position: absolute; left: 560px; top: 260px; z-index: 3000; width: 300px;" ng-controller="RegCtrl">
         <div ng-show="loading" style="position: absolute; width: 100%; top: 38px; bottom: 0px; background-color: white; opacity: 0.95; text-align: center; font-size: 19px; font-weight: bold; padding: 20px; padding-top: 60px;">
             Загрузка, <br />подождите 30 секунд...
         </div>
@@ -246,15 +248,13 @@
                 </div>
             </form>
 
-            <button class="btn btn-success btn-block" style="border-radius: 20px; font-weight: bold; font-size: 16px;" ng-click="register()">Зарегистрироваться и <br />начать использовать</button>
+            <button
+                    class="btn btn-success btn-block"
+                    style="border-radius: 20px; font-weight: bold; font-size: 16px;"
+                    ng-click="myUuRegister()">Зарегистрироваться и <br />начать использовать</button>
         </div>
     </div>
 
-
-    {# Калькулятор #}
-    <div style="position: absolute; left: 560px; top: 500px; z-index: 3000; width: 300px; font-size: 16px; background-color: rgb(255, 251, 117); padding: 5px 10px; border-radius: 5px;">
-        <a href="/fin_calc/">Калькулятор финансовой свободы →</a>
-    </div>
 
 
     <div class="block block-text is-text" id="block-new36"
@@ -354,7 +354,10 @@
                 </div>
             </form>
 
-            <button class="btn btn-success btn-block" style="border-radius: 20px; font-weight: bold; font-size: 16px;" ng-click="register()">Зарегистрироваться и <br />начать использовать</button>
+            <button
+                    class="btn btn-success btn-block"
+                    style="border-radius: 20px; font-weight: bold; font-size: 16px;"
+                    ng-click="myUuRegister()">Зарегистрироваться и <br />начать использовать</button>
         </div>
     </div>
 

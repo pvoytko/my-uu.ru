@@ -1,4 +1,5 @@
 {% extends 'base_begin.html' %}
+{% load pvl_angular %}
 
 {% block add_to_head %}
 
@@ -48,37 +49,99 @@
 
 {% block content %}
 
-    <h1 style="margin: 30px 0px;">Калькулятор финансовой сободы</h1>
+    <div style=" margin: 20px 0px;">
+        <a href="/" style="text-decoration: underline;">← Вернуться на главную</a>
+    </div>
+
+    <h1 style="margin: 10px 0px 30px 0px;">Калькулятор финансовой сободы</h1>
 
     <div style="width: 500px;">
 
-        <div style="font-size: 16px; margin-bottom: 8px;">
-            Начальное вложение:
-        </div>
+        <myuu-slider-input-directive
+            msld-label="Начальное вложение:"
+            msld-model="msi_start_rub_val"
+            msld-format-type="TEN_THOUSAND_RUB"
+            msld-min-value="0"
+            msld-max-value="100"
+            msld-init-value="0"
+                >
+        </myuu-slider-input-directive>
 
-        {# Слайдер взят тут https://www.w3schools.com/howto/howto_js_rangeslider.asp #}
-        <div style="display: flex;">
+        <myuu-slider-input-directive
+            msld-label="Ежемесячные пополнения:"
+            msld-model="msi_add_rub_val"
+            msld-format-type="ONE_THOUSAND_RUB"
+            msld-min-value="0"
+            msld-max-value="100"
+            msld-init-value="5"
+                >
+        </myuu-slider-input-directive>
 
-            <div style="flex-grow: 1;">
-                <input type="range" min="0" max="100" value="0" class="my_uu_slider" id="myUuRange">
-            </div>
-            <div style="width: 150px; padding-left: 10px; font-size: 20px; position: relative; top: -7px;">
-                <span id="demo"></span>
-            </div>
+        <myuu-slider-input-directive
+            msld-label="Срок пополнений, лет:"
+            msld-model="msi_add_let_val"
+            msld-format-type="LET"
+            msld-min-value="1"
+            msld-max-value="40"
+            msld-init-value="40"
+                >
+        </myuu-slider-input-directive>
 
-            <script>
-                var slider = document.getElementById("myUuRange");
-                var output = document.getElementById("demo");
-                output.innerHTML = slider.value; // Display the default slider value
+        <myuu-slider-input-directive
+            msld-label="Процент доходности:"
+            msld-model="msi_proc_doh_val"
+            msld-format-type="PROCENT"
+            msld-min-value="0"
+            msld-max-value="40"
+            msld-init-value="20"
+                >
+        </myuu-slider-input-directive>
 
-                // Update the current slider value (each time you drag the slider handle)
-                slider.oninput = function() {
-                  output.innerHTML = pvlNumberWithRoubles(this.value * 10000);
-                }
-            </script>
+        <myuu-slider-input-directive
+            msld-label="Реинвестировать доход первых N лет:"
+            msld-model="msi_reinvest_let_val"
+            msld-format-type="LET"
+            msld-min-value="1"
+            msld-max-value="40"
+            msld-init-value="5"
+                >
+        </myuu-slider-input-directive>
 
-        </div>
+        <myuu-slider-input-directive
+            msld-label="Затем выводить как пассивный доход долю, %:"
+            msld-model="msi_vivod_proc_val"
+            msld-format-type="PROCENT"
+            msld-min-value="0"
+            msld-max-value="100"
+            msld-init-value="50"
+                >
+        </myuu-slider-input-directive>
+
+        <myuu-slider-input-directive
+            msld-label="Срок расчёта, лет:"
+            msld-model="msi_srok_let_val"
+            msld-format-type="LET"
+            msld-min-value="1"
+            msld-max-value="40"
+            msld-init-value="15"
+                >
+        </myuu-slider-input-directive>
+
+        <br />
 
     </div>
+
+    <h2 style="margin: 10px 0px 30px 0px;">Расчёт сложного процента</h2>
+
+    ТУТ БУДЕТ ТАБЛИЦА <br />
+
+    Начальное вложение: {% ng msi_start_rub_val %} <br />
+    Ежемесячные пополнения: {% ng msi_add_rub_val %} <br />
+    Срок пополнений, лет: {% ng msi_add_let_val %} <br />
+    Процент доходности: {% ng msi_proc_doh_val %} <br />
+    Реинвестировать доход первых N лет: {% ng msi_reinvest_let_val %} <br />
+    Затем выводить как пассивный доход долю, %: {% ng msi_vivod_proc_val %} <br />
+    Срок расчёта, лет: {% ng msi_srok_let_val %} <br />
+
 {% endblock %}
 

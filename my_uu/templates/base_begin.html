@@ -1,18 +1,17 @@
 {% load pvl_static_mtime %}
 
 <!doctype html>
-<html ng-app>
+<html ng-app="myNgApp">
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     <title>Мой Удобный Учет</title>
 
-    <!-- Ангулар -->
-    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.0.7/angular.min.js"></script>
-
     <!-- jQuery -->
-    <link rel="stylesheet" href="http://code.jquery.com/ui/1.10.3/themes/redmond/jquery-ui.css" />
-    <script src="http://code.jquery.com/jquery-1.9.1.js"></script>
-    <script src="http://code.jquery.com/ui/1.10.3/jquery-ui.js"></script>
+    {# Ш-9. Подключаем ангулар #}
+    {# Ангулар #}
+    {# jQuery #}
+    {# Ш-111 Код вызова и верстка окна с ошибкой при асинхронных запросах #}
+    {% include "include_head_angular_and_jquery_publick_and_cabinet.html" %}
 
     <!-- Бутстрап -->
     <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap.min.css">
@@ -65,18 +64,33 @@
                 }
             };
 
-            function LoginController($scope, $http) {
+            /* Ш-9 Контроллер всей страницы. */
+            angular.module('myNgApp').controller('LoginController', function($scope, $http){
                 $scope.login = function(){
+
                     $scope.loading = true;
                     $scope.errorText = '';
-                    httpObj = $http({
-                        method: 'POST',
-                        url: '/login_user/',
-                        data: $scope._getDataDictFromScope(),
-                        cache: false,
-                        timeout: 25000
+
+                    // Ш-140
+                    backendAjaxPostStatu2({
+                        baps_http: $http,
+                        baps_ajax_url: '/login_user/',
+                        baps_dj_errors: false,
+                        baps_response_dj_errors_field: false,
+                        baps_loading_status: false,
+                        baps_post_parameters: $scope._getDataDictFromScope(),
+                        baps_success_callback: function(server_response){
+                              if (server_response.status_ok){
+                                  window.location = '/lk/';
+                              } else {
+                                  $scope.errorText = server_response.response;
+                                  $scope.loading = false;
+                              }
+                        },
+                        baps_error_callback: function(server_response){
+                              $scope.loading = false;
+                        }
                     });
-                    $scope._setupServerCallbacks(httpObj);
                 }
                 $scope._getDataDictFromScope = function(){
                     return {
@@ -84,27 +98,7 @@
                         'password': $scope.password
                     };
                 }
-                $scope._setupServerCallbacks = function(httpObj){
-                      httpObj.success(function(resp, status) {
-                          if (resp.status_ok){
-                              window.location = '/lk/';
-                          } else {
-                              $scope.errorText = resp.response;
-                              $scope.loading = false;
-                          }
-                      }).
-                      error(function(data, status) {
-                          // Статус 0 приходит если нет соединения с севером.
-                          if (status == 0){
-                              $scope.errorText = 'Отсутствует соединение с сервером.';
-                          }else{
-                              $scope.errorText = 'Ошибка на сервере. Пожалуйста, повторите попытку позднее или уточние состояние обратившись в службу поддержки.';
-                          }
-                          $scope.loading = false;
-                    });
-                }
-                $scope.loading = false;
-            }
+            });
         </script>
 
         <div
@@ -156,6 +150,9 @@
 
 
     </div>
+
+    {# Ангулар-директивы элементов упрлвения. Ш-7523 #}
+    {% include "include_isot_angular_directives.html" %}
 
     {% include 'include_yandex_metrika.html' %}
     {% include 'include_google_analytics.html' %}

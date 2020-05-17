@@ -487,3 +487,92 @@
         };
     }]);
 </script>
+
+
+{# Директива myuu-slider-input-directive - бегунок #}
+{# Атрибуты: #}
+{# * msldModel название скоуп-переменной в которой значение #}
+{# * msldLabel подпись к полю #}
+{# Используется для отображения слайдера и сохранения значений в скоуп-переменную #}
+<script type="text/ng-template" id="myuu_slider_input_directive_template_id">
+
+    <div style="font-size: 16px; margin-bottom: 8px; margin-top: 15px;">
+        {% ng msldLabel %}
+    </div>
+
+    {# Слайдер взят тут https://www.w3schools.com/howto/howto_js_rangeslider.asp #}
+    <div style="display: flex;">
+
+        <div style="flex-grow: 1;">
+            <input
+                    type="range"
+                    min="{% ng msldMinValue %}"
+                    max="{% ng msldMaxValue %}"
+                    value="{% ng msldInitValue %}"
+                    class="my_uu_slider"
+                    >
+        </div>
+        <div style="width: 150px; padding-left: 10px; font-size: 20px; position: relative; top: -7px;">
+            {% ng msldGetOutputStr() %}
+        </div>
+
+    </div>
+
+</script>
+<script>
+    angular.module('myNgApp').directive('myuuSliderInputDirective', function($sce, $timeout) {
+        return {
+            restrict: "E",
+            scope: {
+                msldLabel: '@',
+                msldModel: '=',
+                msldInitValue: '=',
+                msldMinValue: '=',
+                msldMaxValue: '=',
+                msldFormatType: '@'
+            },
+            templateUrl: 'myuu_slider_input_directive_template_id',
+            link: function link($scope, element, attrs, controller, transcludeFn) {
+
+                $scope.msldConvertSliderToValue = function(slider_val){
+                    if ($scope.msldFormatType == 'TEN_THOUSAND_RUB'){
+                        return slider_val * 10000;
+                    } else if ($scope.msldFormatType == 'ONE_THOUSAND_RUB'){
+                        return slider_val * 1000;
+                    } else if ($scope.msldFormatType == 'LET'){
+                        return slider_val;
+                    } else if ($scope.msldFormatType == 'PROCENT'){
+                        return slider_val;
+                    } else {
+                        alert("Errot in msldFormatType in msldConvertSliderToValue")
+                    }
+                }
+                $scope.msldGetOutputStr = function(){
+
+                    if ($scope.msldFormatType == 'TEN_THOUSAND_RUB'){
+                        return pvlNumberWithRoubles($scope.msldModel);
+                    } else if ($scope.msldFormatType == 'ONE_THOUSAND_RUB'){
+                        return pvlNumberWithRoubles($scope.msldModel);
+                    } else if ($scope.msldFormatType == 'LET'){
+                        return $scope.msldModel + " лет";
+                    } else if ($scope.msldFormatType == 'PROCENT'){
+                        return $scope.msldModel + "%";
+                    } else {
+                        alert("Errot in msldFormatType in myuuSliderInputDirective")
+                    }
+                }
+
+                // Update the current slider value (each time you drag the slider handle)
+                var slider = $(element).find('.my_uu_slider');
+                $scope.msldModel = $scope.msldConvertSliderToValue($scope.msldInitValue);
+
+                slider[0].oninput = function() {
+                    $scope.$apply(function(){
+                        $scope.msldModel = $scope.msldConvertSliderToValue(slider[0].value);
+                    });
+                };
+
+            }
+        }
+    });
+</script>

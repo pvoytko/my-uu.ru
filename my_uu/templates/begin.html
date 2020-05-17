@@ -75,7 +75,12 @@
 
     <h2>Регистрируйтесь и попробуйте</h2>
 
-    <div id="auth-reg-tabs" style="width: 400px; margin: 30px auto; height: 300px;" ng-controller="AuthRegFormCtrl" style="position: relative;">
+    <div
+            id="auth-reg-tabs"
+            style="width: 400px; margin: 30px auto; height: 300px;"
+            ng-controller="AuthRegFormCtrl"
+            style="position: relative;"
+            >
         <ul>
             <li><a href="#tab-reg">Регистрация</a></li>
         </ul>
@@ -89,7 +94,7 @@
 
             <div class="auth__nonfield_error" ng-show="errorText"><span ng:bind="errorText"></span></div>
             <br />
-            <button class="auth__button" ng-click="register()" name="reg_button">Зарегистрироваться</button>
+            <button class="auth__button" ng-click="myUuRegister()" name="reg_button">Зарегистрироваться</button>
 
         </div>
 

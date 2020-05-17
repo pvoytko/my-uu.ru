@@ -199,6 +199,7 @@ def _authenticateByEmailAndPassword(**kwargs):
 #     ok - залогинен успешно
 #     auth_email_password_incorrect - email и пароль не определены
 def login_user_ajax(request):
+
     data = json.loads(request.body)
     resp = JsonResponseBuilder()
 

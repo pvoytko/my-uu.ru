@@ -1,4 +1,5 @@
-﻿function AuthRegFormCtrl($scope, $http){
+﻿/* Ш-9 Контроллер всей страницы. */
+angular.module('myNgApp').controller('AuthRegFormCtrl', function($scope, $http){
 
     // Тут значения полей хранятся
     $scope.email = '';
@@ -9,27 +10,21 @@
     // и браузер редиректится в кабинет в этот момент пользователь продолжает видеть "Загрузка" (флаг установлен).
     $scope.loading = false;
 
-    $scope.register = function(){
+    $scope.myUuRegister = function(){
+
         $scope.loading = true;
         $scope.errorText = '';
-        var data = {'email': $scope.email, 'password': $scope.password};
-        httpObj = $http({
-            method: 'POST',
-            url: '/register_user/',
-            data: $scope._getDataDictFromScope(),
-            cache: false,
-            timeout: 15000
-        });
-        $scope._setupServerCallbacks(httpObj);
-    }
 
-    $scope._getDataDictFromScope = function(){
-        return {'email': $scope.email, 'password': $scope.password};
-    }
-
-    $scope._setupServerCallbacks = function(httpObj){
-          httpObj.success(function(resp, status) {
-              if (resp.status_ok){
+        // Ш-140
+        backendAjaxPostStatu2({
+            baps_http: $http,
+            baps_ajax_url: '/register_user/',
+            baps_dj_errors: false,
+            baps_response_dj_errors_field: false,
+            baps_loading_status: false,
+            baps_post_parameters: $scope._getDataDictFromScope(),
+            baps_success_callback: function(server_response){
+              if (server_response.status_ok){
 
                   // Регистрация события-цели
                   ga('send', 'event', 'goal', 'GOAL_REGISTERED');
@@ -37,18 +32,18 @@
                   window.location = '/lk/';
 
               } else {
-                  $scope.errorText = resp.response;
+                  $scope.errorText = server_response.response;
                   $scope.loading = false;
               };
-          }).
-          error(function(data, status) {
-              // Статус 0 приходит если нет соединения с севером.
-              if (status == 0){
-                  $scope.errorText = 'Отсутствует соединение с сервером.';
-              }else{
-                  $scope.errorText = 'Ошибка на сервере. Пожалуйста, повторите попытку позднее или уточние состояние обратившись в службу поддержки.';
-              }
-              $scope.loading = false;
+            },
+            baps_error_callback: function(server_response){
+               $scope.loading = false;
+            }
         });
     }
-}
+
+    $scope._getDataDictFromScope = function(){
+        return {'email': $scope.email, 'password': $scope.password};
+    }
+
+});
