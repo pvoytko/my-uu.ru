@@ -535,8 +535,8 @@
             link: function link($scope, element, attrs, controller, transcludeFn) {
 
                 $scope.msldConvertSliderToValue = function(slider_val){
-                    if ($scope.msldFormatType == 'TEN_THOUSAND_RUB'){
-                        return slider_val * 10000;
+                    if ($scope.msldFormatType == 'FIVE_THOUSAND_RUB'){
+                        return slider_val * 5000;
                     } else if ($scope.msldFormatType == 'ONE_THOUSAND_RUB'){
                         return slider_val * 1000;
                     } else if ($scope.msldFormatType == 'LET'){
@@ -549,7 +549,7 @@
                 }
                 $scope.msldGetOutputStr = function(){
 
-                    if ($scope.msldFormatType == 'TEN_THOUSAND_RUB'){
+                    if ($scope.msldFormatType == 'FIVE_THOUSAND_RUB'){
                         return pvlNumberWithRoubles($scope.msldModel);
                     } else if ($scope.msldFormatType == 'ONE_THOUSAND_RUB'){
                         return pvlNumberWithRoubles($scope.msldModel);

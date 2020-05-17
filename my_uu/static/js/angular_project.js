@@ -47,3 +47,75 @@ angular.module('myNgApp').directive('pvTooltipDirective', function($sce) {
         }
     }
 });
+
+
+
+/* Ш-9 Контроллер всей страницы. */
+angular.module('myNgApp').controller('FinCalcCtrl', function($scope, $http){
+
+    // Для месяца 1 выодит 1 год, для месяца 13 выводит 2 год и т.п.
+    // для остальных месяцев - возвращает 0. Использется дя формирования вывода.
+    $scope.getYearForMonth = function(m_num){
+        if (((m_num - 1) % 12) == 0){
+            return (m_num - 1) / 12 + 1;
+        }
+        return 0;
+    }
+
+    // Доинвестирование
+    $scope.getAddRubStr = function(m_num){
+        return pvlNumberWithRoubles($scope.msi_add_rub_val);
+    }
+
+    // Функция заполенния расчета
+    $scope.fccUpdateRaschet = function(){
+
+        // Заполняет месяцы
+        $scope.fcc_months_array = [];
+        for (var m_num=1; m_num<=$scope.msi_srok_let_val*12; ++m_num){
+
+            // Очередной месяц
+            var cmo = {};
+            cmo.fcc_month_total_num = m_num;
+            cmo.fcc_month_year_num = ((m_num-1) % 12)+1;
+
+            // Надо ли годовой заголовок
+            cmo.fcc_year_header_num = $scope.getYearForMonth(m_num);
+
+            // Полное накопление на начало месяца считается как
+            // прошлое на конец месяца (а если его нет то начальная сумма)
+            cmo.fcc_full_nakop_begin_month_val = m_num == 1 ? $scope.msi_start_rub_val : $scope.fcc_months_array[m_num-1-1].fcc_full_nakop_end_month_val;
+            cmo.fcc_full_nakop_begin_month_str = pvlNumberWithRoubles(cmo.fcc_full_nakop_begin_month_val);
+
+            // Проценты в этот мес, считаются на ту сумму что была на началом
+            cmo.fcc_month_proc_val = parseInt(cmo.fcc_full_nakop_begin_month_val * $scope.msi_proc_doh_val / 100 / 12);
+            cmo.fcc_month_proc_str = pvlNumberWithRoubles(cmo.fcc_month_proc_val);
+
+            // доинвестирование делается только заданное число первых лет
+            cmo.fcc_doinvest_val = (m_num <= $scope.msi_add_let_val*12) ? $scope.msi_add_rub_val : 0;
+            cmo.fcc_doinvest_str = pvlNumberWithRoubles(cmo.fcc_doinvest_val);
+
+
+            // На конец месяца считается как значение на началом + проценты + доинвестирование
+            cmo.fcc_full_nakop_end_month_val = cmo.fcc_full_nakop_begin_month_val + cmo.fcc_month_proc_val + cmo.fcc_doinvest_val;
+            cmo.fcc_full_nakop_end_month_str = pvlNumberWithRoubles(cmo.fcc_full_nakop_end_month_val);
+
+            $scope.fcc_months_array.push(cmo);
+        }
+
+    };
+
+    // Переменнеы (заполняются значениями в директивах)
+    // $scope.msi_srok_let_val = 0;
+
+    // Обновление таблицы при измении любой величины
+    $scope.$watch('msi_start_rub_val', $scope.fccUpdateRaschet);
+    $scope.$watch('msi_add_rub_val', $scope.fccUpdateRaschet);
+    $scope.$watch('msi_add_let_val', $scope.fccUpdateRaschet);
+    $scope.$watch('msi_proc_doh_val', $scope.fccUpdateRaschet);
+    $scope.$watch('msi_reinvest_let_val', $scope.fccUpdateRaschet);
+    $scope.$watch('msi_vivod_proc_val', $scope.fccUpdateRaschet);
+    $scope.$watch('msi_srok_let_val', $scope.fccUpdateRaschet);
+    $scope.fccUpdateRaschet();
+
+});
