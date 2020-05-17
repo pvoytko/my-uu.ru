@@ -1141,7 +1141,8 @@ def ajax_lk_ana(request):
 
             # Вычисляем сумму по дочерним категориям
             childs_sum = decimal.Decimal('0')
-            for child_catergory in childs_by_id[cat_id]:
+            childs_list = set(childs_by_id[cat_id])
+            for child_catergory in childs_list:
                 cur_cat_id = child_catergory.id
                 cur_row = output_rows_by_cat_id[cur_cat_id]
 
