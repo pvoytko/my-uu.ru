@@ -45,6 +45,15 @@ INSTANCE_ROOT = PROJECT_DIR
 #     На разных копиях принимает разное значение, чтобы отличать ошибки.
 #     Строкове значение, совпадающее с основным УРл сайта.
 #
+#
+# INSTANCE_SPECIFIC_PVL_STATIC_MTIME_2_IS_USE_DATETIME
+#      Надо ли в УРЛ статики подставлять дату-время модификации файла.
+#      Флаг проверяется директивой pvl_static_mtime_2. Используется для избежания кеширования
+#      браузером устаревших стилей. На прог-копии под джанго-дебаг сервером отключается
+#      (иначе ошибка статика не найдена). А на боевом включается (на боевом настраивается доп. правило для УРЛ).
+#      Пример подставленной даты в УРЛ: http://pvoytko.ru/jx/cQl2DEk6ny
+#      См. Ш-80.
+#
 # Все копии программистов. Что значает эта секция см. комменты чуть выше.
 if INSTANCE_ROOT.startswith('/var/www/pvoy_myuu_8') :
     INSTANCE_SPECIFIC_DJANGO_DEBUG = True
@@ -52,6 +61,7 @@ if INSTANCE_ROOT.startswith('/var/www/pvoy_myuu_8') :
     INSTANCE_SPECIFIC_ADD_EMAIL_TEMPLATES = True
     INSTANCE_SPECIFIC_DJANGO_DEBUG_STATIC = True
     INSTANCE_SPECIFIC_SITE_NAME_IN_EXCEPTION_REPORT = "http://my-uu.ru:8001"
+    INSTANCE_SPECIFIC_PVL_STATIC_MTIME_2_IS_USE_DATETIME = False
 
 # Боевая копия
 elif INSTANCE_ROOT == '/var/www/pvoy_myuu':
@@ -60,6 +70,9 @@ elif INSTANCE_ROOT == '/var/www/pvoy_myuu':
     INSTANCE_SPECIFIC_ADD_EMAIL_TEMPLATES = False
     INSTANCE_SPECIFIC_DJANGO_DEBUG_STATIC = False
     INSTANCE_SPECIFIC_SITE_NAME_IN_EXCEPTION_REPORT = "http://my-uu.ru"
+
+    # не настроено регулярные выражения в uwsgi потому отключено
+    INSTANCE_SPECIFIC_PVL_STATIC_MTIME_2_IS_USE_DATETIME = False
 
 # Если тут возник эксепшен, значит предпринята попытка запустить новую копию сайта.
 # Для этой новой копии сайта надо прописать настройки, специфичные для этой копии, по аналогии с секциями выше.
@@ -208,6 +221,11 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+
+                # Общие переменные инфо для HTML шаблонов на всем сайте
+                # Ш-7551
+                'my_uu.views.contextOuterPagesForSite',
+
             ],
         },
     },
@@ -311,3 +329,7 @@ PVL_CDN_TO_STATIC_IS_SAVE_TO_STATIC_ROOT = False
 STATICFILES_DIRS.append(
     os.path.join(INSTANCE_ROOT, PVL_CDN_TO_STATIC_DIR_CACHE_NAME)
 )
+
+# Анти-кеш статики браузером на боевом.
+# Ш-80
+PVL_STATIC_MTIME_2_IS_USE_DATETIME = INSTANCE_SPECIFIC_PVL_STATIC_MTIME_2_IS_USE_DATETIME

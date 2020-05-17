@@ -1,0 +1,84 @@
+{% extends 'base_begin.html' %}
+
+{% block add_to_head %}
+
+    {# Слайдер взят тут https://www.w3schools.com/howto/howto_js_rangeslider.asp #}
+    <style>
+
+        /* The slider itself */
+        .my_uu_slider {
+          -webkit-appearance: none;  /* Override default CSS styles */
+          appearance: none;
+          width: 100%; /* Full-width */
+          height: 15px;
+          border-radius: 5px;
+          background: #d3d3d3; /* Grey background */
+          outline: none; /* Remove outline */
+          opacity: 0.7; /* Set transparency (for mouse-over effects on hover) */
+          -webkit-transition: .2s; /* 0.2 seconds transition on hover */
+          transition: opacity .2s;
+        }
+
+        /* Mouse-over effects */
+        .my_uu_slider:hover {
+          opacity: 1; /* Fully shown on mouse-over */
+        }
+
+        /* The slider handle (use -webkit- (Chrome, Opera, Safari, Edge) and -moz- (Firefox) to override default look) */
+        .my_uu_slider::-webkit-slider-thumb {
+          -webkit-appearance: none; /* Override default look */
+          appearance: none;
+          width: 25px; /* Set a specific slider handle width */
+          height: 25px;
+          border-radius: 50%;
+          background: #4CAF50; /* Green background */
+          cursor: pointer; /* Cursor on hover */
+        }
+
+        .my_uu_slider::-moz-range-thumb {
+          width: 25px; /* Set a specific slider handle width */
+          height: 25px;
+          border-radius: 50%;
+          background: #4CAF50; /* Green background */
+          cursor: pointer; /* Cursor on hover */
+        }
+    </style>
+
+{% endblock %}
+
+{% block content %}
+
+    <h1 style="margin: 30px 0px;">Калькулятор финансовой сободы</h1>
+
+    <div style="width: 500px;">
+
+        <div style="font-size: 16px; margin-bottom: 8px;">
+            Начальное вложение:
+        </div>
+
+        {# Слайдер взят тут https://www.w3schools.com/howto/howto_js_rangeslider.asp #}
+        <div style="display: flex;">
+
+            <div style="flex-grow: 1;">
+                <input type="range" min="0" max="100" value="0" class="my_uu_slider" id="myUuRange">
+            </div>
+            <div style="width: 150px; padding-left: 10px; font-size: 20px; position: relative; top: -7px;">
+                <span id="demo"></span>
+            </div>
+
+            <script>
+                var slider = document.getElementById("myUuRange");
+                var output = document.getElementById("demo");
+                output.innerHTML = slider.value; // Display the default slider value
+
+                // Update the current slider value (each time you drag the slider handle)
+                slider.oninput = function() {
+                  output.innerHTML = pvlNumberWithRoubles(this.value * 10000);
+                }
+            </script>
+
+        </div>
+
+    </div>
+{% endblock %}
+

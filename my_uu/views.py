@@ -63,21 +63,23 @@ def uuRenderWith(template):
     return render_with_decorator
 
 
-def _main_imp(request, templateName):
-
-    # Если юзер уже прошел аутентификацию посылаем его в ЛК
-    if request.user.id is not None:
-        return HttpResponseRedirect(reverse('page_lk_uch_url'))
-
-    # Эта страница используется вместо главной пока
-    return render(request, templateName, {
-        'lpgm_cur_year': datetime.datetime.now().year,
-    })
-
-
 # Главная страница 2.
+@annoying.decorators.render_to("lpgen_main.html")
 def page_main(request):
-    return _main_imp(request, 'lpgen_main.html')
+
+    # Год в футере
+    return {
+        'lpgm_cur_year': datetime.datetime.now().year,
+    }
+
+
+# Калькулятор
+@annoying.decorators.render_to("page_fin_calc.html")
+def page_fin_calc(request):
+
+    return {
+
+    }
 
 
 class MyUUAuthForm(forms.Form):
@@ -2639,3 +2641,17 @@ def file_export_excel(request):
         )
     response['Content-Disposition'] = u"attachment; filename={}".format(file_name_for_user)
     return response
+
+
+
+# Общие переменные инфо для HTML шаблонов на всем сайте
+# Ш-7551
+def contextOuterPagesForSite(request):
+
+    return {
+
+        # Если авторизованы то True
+        # то вместо формы входа в шапке - ссылка в ЛК
+        'copfs_is_auth_user': plogic.isAuthorizedUser(request),
+
+    }

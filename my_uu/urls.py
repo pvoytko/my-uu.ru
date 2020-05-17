@@ -15,6 +15,9 @@ urlpatterns = [
     # Главная сервиса
     url(r'^$', my_uu.views.page_main, name='page_main_url'),
 
+    # Калькулятор
+    url(r'^fin_calc/$', my_uu.views.page_fin_calc, name='page_fin_calc_url'),
+
     # Регистрация логин и выход
     url(r'^register_user/$', my_uu.views.register_user_ajax),
     url(r'^login_user/$', my_uu.views.login_user_ajax),
