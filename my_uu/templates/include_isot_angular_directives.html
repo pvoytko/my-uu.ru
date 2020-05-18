@@ -598,7 +598,7 @@
                 // При клике на кнопки +-, меняем значение в слайдере и в модели
                 // если же вышло за границы, то не меняем.
                 $scope.msldChangeValue = function(inc_val){
-                    var old_val = parseInt(slider[0].value);
+                    var old_val = parseInt($scope.sliderValue);
                     var new_val = old_val + inc_val;
                     if ((new_val < $scope.msldMinValue) || (new_val > $scope.msldMaxValue)){
                         new_val = old_val;
