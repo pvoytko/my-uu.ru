@@ -53,87 +53,123 @@
         <a href="/" style="text-decoration: underline;">← Вернуться на главную</a>
     </div>
 
-    <h1 style="margin: 10px 0px 30px 0px;">Калькулятор финансовой свободы</h1>
+
+    <h1 style="margin: 30px 0px 20px 0px;">Калькулятор финансовой свободы</h1>
 
     <div ng-controller="FinCalcCtrl">
 
-        <div style="width: 500px;">
+        <div style="display: flex;">
 
-            <myuu-slider-input-directive
-                msld-label="Начальное вложение:"
-                msld-model="msi_start_rub_val"
-                msld-format-type="FIVE_THOUSAND_RUB"
-                msld-min-value="0"
-                msld-max-value="200"
-                msld-init-value="1"
-                    >
-            </myuu-slider-input-directive>
+            <div style="width: 500px;">
 
-            <myuu-slider-input-directive
-                msld-label="Ежемесячные пополнения:"
-                msld-model="msi_add_rub_val"
-                msld-format-type="ONE_THOUSAND_RUB"
-                msld-min-value="0"
-                msld-max-value="100"
-                msld-init-value="5"
-                    >
-            </myuu-slider-input-directive>
+                <myuu-slider-input-directive
+                    msld-label="Начальное вложение:"
+                    msld-model="msi_start_rub_val"
+                    msld-format-type="FIVE_THOUSAND_RUB"
+                    msld-min-value="0"
+                    msld-max-value="200"
+                    msld-init-value="1"
+                        >
+                </myuu-slider-input-directive>
 
-            <myuu-slider-input-directive
-                msld-label="Срок пополнений, лет:"
-                msld-model="msi_add_let_val"
-                msld-format-type="LET"
-                msld-min-value="1"
-                msld-max-value="40"
-                msld-init-value="40"
-                    >
-            </myuu-slider-input-directive>
+                <myuu-slider-input-directive
+                    msld-label="Ежемесячные пополнения:"
+                    msld-model="msi_add_rub_val"
+                    msld-format-type="ONE_THOUSAND_RUB"
+                    msld-min-value="0"
+                    msld-max-value="100"
+                    msld-init-value="5"
+                        >
+                </myuu-slider-input-directive>
 
-            <myuu-slider-input-directive
-                msld-label="Процент доходности:"
-                msld-model="msi_proc_doh_val"
-                msld-format-type="PROCENT"
-                msld-min-value="0"
-                msld-max-value="40"
-                msld-init-value="20"
-                    >
-            </myuu-slider-input-directive>
+                <myuu-slider-input-directive
+                    msld-label="Срок пополнений, лет:"
+                    msld-model="msi_add_let_val"
+                    msld-format-type="LET"
+                    msld-min-value="1"
+                    msld-max-value="40"
+                    msld-init-value="15"
+                        >
+                </myuu-slider-input-directive>
 
-            <myuu-slider-input-directive
-                msld-label="Реинвестировать доход первых N лет:"
-                msld-model="msi_reinvest_let_val"
-                msld-format-type="LET"
-                msld-min-value="1"
-                msld-max-value="40"
-                msld-init-value="5"
-                    >
-            </myuu-slider-input-directive>
+                <myuu-slider-input-directive
+                    msld-label="Процент доходности:"
+                    msld-model="msi_proc_doh_val"
+                    msld-format-type="MSLD_PROCENT_1"
+                    msld-min-value="0"
+                    msld-max-value="40"
+                    msld-init-value="20"
+                        >
+                </myuu-slider-input-directive>
 
-            <myuu-slider-input-directive
-                msld-label="Затем выводить как пассивный доход долю, %:"
-                msld-model="msi_vivod_proc_val"
-                msld-format-type="PROCENT"
-                msld-min-value="0"
-                msld-max-value="100"
-                msld-init-value="50"
-                    >
-            </myuu-slider-input-directive>
+                <myuu-slider-input-directive
+                    msld-label="Реинвестировать доход первых N лет:"
+                    msld-model="msi_reinvest_let_val"
+                    msld-format-type="LET"
+                    msld-min-value="0"
+                    msld-max-value="40"
+                    msld-init-value="5"
+                        >
+                </myuu-slider-input-directive>
 
-            <myuu-slider-input-directive
-                msld-label="Срок расчёта, лет:"
-                msld-model="msi_srok_let_val"
-                msld-format-type="LET"
-                msld-min-value="1"
-                msld-max-value="40"
-                msld-init-value="15"
-                    >
-            </myuu-slider-input-directive>
+                <myuu-slider-input-directive
+                    msld-label="Затем выводить как пассивный доход, долю %:"
+                    msld-model="msi_vivod_proc_val"
+                    msld-format-type="MSLD_PROCENT_TEN"
+                    msld-min-value="0"
+                    msld-max-value="10"
+                    msld-init-value="5"
+                        >
+                </myuu-slider-input-directive>
 
-            <br />
+                <myuu-slider-input-directive
+                    msld-label="Срок расчёта, лет:"
+                    msld-model="msi_srok_let_val"
+                    msld-format-type="LET"
+                    msld-min-value="1"
+                    msld-max-value="40"
+                    msld-init-value="15"
+                        >
+                </myuu-slider-input-directive>
+
+            </div>
+
+            <div style="margin-left: 60px; margin-top: 30px;">
+
+                <div style="font-size: 30px; margin: 50px 0px 20px 0px;">Цель 1:</div>
+                <myuu-slider-input-directive
+                    msld-label="Ежемесячный доход:"
+                    msld-model="msi_goal1_rub_val"
+                    msld-format-type="FIVE_THOUSAND_RUB"
+                    msld-min-value="0"
+                    msld-max-value="200"
+                    msld-init-value="6"
+                        >
+                </myuu-slider-input-directive>
+                <div style="font-size: 16px; margin: 10px 0px;">Срок достижения этой цели:</div>
+                <div  style="font-size: 20px;">
+                    {% ng msi_goal1_reached_str ? msi_goal1_reached_str : "цель не достигнута" %}
+                </div>
+
+                <div style="font-size: 30px; margin: 50px 0px 20px 0px;">Цель 2:</div>
+                <myuu-slider-input-directive
+                    msld-label="Ежемесячный доход:"
+                    msld-model="msi_goal2_rub_val"
+                    msld-format-type="FIVE_THOUSAND_RUB"
+                    msld-min-value="0"
+                    msld-max-value="200"
+                    msld-init-value="12"
+                        >
+                </myuu-slider-input-directive>
+                <div style="font-size: 16px; margin: 10px 0px;">Срок достижения этой цели:</div>
+                <div  style="font-size: 20px;">
+                    {% ng msi_goal2_reached_str ? msi_goal2_reached_str : "цель не достигнута" %}
+                </div>
+            </div>
 
         </div>
 
-        <h2 style="margin: 10px 0px 30px 0px;">Расчёт дохода по месяцам</h2>
+        <h2 style="margin: 30px 0px 30px 0px;">Расчёт дохода по месяцам</h2>
 
         <div style="font-size: 16px;">
             <div style="display: flex;">
@@ -161,7 +197,7 @@
                     <div style="padding: 5px; width: 120px;">{% ng msi_proc_doh_val + '%' %}</div>
                     <div style="padding: 5px; width: 150px; font-weight: bold;">{% ng m.fcc_month_proc_str %}</div>
                     <div style="padding: 5px; width: 150px;">{% ng m.fcc_doinvest_str %}</div>
-                    <div style="padding: 5px; width: 150px; font-weight: bold;">0 руб.</div>
+                    <div style="padding: 5px; width: 150px; font-weight: bold;">{% ng m.fcc_dodod_izym_str %}</div>
                     <div style="padding: 5px; width: 150px;">{% ng m.fcc_full_nakop_end_month_str %}</div>
                 </div>
             </div>

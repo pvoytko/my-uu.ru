@@ -496,13 +496,14 @@
 {# Используется для отображения слайдера и сохранения значений в скоуп-переменную #}
 <script type="text/ng-template" id="myuu_slider_input_directive_template_id">
 
-    <div style="font-size: 16px; margin-bottom: 8px; margin-top: 15px;">
+    <div style="font-size: 16px; margin-bottom: 12px; margin-top: 15px;">
         {% ng msldLabel %}
     </div>
 
     {# Слайдер взят тут https://www.w3schools.com/howto/howto_js_rangeslider.asp #}
     <div style="display: flex;">
 
+        {# Сам слайдер #}
         <div style="flex-grow: 1;">
             <input
                     type="range"
@@ -512,8 +513,34 @@
                     class="my_uu_slider"
                     >
         </div>
-        <div style="width: 150px; padding-left: 10px; font-size: 20px; position: relative; top: -7px;">
+
+        {# Значение отформатированное к строке #}
+        <div style="width: 160px; padding-left: 10px; font-size: 20px; position: relative; top: -7px;">
             {% ng msldGetOutputStr() %}
+        </div>
+
+        {# Кнопки +- #}
+        <div style="width: 60px; position: relative; top: -10px;">
+            <button
+                    type="button"
+                    class="btn btn-default"
+                    aria-label="Left Align"
+                    ng-disabled="sliderValue == msldMinValue"
+                    ng-click="msldChangeValue(-1)"
+                    >
+              <span class="glyphicon glyphicon-minus" aria-hidden="true"></span>
+            </button>
+        </div>
+        <div style="width: 60px; position: relative; top: -10px;">
+            <button
+                    type="button"
+                    class="btn btn-default"
+                    aria-label="Left Align"
+                    ng-disabled="sliderValue == msldMaxValue"
+                    ng-click="msldChangeValue(1)"
+                    >
+              <span class="glyphicon glyphicon-plus" aria-hidden="true"></span>
+            </button>
         </div>
 
     </div>
@@ -534,6 +561,8 @@
             templateUrl: 'myuu_slider_input_directive_template_id',
             link: function link($scope, element, attrs, controller, transcludeFn) {
 
+                var slider = $(element).find('.my_uu_slider');
+
                 $scope.msldConvertSliderToValue = function(slider_val){
                     if ($scope.msldFormatType == 'FIVE_THOUSAND_RUB'){
                         return slider_val * 5000;
@@ -541,8 +570,10 @@
                         return slider_val * 1000;
                     } else if ($scope.msldFormatType == 'LET'){
                         return slider_val;
-                    } else if ($scope.msldFormatType == 'PROCENT'){
+                    } else if ($scope.msldFormatType == 'MSLD_PROCENT_1'){
                         return slider_val;
+                    } else if ($scope.msldFormatType == 'MSLD_PROCENT_TEN'){
+                        return slider_val*10;
                     } else {
                         alert("Errot in msldFormatType in msldConvertSliderToValue")
                     }
@@ -555,20 +586,41 @@
                         return pvlNumberWithRoubles($scope.msldModel);
                     } else if ($scope.msldFormatType == 'LET'){
                         return $scope.msldModel + " лет";
-                    } else if ($scope.msldFormatType == 'PROCENT'){
+                    } else if ($scope.msldFormatType == 'MSLD_PROCENT_1'){
+                        return $scope.msldModel + "%";
+                    } else if ($scope.msldFormatType == 'MSLD_PROCENT_TEN'){
                         return $scope.msldModel + "%";
                     } else {
                         alert("Errot in msldFormatType in myuuSliderInputDirective")
                     }
                 }
 
+                // При клике на кнопки +-, меняем значение в слайдере и в модели
+                // если же вышло за границы, то не меняем.
+                $scope.msldChangeValue = function(inc_val){
+                    var old_val = parseInt(slider[0].value);
+                    var new_val = old_val + inc_val;
+                    if ((new_val < $scope.msldMinValue) || (new_val > $scope.msldMaxValue)){
+                        new_val = old_val;
+                    };
+                    $scope.msldUpdateStoredValue(new_val);
+                }
+
+                // Обновить все внутренние переменные. Слайдер-переменная, слайдер-контрол, модель.
+                $scope.msldUpdateStoredValue = function(slider_val){
+
+                    slider[0].value = slider_val;
+                    $scope.sliderValue = slider_val;
+                    $scope.msldModel = $scope.msldConvertSliderToValue(slider_val);
+
+                };
+
                 // Update the current slider value (each time you drag the slider handle)
-                var slider = $(element).find('.my_uu_slider');
-                $scope.msldModel = $scope.msldConvertSliderToValue($scope.msldInitValue);
+                $scope.msldUpdateStoredValue($scope.msldInitValue);
 
                 slider[0].oninput = function() {
                     $scope.$apply(function(){
-                        $scope.msldModel = $scope.msldConvertSliderToValue(slider[0].value);
+                        $scope.msldUpdateStoredValue(slider[0].value);
                     });
                 };
 
