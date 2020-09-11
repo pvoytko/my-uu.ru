@@ -48,12 +48,8 @@
                 if (period === undefined){
                     period = getParameterByName('lka_period', url);
                 }
-                if (bperiod === undefined){
-                    bperiod = getParameterByName('lka_bperiod', url);
-                }
                 url = pvlGetUrlReplaceParam(url, 'lka_type', type, true);
                 url = pvlGetUrlReplaceParam(url, 'lka_period', period, true);
-                url = pvlGetUrlReplaceParam(url, 'lka_bperiod', bperiod, true);
 
                 window.location.href = url;
             };

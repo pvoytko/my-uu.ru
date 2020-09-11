@@ -1295,7 +1295,7 @@ def ajax_lk_ana(request):
         #         elif c.lkcm_budget_period is None and bperiod == my_uu.models.LKCM_BUDGET_PERIOD_NONE:
         #             categoryModelListFiltered2.append(c)
         # else:
-        categoryModelListFiltered2 = categoryModelListFiltered1
+        categoryModelListFiltered2 = categoryModelListFiltered_tree
 
         # Обновленний список категорий - пересчитывем сумму
         # Но перед этим из записей учета удаляем все что не попадают в выбранные категории.
