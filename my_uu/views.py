@@ -575,8 +575,9 @@ def lk_ana(request):
     if type is None:
         type = 'rashod'
 
+    # Если период не задан, то берем месяц.
     if period is None:
-        period = 'week'
+        period = 'month'
 
     return render(request, 'lk_ana.html', {
         'lka_period': period,
