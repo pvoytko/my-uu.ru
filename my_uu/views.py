@@ -443,8 +443,6 @@ def lk_cat(request):
             'scf_comment',
             'lkcm_count',
             'scf_visible',
-            'lkcm_budget_value',
-            'lkcm_budget_period',
             'lkcm_dohod_rashod_type',
         ):
             dict_cat[f] = getattr(c, f)
@@ -572,8 +570,6 @@ def lk_ana(request):
 
     type = request.GET.get('lka_type', None)
     period = request.GET.get('lka_period', None)
-    group = request.GET.get('lka_group', None)
-    bperiod = request.GET.get('lka_bperiod', None)
     end_date = request.GET.get('lka_end_date', '')
 
     if type is None:
@@ -582,32 +578,13 @@ def lk_ana(request):
     if period is None:
         period = 'week'
 
-    if group is None:
-        group = False
-    else:
-        if group == 'group':
-            group = True
-        elif group == 'nogroup':
-            group = False
-        else:
-            raise RuntimeError(u'Неподдерживаемое значение.')
-
-    if bperiod is None:
-        bperiod = 'LKCM_BUDGET_PERIOD_ALL'
-
-    bperiod_choices = my_uu.models.LKCM_BUDGET_PERIOD_CHOICES2
-
     return render(request, 'lk_ana.html', {
         'lka_period': period,
         'lka_type': type,
-        'lka_is_grouping': group,
-        'lka_budget_period': bperiod,
 
         # Дата по которую отчет
         'lkas_end_date': end_date,
 
-        # Варианты периода для бюджета
-        'lka_bperiod_choices_json': json.dumps(bperiod_choices),
     })
 
 
@@ -1183,7 +1160,7 @@ def ajax_lk_ana(request):
     # period_count = Число периодов для отображения
     # get_first_period_date_func Функция, применяемая к дате, получает первый день требуемого периода
     # dec_period_func = Функция, применяемая к дате, уменьшает ее на один требуемый период
-    # is_groups_on = True если надо вместо категорий вывести группы
+    # is_groups_on = УСТАРЕЛО не поддерживается
     def addPeriodAnaDataToPageData(
         pageData,
         anaType,
@@ -1228,10 +1205,6 @@ def ajax_lk_ana(request):
         # Преобразуем к формату словарей
         uchet_list = uchet_qs.values('date', 'sum', 'category__scf_name').order_by('date')
 
-        # если включена группировка, тогда замена названия категорий на названия групп.
-        for u in uchet_list:
-            u['category__scf_name'] = plogic.convertCategoryNameToGroupNameIfGrouping(u['category__scf_name'], is_groups_on)
-
         # Добавляем поле месяца для сортировки и группировки по нему
         for u in uchet_list:
             u['period_value_sort'] = get_first_period_date_func(u['date'])
@@ -1270,7 +1243,8 @@ def ajax_lk_ana(request):
         categoryNames = set()
         categoryModelListFiltered1 = []
         for c in categoryModelListAll:
-            c.name = plogic.convertCategoryNameToGroupNameIfGrouping(c.scf_name, is_groups_on)
+
+            c.name = c.scf_name
 
             # Если уже добавили, то пропускаем
             if c.name in categoryNames:
@@ -1311,17 +1285,17 @@ def ajax_lk_ana(request):
         )
 
         # Если стоит фильтр по периодичности бюджета, то применяем его
-        categoryModelListFiltered2 = []
-        if bperiod:
-            for c in categoryModelListFiltered_tree:
-                if bperiod == my_uu.models.LKCM_BUDGET_PERIOD_ALL:
-                    categoryModelListFiltered2.append(c)
-                elif c.lkcm_budget_period == bperiod:
-                    categoryModelListFiltered2.append(c)
-                elif c.lkcm_budget_period is None and bperiod == my_uu.models.LKCM_BUDGET_PERIOD_NONE:
-                    categoryModelListFiltered2.append(c)
-        else:
-            categoryModelListFiltered2 = categoryModelListFiltered1
+        # categoryModelListFiltered2 = []
+        # if bperiod:
+        #     for c in categoryModelListFiltered_tree:
+        #         if bperiod == my_uu.models.LKCM_BUDGET_PERIOD_ALL:
+        #             categoryModelListFiltered2.append(c)
+        #         elif c.lkcm_budget_period == bperiod:
+        #             categoryModelListFiltered2.append(c)
+        #         elif c.lkcm_budget_period is None and bperiod == my_uu.models.LKCM_BUDGET_PERIOD_NONE:
+        #             categoryModelListFiltered2.append(c)
+        # else:
+        categoryModelListFiltered2 = categoryModelListFiltered1
 
         # Обновленний список категорий - пересчитывем сумму
         # Но перед этим из записей учета удаляем все что не попадают в выбранные категории.
@@ -1346,15 +1320,8 @@ def ajax_lk_ana(request):
         budgets_by_category_id = {}
         for c in categoryModelListFiltered2:
 
-            # Группировка включена
-            if is_groups_on:
-                budget_str = u'группировка'
-                budget_val = None
-                budget_year_str = u'группировка'
-                budget_year_val = None
-
             # Если это группа для нее не имеет смысла
-            elif c.scf_is_group:
+            if c.scf_is_group:
                 budget_str = u'--'
                 budget_val = None
                 budget_year_str = u'--'
@@ -1555,7 +1522,7 @@ def ajax_lk_ana(request):
                 get_first_period_date_func = lambda dt: dt,
                 dec_period_func = lambda dt: dt - datetime.timedelta(days=1),
                 inc_period_func = lambda dt: dt + datetime.timedelta(days=1),
-                is_groups_on = is_groups_on,
+                is_groups_on = False,
                 bperiod = bperiod,
                 end_date_str = end_date_str,
             )
@@ -1574,7 +1541,7 @@ def ajax_lk_ana(request):
                 get_first_period_date_func = plogic.getFirstMomentOfWeek0,
                 dec_period_func = lambda dt: addWeeks(dt, -1),
                 inc_period_func = lambda dt: addWeeks(dt, 1),
-                is_groups_on = is_groups_on,
+                is_groups_on = False,
                 bperiod = bperiod,
                 end_date_str = end_date_str,
             )
@@ -1592,7 +1559,7 @@ def ajax_lk_ana(request):
                 get_first_period_date_func = plogic.getFirstMomentOfMonth0,
                 dec_period_func = lambda dt: addMonths0(dt, -1),
                 inc_period_func = lambda dt: addMonths0(dt, 1),
-                is_groups_on = is_groups_on,
+                is_groups_on = False,
                 bperiod = bperiod,
                 end_date_str = end_date_str,
             )
@@ -1608,7 +1575,7 @@ def ajax_lk_ana(request):
                 get_first_period_date_func = getQuartFirstDate,
                 dec_period_func = lambda dt: addMonths0(dt, -3),
                 inc_period_func = lambda dt: addMonths0(dt, 3),
-                is_groups_on = is_groups_on,
+                is_groups_on = False,
                 bperiod = bperiod,
                 end_date_str = end_date_str,
             )
@@ -1624,7 +1591,7 @@ def ajax_lk_ana(request):
                 get_first_period_date_func = getYearFirstDate,
                 dec_period_func = lambda dt: dt.replace(year = dt.year - 1),
                 inc_period_func = lambda dt: dt.replace(year = dt.year + 1),
-                is_groups_on = is_groups_on,
+                is_groups_on = False,
                 bperiod = bperiod,
                 end_date_str = end_date_str,
             )
@@ -1635,17 +1602,15 @@ def ajax_lk_ana(request):
         return pageData
 
 
-    anaType, periodCode, is_groups_on, bperiod, end_date_str = extractAngularPostData(
+    anaType, periodCode, end_date_str = extractAngularPostData(
         request,
         'anaType',
         'periodCode',
-        'lkax_is_grouping',
-        'lkax_bperiod',
         'lkax_end_date',
     )
 
     # Данные для таблицы
-    pageData = getAnaPageData(periodCode, anaType, is_groups_on, bperiod, end_date_str)
+    pageData = getAnaPageData(periodCode, anaType, False, None, end_date_str)
 
     return JsonResponse(request, {
         'pageData': pageData,
@@ -2025,12 +1990,6 @@ def ajax_lk_save_category(request):
         )
         scf_visible = django.forms.CharField(
             max_length=255,
-        )
-        lkcm_budget_period = django.forms.CharField(
-            max_length=255,
-        )
-        lkcm_budget_value = django.forms.IntegerField(
-            min_value=0
         )
         scf_comment = django.forms.CharField(
             required=False,

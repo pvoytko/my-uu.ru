@@ -180,16 +180,6 @@ def convertPeriodCodeAndStartDateToPeriodId(period_code, start_date):
     raise RuntimeError(u'Неизвестный код периода')
 
 
-# Для группировки в анализе - преобразовать имя категории к имени группы.
-# "Еда -- Столовая" станет "[Еда]"
-# "Жилье" станет "Жилье"
-def convertCategoryNameToGroupNameIfGrouping(cat_name, is_grouping):
-    if is_grouping and '--' in cat_name:
-        cat_name = cat_name.split('--', 1)[0].strip()
-        return u"[{0}]".format(cat_name)
-    return cat_name
-
-
 # возвращает true елси пользователь ранее ввел корректные логин и пароль и сейчас авторизован
 def isAuthorizedUser(request):
     return request.user.is_authenticated()

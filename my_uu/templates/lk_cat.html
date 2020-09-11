@@ -513,30 +513,6 @@
                                     >
                             </sili-form-field-choices-buttons-directive>
 
-                            {# Бюджет категории #}
-                            <sili-form-field-choices-buttons-directive
-                                siffd-label="Периодичность бюджета:"
-                                siffd-help-text='С какой периодичностью повторяются данные расходы (или доходы). <br />Используется для отображения на странице "Анализ".'
-                                siffd-model="lkcat_model.lkcm_budget_period"
-                                siffd-choices="ac_choices_list"
-                                siffd-is-req="true"
-                                siffd-is-disabled="false"
-                                siffd-django-form-errors="cdc_dj_errors"
-                                siffd-field-name="lkcm_budget_period"
-                                    >
-                            </sili-form-field-choices-buttons-directive>
-
-                            <sili-form-field-input-directive
-                                siffd-label="Бюджет категории:"
-                                siffd-help-text='Не более скольки планируется расход (или доход) за указанный период по этой категории. Используется для отображения на странице "Анализ".'
-                                siffd-model="lkcat_model.lkcm_budget_value"
-                                siffd-is-req="true"
-                                siffd-is-disabled="false"
-                                siffd-django-form-errors="cdc_dj_errors"
-                                siffd-field-name="lkcm_budget_value"
-                                    >
-                            </sili-form-field-input-directive>
-
                         </div>
 
                     </form>

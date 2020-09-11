@@ -21,12 +21,7 @@
             // какие открыть в таблице
             $scope.periodCode = '{{ lka_period }}';
             $scope.anaType = '{{ lka_type }}';
-            $scope.ac_is_grouping = '{{ lka_is_grouping }}' == 'True';
-            $scope.ac_budget_period = '{{ lka_budget_period }}';
             $scope.ac_end_date = '{{ lkas_end_date }}';
-
-            // Варианты выбора чего-то
-            $scope.lka_bperiod_choices = {{ lka_bperiod_choices_json|safe }};
 
             // Тут получаем с сервера данные в формате
             // pageData {
@@ -42,14 +37,6 @@
             // Версия в контроллере
             $scope.acGoToAnaUrl = function(type, period, grouping_switch, bperiod){
 
-                // Это видимо баг кода работы с чекбоксом, что инвертно работает, исправляем таким образом:
-                if (grouping_switch){
-                    $scope.ac_is_grouping = !$scope.ac_is_grouping;
-                }
-
-                // Возвращает строку для передачи в урл в зависимости от значения чекбокса
-                var grouping = $scope.ac_is_grouping ? 'group' : '';
-
                 // переход
                 // ПЕреход на страницу анализа с указанными типом анализа, периодом, группировкой.
                 // Если они не указаны (undefined), тогда взять их из УРЛ. Если в урл их нет,
@@ -61,15 +48,11 @@
                 if (period === undefined){
                     period = getParameterByName('lka_period', url);
                 }
-                if (grouping === undefined){
-                    grouping = getParameterByName('lka_group', url);
-                }
                 if (bperiod === undefined){
                     bperiod = getParameterByName('lka_bperiod', url);
                 }
                 url = pvlGetUrlReplaceParam(url, 'lka_type', type, true);
                 url = pvlGetUrlReplaceParam(url, 'lka_period', period, true);
-                url = pvlGetUrlReplaceParam(url, 'lka_group', grouping, true);
                 url = pvlGetUrlReplaceParam(url, 'lka_bperiod', bperiod, true);
 
                 window.location.href = url;
@@ -89,8 +72,6 @@
                     baps_post_parameters: {
                         periodCode: $scope.periodCode,
                         anaType: $scope.anaType,
-                        lkax_is_grouping: $scope.ac_is_grouping,
-                        lkax_bperiod: $scope.ac_budget_period,
                         lkax_end_date: $scope.ac_end_date
                     },
                     baps_error_callback: function(server_response){
@@ -124,6 +105,16 @@
 
             $scope.getDataRowList = function(){
                 return $scope.loader_api_pageData['dataRows'][$scope.anaType + '-' + $scope.periodCode]
+            };
+            // Проверяет всех родителей рекурсивно, один из них свернут, то и эту строку не надо показывать.
+            $scope.lkaOneOfParentIsCollapsed = function(row){
+                while(row.lka_parent_row){
+                    row = row.lka_parent_row;
+                    if (row.alka_is_collapsed){
+                        return true;
+                    }
+                }
+                return false;
             };
             $scope.getTotalRow = function(){
                 return $scope.loader_api_pageData['totalRow'][$scope.anaType + '-' + $scope.periodCode];
@@ -249,32 +240,6 @@
 
                 </div>
 
-                <div class="form-group" style="margin: 10px 0px 0px 0px;">
-                    <div class="checkbox" style="margin-top: 0px;">
-                        <label>
-                            <input style="position: relative; top: 3px;" type="checkbox" ng-model="ac_is_grouping" ng-click="acGoToAnaUrl(undefined, undefined, true, undefined)">
-                            <span>Группировка</span>
-                        </label>
-                        <span ng-controller='SiliTooltipCtrl2' title='Позволяет объединить несколько категорий в таблице в одну при отображении, для облегчения анализа. Для этого в качестве названия группы берётся часть названия категории, находящаяся перед первым двойным дефисом. Например, у Вас есть категория "Еда -- Столовая" и "Еда -- Магазин". Тогда при клике на галочку эти две категории объединятся в одну с названием "Еда".' class="sili_help_icon"></span>
-                    </div>
-                </div>
-
-                <h5 style="margin: 20px 0px 0px 0px;">Показать категории с периодичностью бюджета:</h5>
-                <div style="padding-bottom: 7px; position: relative;" ng-cloak>
-
-                    <button
-                            style="margin-top: 5px; margin-right: 5px;"
-                            ng-repeat="p in lka_bperiod_choices"
-                            type="button"
-                            class="btn btn-default"
-                            ng-class="{ 'active': ac_budget_period == p[0] }"
-                            ng-click="acGoToAnaUrl(undefined, undefined, undefined, p[0] )"
-                            >
-                        {% ng p[1] %}
-                    </button>
-
-                </div>
-
             </div>
         </div>
         <div style="width: 100%; flex-grow: 1;">
@@ -340,26 +305,19 @@
 
                                 </th>
 
-                                <th style="background-color: #f0f0f0; width: 141px; text-align: center; height: 75px; vertical-align: top; border-top: 1px solid #ddd;">
-                                    Бюджет (план) по категории
-                                </th>
-                                <th style="background-color: #f0f0f0; width: 141px; text-align: center; height: 75px; vertical-align: top; border-top: 1px solid #ddd;">
-                                    Бюджет (план) за год
-                                </th>
-
                             </tr>
                         </thead>
                         <tbody>
 
                             {# Если нет строк - то показ спец. строки #}
                             <tr ng-show="getDataRowList().length == 0">
-                                <td colspan="7" style="text-align: center; padding: 50px;">Нет операций для отображения.</td>
+                                <td colspan="1" style="text-align: center; padding: 50px;">Нет операций для отображения.</td>
                             </tr>
 
                             {# Далее показывем строки, но если есть родитель и родитель свернут - то эту (дочернюю) не показываем #}
                             <tr
                                     ng-repeat="row in getDataRowList()"
-                                    ng-show="!row.lka_parent_row || !row.lka_parent_row.alka_is_collapsed"
+                                    ng-show="!row.lka_parent_row || !lkaOneOfParentIsCollapsed(row)"
                                     >
                                 <td
                                         class="myuu_ana_row_header"
@@ -367,7 +325,7 @@
                                         >
 
                                     <div
-                                            style="text-overflow: ellipsis; white-space: nowrap; overflow: hidden; width: 200px; margin-left: {% ng row.bcbci_indent * '40' + 'px' %} "
+                                            style="text-overflow: ellipsis; white-space: nowrap; overflow: hidden; width: 300px; min-width: 300px; margin-left: {% ng row.bcbci_indent * '40' + 'px' %} "
                                             pv-tooltip-directive='row.category'
 
                                             {# Если категория не видима то подсветка цветом #}
@@ -404,39 +362,15 @@
 
                                 <td
                                         ng-repeat="i in row.lka_cell_data track by $index"
-                                        style="text-align: right;"
+                                        style="text-align: right; white-space: nowrap;"
                                         ng-class="{ 'myuu_ana_row_group': row.lka_is_ana_group }"
                                         >
                                     <a
                                             href="/lk/{% ng i.lka_cell_period %}/None/{% ng row.lka_category_id %}/"
                                             class="lka_sum_link"
-
-                                            {# Проход к учету возможен только без группировки #}
-                                            {% if lka_is_grouping %}
-                                                onclick="alert('Включена группировка. Переход к учету при клике на сумму возможен только при отключенной группировке. Отключите группировку, пожалуйста, и повторите попытку.'); return false;"
-                                            {% endif %}
                                             >
                                         {% ng i.lka_cell_val %}
                                     </a>
-                                </td>
-
-                                {# Отступ #}
-                                <td style="border: none;">
-                                </td>
-
-                                <td
-                                        style="text-align: left;"
-                                        class="{% ng row.bcbci_color %}"
-                                        ng-class="{ 'myuu_ana_row_group': row.lka_is_ana_group }"
-                                        >
-                                    {% ng row.lka_budget_str %}
-                                </td>
-                                <td
-                                        style="text-align: left;"
-                                        class="{% ng row.bcbci_year_color %}"
-                                        ng-class="{ 'myuu_ana_row_group': row.lka_is_ana_group }"
-                                        >
-                                    {% ng row.lka_budget_year_str %}
                                 </td>
 
                             </tr>
@@ -450,61 +384,13 @@
 
                                 <td
                                         ng-repeat="i in getTotalRow() track by $index"
-                                        style="background-color: #f0f0f0; text-align: right; font-weight: bold;"
+                                        style="background-color: #f0f0f0; text-align: right; font-weight: bold; white-space: nowrap;"
                                         >
                                     {% ng i %}
                                 </td>
 
-                                <td style="border: none;">
-                                </td>
-
-                                {# Итоговая сумма по всей таблице #}
-                                <td style="background-color: #f0f0f0; text-align: left; font-weight: bold;">
-                                    {% ng getSimplePageData().pa_budget_summ %}
-                                </td>
-                                <td style="background-color: #f0f0f0; text-align: left; font-weight: bold;">
-                                    {% ng getSimplePageData().pa_budget_year_summ %}
-                                </td>
-
                             </tr>
 
-                            {# Итоговыве по таблице - кварт, мес, нед #}
-                            <tr>
-                                <td style="border: none;"></td>
-                                <td ng-repeat="i in getTotalRow() track by $index" style="border: none;"></td>
-                                <td style="border: none;"></td>
-                                <td style="border: none;"></td>
-                                <td style="background-color: #f0f0f0; text-align: left; font-weight: bold;">
-                                    {% ng getSimplePageData().pa_budget_quart_summ %}
-                                </td>
-                            </tr>
-                            <tr>
-                                <td style="border: none;"></td>
-                                <td ng-repeat="i in getTotalRow() track by $index" style="border: none;"></td>
-                                <td style="border: none;"></td>
-                                <td style="border: none;"></td>
-                                <td style="background-color: #f0f0f0; text-align: left; font-weight: bold;">
-                                    {% ng getSimplePageData().pa_budget_month_summ %}
-                                </td>
-                            </tr>
-                            <tr>
-                                <td style="border: none;"></td>
-                                <td ng-repeat="i in getTotalRow() track by $index" style="border: none;"></td>
-                                <td style="border: none;"></td>
-                                <td style="border: none;"></td>
-                                <td style="background-color: #f0f0f0; text-align: left; font-weight: bold;">
-                                    {% ng getSimplePageData().pa_budget_week_summ %}
-                                </td>
-                            </tr>
-                            <tr>
-                                <td style="border: none;"></td>
-                                <td ng-repeat="i in getTotalRow() track by $index" style="border: none;"></td>
-                                <td style="border: none;"></td>
-                                <td style="border: none;"></td>
-                                <td style="background-color: #f0f0f0; text-align: left; font-weight: bold;">
-                                    {% ng getSimplePageData().pa_budget_day_summ %}
-                                </td>
-                            </tr>
 
                         </tbody>
                     </table>
