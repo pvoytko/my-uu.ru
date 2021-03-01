@@ -305,10 +305,29 @@ def _getAccountBalanceList(request):
 
 
 # Список категорий на старнице учета в окне добавления операции - без групп
-def _getCategoryList(request):
-    categoryList = my_uu.models.Category.objects.filter(user=request.user, scf_visible=True, scf_is_group=False)
-    categoryList = categoryList.order_by('position', 'id')
-    return list(categoryList.values('id', 'scf_name', 'lkcm_dohod_rashod_type'))
+def _getCategoryListForAddUchetDlg(request):
+    categoryList_qs = my_uu.models.Category.objects.filter(
+        user=request.user,
+        scf_visible=True,
+    )
+    categoryList_qs = categoryList_qs.order_by('position', 'id')
+    res = []
+    for n, cat in enumerate(categoryList_qs):
+
+        indent = my_uu.plogic.getCategoryIndentLevel(cat)
+
+        is_group = cat.scf_is_group
+
+        text_caption = u'[[[[ {} ]]]]'.format(cat.scf_name) if is_group else cat.scf_name
+        display_and_indent = (u'....' * indent) + text_caption
+
+        res.append({
+            'id': cat.id,
+            'scf_name': u"" if is_group else cat.scf_name,
+            'lkcm_dohod_rashod_type': cat.lkcm_dohod_rashod_type,
+            'scf_display_name': display_and_indent,
+        })
+    return res
 
 
 # Главная страница личного кабиета
@@ -368,7 +387,7 @@ def page_lk_uch(request, period = None, account_id = None, category_id = None):
         'accountList': my_uu.models.Account.objects.filter(user=request.user, visible=True).order_by('position', 'id'),
         'categoryList': my_uu.models.Category.objects.filter(user=request.user, scf_visible=True).order_by('position', 'id'),
         'accountBalanceListJson': json.dumps(_getAccountBalanceList(request), cls=DjangoJSONEncoder),
-        'categoryListNoGroupJson': json.dumps(_getCategoryList(request), cls=DjangoJSONEncoder),
+        'categoryListNoGroupJson': json.dumps(_getCategoryListForAddUchetDlg(request), cls=DjangoJSONEncoder),
         'viewPeriodSetJson': json.dumps(list(my_uu.models.UserProfile.VIEW_PERIOD_CODE_CHOICES) + addFilterPeriodChoices, cls=DjangoJSONEncoder),
         'viewPeriodMonthSetJson': json.dumps(my_uu.plogic.getUchetMonthSet(request.user), cls=DjangoJSONEncoder),
         # 'showAddUchetDialog': 1 if showAddUchetDialog else 1, # 1 или 0 - т.к. JS не понимает True / False

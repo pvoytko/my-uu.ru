@@ -27,6 +27,17 @@
     <script type="text/javascript" src="/static/libs/jqwidgets-2.9.0/jqwidgets/jqxcombobox.js"></script>
 
     <!-- Ангулар-директива Баланс счетов -->
+    <script type="text/ng-template" id="uu_balance_directive_template_id">
+        <div style="margin-bottom: 25px;" class="clearfix">
+            <div style="font-weight: bold; margin: 3px 0; color: rgb(39, 100, 133);">
+                Денег на счетах, для сверки <div style="float: right;">Всего: {% ng getTotalBalance(accountList) %}</div>
+            </div>
+            <div class="balance__account_block" ng-repeat="a in accountList" pv-tooltip-directive="a.name">
+                <div class="balance__cell balance__account_name"><div>{% ng a.name  %}</div></div>
+                <div class="balance__cell balance__account_sum"><div>{% ng formatBalance(a.balance) %}</div></div>
+            </div>
+        </div>
+    </script>
     <script src="/static/js/directive_balance.js"></script>
 
 
@@ -420,7 +431,7 @@
                         <div class="form-group">
                             <label class="control-label col-xs-4">Категория</label>
                             <div class="col-xs-8">
-                                <select class="form-control" style="width: 310px;" ng-model="$parent.category" ng-options="c.scf_name as c.scf_name for c in $parent.pluGetCategoriesDlgList()">
+                                <select class="form-control" style="width: 310px;" ng-model="$parent.category" ng-options="c.scf_name as c.scf_display_name for c in $parent.pluGetCategoriesDlgList()">
                                 </select>
                             </div>
                         </div>
