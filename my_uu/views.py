@@ -2710,7 +2710,6 @@ def api_edit_uchet_records(request):
 
     # Ответ
     return {
-        "aeur_record_id": u.id,
     }
 
 
