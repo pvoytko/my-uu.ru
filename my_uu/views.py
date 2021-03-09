@@ -2620,8 +2620,8 @@ def api_get_uchet_records(request):
     records = []
     for u in my_uu.models.Uchet.objects.filter(
         user = user_model,
-        date__gte = uchet_date1,
-        date__lt = uchet_date2,
+        date__gte = pvl_datetime_format.funcs.strToDate(uchet_date1),
+        date__lt = pvl_datetime_format.funcs.strToDate(uchet_date2),
     ):
         records.append({
             'agur_id': u.id,
