@@ -2627,7 +2627,7 @@ def api_get_uchet_records(request):
             'agur_id': u.id,
             'agur_date': pvl_datetime_format.funcs.dateToStr(u.date),
             'agur_type': u.utype.name,
-            'agur_sum': u.sum,
+            'agur_sum': decimal.Decimal(u.sum),
             'agur_category': u.category.scf_name,
             'agur_comment': u.comment,
         })
