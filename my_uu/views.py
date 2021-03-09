@@ -2639,6 +2639,82 @@ def api_get_uchet_records(request):
 
 
 
+# АПИ метод изменнеия записи
+@csrf_exempt
+@pvl_http.funcs.getParamsErrorsDecorator
+@annoying.decorators.ajax_request
+def api_edit_uchet_records(request):
+
+    # Получаем данные из запроса
+    inp_params = pvl_http.funcs.parseJsonRequestBody(request.body)
+    username = pvl_http.funcs.getParamValueFromJson(inp_params, 'aeur_username')
+    pswd_raw = pvl_http.funcs.getParamValueFromJson(inp_params, 'aeur_password')
+    uchet_id = pvl_http.funcs.getParamValueFromJson(inp_params,     'aeur_id')
+    uchet_date = pvl_http.funcs.getParamValueFromJson(inp_params,     'aeur_date')
+    uchet_time = pvl_http.funcs.getParamValueFromJson(inp_params,     'aeur_time')
+    uchet_type = pvl_http.funcs.getParamValueFromJson(inp_params,     'aeur_type')
+    uchet_summa = pvl_http.funcs.getParamValueFromJson(inp_params,    'aeur_summa')
+    uchet_account = pvl_http.funcs.getParamValueFromJson(inp_params,  'aeur_account')
+    uchet_category = pvl_http.funcs.getParamValueFromJson(inp_params, 'aeur_category')
+    uchet_comment = pvl_http.funcs.getParamValueFromJson(inp_params,  'aeur_comment')
+
+    # Проверка реквизитов
+    user_model = plogic.pmCheckUserAndPassword(username, pswd_raw)
+
+    # Изменяем запись в БД
+    u = my_uu.models.Uchet.objects.get(
+        id = uchet_id,
+        user = user_model,
+    )
+
+    if uchet_date:
+        u.date = pvl_datetime_format.funcs.strToDate(uchet_date)
+
+    if uchet_time:
+        u.myum_time = pvl_datetime_format.funcs.strToTime(uchet_time)
+
+    if uchet_type:
+        u.utype = my_uu.models.UType.objects.get(name = uchet_type)
+
+    if uchet_summa:
+        u.sum = uchet_summa
+
+    if uchet_account:
+        acc_model = annoying.functions.get_object_or_None(
+            my_uu.models.Account,
+            name = uchet_account,
+            user = user_model,
+        )
+        if acc_model is None:
+            return django.http.HttpResponseServerError(
+                u'У юзера {} не найден счет с названием {}'.format(user_model, uchet_account)
+            )
+        u.account = acc_model
+
+    if uchet_category:
+        cat_model = annoying.functions.get_object_or_None(
+            my_uu.models.Category,
+            scf_name = uchet_category,
+            user = user_model,
+        )
+        if cat_model is None:
+            return django.http.HttpResponseServerError(
+                u'У юзера {} не найдена категория с названием {}'.format(user_model, uchet_category)
+            )
+        u.category = cat_model
+
+    if uchet_comment:
+        u.comment = uchet_comment
+
+    u.save()
+
+    # Ответ
+    return {
+        "aeur_record_id": u.id,
+    }
+
+
+
 # Экспорт данных Excel
 @uu_login_required
 def file_export_excel(request):

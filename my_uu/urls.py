@@ -101,6 +101,8 @@ urlpatterns = [
     # АПИ метод чтение списка
     url(r'^api_get_uchet_records/', my_uu.views.api_get_uchet_records),
 
+    # АПИ метод изменения записи
+    url(r'^api_edit_uchet_records/', my_uu.views.api_edit_uchet_records),
 ]
 
 from django.contrib.staticfiles.urls import staticfiles_urlpatterns
