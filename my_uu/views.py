@@ -2622,7 +2622,7 @@ def api_get_uchet_records(request):
         user = user_model,
         date__gte = pvl_datetime_format.funcs.strToDate(uchet_date1),
         date__lt = pvl_datetime_format.funcs.strToDate(uchet_date2),
-    ):
+    ).order_by('date'):
         records.append({
             'agur_id': u.id,
             'agur_date': pvl_datetime_format.funcs.dateToStr(u.date),
