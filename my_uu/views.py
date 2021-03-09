@@ -2601,6 +2601,43 @@ def ajax_add_uchet_record_api(request):
     }
 
 
+# АПИ метод чтения списка
+@csrf_exempt
+@pvl_http.funcs.getParamsErrorsDecorator
+@annoying.decorators.ajax_request
+def api_get_uchet_records(request):
+
+    # Получаем данные из запроса
+    inp_params = pvl_http.funcs.parseJsonRequestBody(request.body)
+    username = pvl_http.funcs.getParamValueFromJson(inp_params, 'agur_username')
+    pswd_raw = pvl_http.funcs.getParamValueFromJson(inp_params, 'agur_password')
+    uchet_date1 = pvl_http.funcs.getParamValueFromJson(inp_params,     'agur_date_from')
+    uchet_date2 = pvl_http.funcs.getParamValueFromJson(inp_params,     'agur_date_end')
+
+    # Проверка реквизитов
+    user_model = plogic.pmCheckUserAndPassword(username, pswd_raw)
+
+    records = []
+    for u in my_uu.models.Uchet.objects.filter(
+        user = user_model,
+        date__gte = uchet_date1,
+        date__lt = uchet_date2,
+    ):
+        records.append({
+            'agur_id': u.id,
+            'agur_date': pvl_datetime_format.funcs.dateToStr(u.date),
+            'agur_type': u.utype.name,
+            'agur_sum': u.sum,
+            'agur_category': u.category.scf_name,
+            'agur_comment': u.comment,
+        })
+
+    # Ответ
+    return {
+        "agur_records": records,
+    }
+
+
 
 # Экспорт данных Excel
 @uu_login_required

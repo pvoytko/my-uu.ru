@@ -98,6 +98,9 @@ urlpatterns = [
     # АПИ метод добавления записи
     url(r'^ajax_add_uchet_record_api/', my_uu.views.ajax_add_uchet_record_api),
 
+    # АПИ метод чтение списка
+    url(r'^api_get_uchet_records/', my_uu.views.api_get_uchet_records),
+
 ]
 
 from django.contrib.staticfiles.urls import staticfiles_urlpatterns
