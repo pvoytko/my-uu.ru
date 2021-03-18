@@ -252,8 +252,13 @@ class Account(models.Model):
     def clean(self):
         from django.core.exceptions import ValidationError
         from django.db.models import Count, Sum, Min, Max
-        if not self.visible and self.uchet_set.aggregate(sum = Sum('sum')).values()[0] != 0:
-            raise ValidationError(u'MUST_BE_ZERO')
+        if not self.visible:
+
+            # balance может быть 0 или None если ни одной операции.
+            # проверкой if Обрабатываем оба случая.
+            balance = self.uchet_set.aggregate(sum = Sum('sum')).values()[0]
+            if balance:
+                raise ValidationError(u'MUST_BE_ZERO')
 
     # Уникальность имени счета только в рамках одного юзера
     class Meta:
