@@ -54,9 +54,28 @@ def filterUchetByViewPeriod(uchetRecords, period_id):
     import dateutil.relativedelta
 
     # Последние 3 дня, 30 дней
-    if period_id in (models.UserProfile.VIEW_PERIOD_CODE_LAST3, models.UserProfile.VIEW_PERIOD_CODE_LAST30):
-        lastIndex = 3 if period_id == models.UserProfile.VIEW_PERIOD_CODE_LAST3 else 30
-        lastDates = list(uchetRecords.values_list('date', flat=True).distinct().order_by('-date')[0:lastIndex])
+    if period_id in (
+            models.UserProfile.VIEW_PERIOD_CODE_LAST3,
+            models.UserProfile.VIEW_PERIOD_CODE_LAST30,
+            models.UserProfile.VIEW_PERIOD_CODE_LAST300,
+            models.UserProfile.VIEW_PERIOD_CODE_LAST_ALL,
+    ):
+        if period_id == models.UserProfile.VIEW_PERIOD_CODE_LAST3:
+            lastIndex = 3
+        elif period_id == models.UserProfile.VIEW_PERIOD_CODE_LAST30:
+            lastIndex = 30
+        elif period_id == models.UserProfile.VIEW_PERIOD_CODE_LAST300:
+            lastIndex = 300
+        elif period_id == models.UserProfile.VIEW_PERIOD_CODE_LAST_ALL:
+            lastIndex = None
+        else:
+            raise RuntimeError(u"Ошибка в filterUchetByViewPeriod")
+
+        lastDates_qs = uchetRecords.values_list('date', flat=True).distinct().order_by('-date')
+        if lastIndex:
+            lastDates = list(lastDates_qs[0:lastIndex])
+        else:
+            lastDates = list(lastDates_qs)
 
         # Тут важно возвращать не пустой список а пустой квери сет, т.к. к нему применяются ордер бай потом и пр.
         # а если пустой список будем возвращать то эксепшен там получим.

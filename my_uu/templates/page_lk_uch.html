@@ -33,7 +33,11 @@
                 Денег на счетах, для сверки <div style="float: right;">Всего: {% ng getTotalBalance(accountList) %}</div>
             </div>
             <div class="balance__account_block" ng-repeat="a in accountList" pv-tooltip-directive="a.name">
-                <div class="balance__cell balance__account_name"><div>{% ng a.name  %}</div></div>
+                <div class="balance__cell balance__account_name"><div>
+                    <a href="{% ng a.al_filter_url %}" style="text-decoration: underline;">
+                        {% ng a.name  %}
+                    </a>
+                </div></div>
                 <div class="balance__cell balance__account_sum"><div>{% ng formatBalance(a.balance) %}</div></div>
             </div>
         </div>

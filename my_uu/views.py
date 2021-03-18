@@ -38,6 +38,7 @@ import pvl_backend_ajax.funcs
 from django.views.decorators.csrf import csrf_exempt
 import annoying.decorators
 
+import pvl_version.funcs
 
 def extractAngularPostData(request, *keys):
     postData = simplejson.loads(request.body)
@@ -290,17 +291,29 @@ def lk_beg(request):
     return locals()
 
 
+# Эта фукцния возвращает список счетов
+# для показа под таблией учета на странице учета.
 def _getAccountBalanceList(request):
+
+    # Список счетов юзера со суммой
     accountBalanceList = my_uu.models.Account.objects.filter(user=request.user, visible=True)
     accountBalanceList = accountBalanceList.annotate(balance = Sum('uchet__sum'))
     accountBalanceList = accountBalanceList.order_by('position', 'id')
+
+    # Если счетов много то ошибка
     if len(accountBalanceList) > 28:
         raise RuntimeError('Слишком большое количество счетов, интерфейс пока не рассчитан на такое количество.')
+
+    # Формируем из querysert список словарей с полями
     ll = list(accountBalanceList.values('id', 'name', 'balance', 'balance_start'))
     for r in ll:
         if r['balance'] is None:
             r['balance'] = 0
         r['balance'] += r['balance_start']
+
+        # Урл на
+        r['al_filter_url'] = pvl_version.funcs.getUrlByName('page_lk_uch_url') + 'last_all/{}/None/'.format(r['id'])
+
     return ll
 
 

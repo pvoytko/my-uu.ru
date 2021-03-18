@@ -73,7 +73,11 @@ class UserProfile(models.Model):
     # В этом поле может храниться месяц в формате 'YYYY-MM' или одно из спец. значений 'last3' и 'last30'
     VIEW_PERIOD_CODE_LAST3 = 'last3'
     VIEW_PERIOD_CODE_LAST30 = 'last30'
+    VIEW_PERIOD_CODE_LAST300 = 'last300'
+    VIEW_PERIOD_CODE_LAST_ALL = 'last_all'
     VIEW_PERIOD_CODE_CHOICES=(
+        (VIEW_PERIOD_CODE_LAST_ALL, 'всё время'),
+        (VIEW_PERIOD_CODE_LAST300, 'последние 300 дней'),
         (VIEW_PERIOD_CODE_LAST30, 'последние 30 дней'),
         (VIEW_PERIOD_CODE_LAST3, 'последние 3 дня'),
     )
