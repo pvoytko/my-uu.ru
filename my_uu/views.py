@@ -1539,6 +1539,25 @@ def ajax_lk_ana(request):
                     row,
                 )
 
+        # Если у групповой строки ни одной дочерней категории
+        # с данными (т.е. нет данных), и отметка скрыть ее,
+        # то она скрывается (без явной отметки юзером - не скрывается)
+        # Раньше эта фиьтрация стояля выше по коду, но была ошибка при расчете суммы по группам
+        # та функция ожидала что все категории есть, поэтому блок этого кода
+        # по исключению пустых групп сместил ниже в конец.
+        child_count_by_id = {}
+        for c in output_list:
+            if c['lka_category_id'] not in child_count_by_id:
+                child_count_by_id[c['lka_category_id']] = 0
+            if c['lka_parent_id']:
+                child_count_by_id[c['lka_parent_id']] += 1
+        output_list_new = []
+        for c in output_list:
+            if c['lka_is_ana_group'] and not child_count_by_id[c['lka_category_id']] and not c['lka_is_category_visible']:
+                continue
+            output_list_new.append(c)
+        pageData['dataRows'][anaType + '-' + result_suffix] = output_list_new
+
         # можем ли мотать влево и вправо (есть ли еще периоды) и какой аргумент в урл для этого передавать
         pageData['lka_is_can_left'] = True
         pageData['lka_is_can_right'] = True
@@ -2059,6 +2078,9 @@ def ajax_lk_save_category(request):
         scf_name = django.forms.CharField(
             max_length=255,
         )
+        scf_visible = django.forms.CharField(
+            max_length=255,
+        )
         scf_comment = django.forms.CharField(
             required=False,
             max_length=255,
@@ -2155,21 +2177,6 @@ def ajax_lk_save_category(request):
         return pvl_backend_ajax.funcs.ajaxStatusOkError(
             lsca_django_form_errors = pvl_backend_ajax.funcs.getDjangoFormErrorsAsDict(frm)
         )
-
-    def rowGetter(id):
-        rowsC = my_uu.models.Category.objects.annotate(count = Count('uchet'))
-        rowsC = rowsC.filter(user=request.user, id=id).values('id', 'name', 'count', 'visible')
-        return rowsC[0]
-
-    return _lk_save_settings_ajax(
-        request,
-        'category_set',
-        my_uu.models.Category,
-        my_uu.models.EventLog.EVENT_EDT_CAT,
-        my_uu.models.EventLog.EVENT_ADD_CAT,
-        u'Категория',
-        rowGetter,
-    )
 
 
 # Удаляем категорию или группу

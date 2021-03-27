@@ -451,6 +451,18 @@
                                     >
                             </sili-form-field-input-directive>
 
+                            <sili-form-field-choices-buttons-directive
+                                siffd-label="Видима:"
+                                siffd-help-text='Показывать ли эту группу в списке анализа. Скрывайте более неактуальные группы.'
+                                siffd-model="lkcat_model.scf_visible"
+                                siffd-choices="[[false, 'Нет'], [true, 'Да']]"
+                                siffd-is-req="true"
+                                siffd-is-disabled="false"
+                                siffd-django-form-errors="cdc_dj_errors"
+                                siffd-field-name="scf_visible"
+                                    >
+                            </sili-form-field-choices-buttons-directive>
+
                         </div>
 
                         <div ng-if="cdc_type=='CDC_TYPE_CATEGORY'">
