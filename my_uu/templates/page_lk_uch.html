@@ -184,7 +184,7 @@
                 function onModelSuccessCallback(){
 
                     // Валидируем данные
-                    dateValRes = uuValidateDate($scope.date);
+                    dateValRes = uuValidateDate($scope.date_uch);
                     if (dateValRes !== true){
                         $scope.acrShowError(dateValRes);
                         return false;
@@ -219,7 +219,8 @@
                     if ($scope.acr_is_edit_row){
 
                         $('#uuGrid').jqxGrid('updaterow', $scope.acr_edited_row_grid_id, {
-                            'date': $scope.date,
+                            'date': $scope.date_uch,
+                            'lkud_date_rep': $scope.lkud_date_rep,
                             'lkud_time': $scope.lkud_time,
                             'utype': uTypeList[$scope.plu_type],
                             'sum': strValWithComma,
@@ -240,7 +241,8 @@
                         if ($scope.plu_type == '2'){
                             var newHeight = adjustGridHeightToNewRowsCount($('#uuGrid').jqxGrid('getrows').length + 2);
                             $('#uuGrid').jqxGrid('addrow', null, {
-                                'date': $scope.date,
+                                'date': $scope.date_uch,
+                                'lkud_date_rep': $scope.lkud_date_rep,
                                 'lkud_time': cur_time_str,
                                 'utype': uTypeList[$scope.plu_type],
                                 'sum': strValWithCommaMinus,
@@ -249,7 +251,8 @@
                                 'comment': $scope.comment
                             });
                             $('#uuGrid').jqxGrid('addrow', null, {
-                                'date': $scope.date,
+                                'date': $scope.date_uch,
+                                'lkud_date_rep': $scope.lkud_date_rep,
                                 'lkud_time': cur_time_str,
                                 'utype': uTypeList[$scope.plu_type],
                                 'sum': strValWithComma,
@@ -260,7 +263,8 @@
                         }else{
                             var newHeight = adjustGridHeightToNewRowsCount($('#uuGrid').jqxGrid('getrows').length + 1);
                             $('#uuGrid').jqxGrid('addrow', null, {
-                                'date': $scope.date,
+                                'date': $scope.date_uch,
+                                'lkud_date_rep': $scope.lkud_date_rep,
                                 'lkud_time': cur_time_str,
                                 'utype': uTypeList[$scope.plu_type],
                                 'sum': ($scope.plu_type == '0') ? strValWithCommaMinus : strValWithComma,
@@ -304,7 +308,8 @@
                 // Инициализируем начальными значениями (или полями из редактируемой строки)
                 if ($scope.acr_is_edit_row){
                     $scope.plu_type = converUchetTypeStrToNum(uTypeList, rowdata.utype);
-                    $scope.date = rowdata.date;
+                    $scope.date_uch = rowdata.date;
+                    $scope.lkud_date_rep = rowdata.lkud_date_rep;
                     $scope.lkud_time = rowdata.lkud_time;
                     $scope.sum = rowdata.sum;
                     $scope.account = rowdata.account;
@@ -313,7 +318,8 @@
                     $scope.comment = rowdata.comment;
                 } else {
                     $scope.plu_type = 0;
-                    $scope.date = moment().format('DD.MM.YYYY');
+                    $scope.date_uch = moment().format('DD.MM.YYYY');
+                    $scope.lkud_date_rep = "";
                     $scope.sum = '0.00';
                     $scope.account = $scope.accounts[0].name;
                     $scope.category = $scope.categoriesNoGroupAll[0].name;
@@ -394,9 +400,18 @@
                     </div>
                 </div>
                 <div class="form-group">
-                    <label class="control-label col-xs-4">Дата</label>
+                    <label class="control-label col-xs-4">Дата операции</label>
                     <div class="col-xs-8">
-                        <input class="form-control" type="text" placeholder="Дата" ng-model="date">
+                        <input class="form-control" type="text" placeholder="Дата" ng-model="date_uch" style="width: 120px;">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="control-label col-xs-4">Дата для отчёта</label>
+                    <div class="col-xs-8">
+                        <input class="form-control" type="text" placeholder="Дата" ng-model="lkud_date_rep" style="width: 120px;">
+                        <p style="margin: 3px 0px 0px 0px; color: darkgray;">
+                            Оставьте пустой если совпадает с датой операции.
+                        </p>
                     </div>
                 </div>
                 <div ng-switch="plu_type">
@@ -759,6 +774,12 @@
                     row['serverRowId'] = u['id'];
                     row['date'] = moment(u['date']).format('DD.MM.YYYY');
 
+                    if (u['myum_date_rep']){
+                        row['lkud_date_rep'] = moment(u['myum_date_rep']).format('DD.MM.YYYY');
+                    } else {
+                        row['lkud_date_rep'] = "";
+                    }
+
                     // По дефолту из БД значение времени фомратируется как ЧЧ:ММ:СС, а нам для показа в ячейке надо ЧЧ:ММ
                     row['lkud_time'] = moment(u['myum_time'], 'H:m').format('HH:mm');
 
@@ -776,6 +797,7 @@
                     [
                         { name: 'serverRowId', type: 'string'},
                         { name: 'date', type: 'string'},
+                        { name: 'lkud_date_rep', type: 'string'},
                         { name: 'lkud_time', type: 'string'},
                         { name: 'utype', type: 'string'},
                         { name: 'sum', type: 'string'},
@@ -1050,7 +1072,7 @@
                                 editable: false
                             },
                             {
-                                text: 'Дата',
+                                text: 'Дата операц',
                                 datafield: 'date',
                                 width: 90,
                                 cellclassname: editedRowsServerSync.getCellClassNameGridCallback,

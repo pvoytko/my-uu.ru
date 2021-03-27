@@ -420,6 +420,11 @@ class Uchet(models.Model):
         default="00:00",
         help_text=u'Чтобы удобнее вспоминать какая операция за что отвечает',
     )
+    myum_date_rep = models.DateField(
+        default=None,
+        null=True,
+        help_text=u'Дата отчёта, если задана.',
+    )
     utype = models.ForeignKey(UType)
     sum = models.DecimalField(max_digits=11, decimal_places=2)
     account = models.ForeignKey(Account)

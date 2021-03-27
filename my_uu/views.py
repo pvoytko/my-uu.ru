@@ -40,6 +40,9 @@ import annoying.decorators
 
 import pvl_version.funcs
 
+from django.db.models import Q
+
+
 def extractAngularPostData(request, *keys):
     postData = simplejson.loads(request.body)
     result = []
@@ -387,6 +390,7 @@ def page_lk_uch(request, period = None, account_id = None, category_id = None):
         'id',
         'date',
         'utype__name',
+        'myum_date_rep',
         'myum_time',
         'sum',
         'account__name',
@@ -1230,13 +1234,22 @@ def ajax_lk_ana(request):
             if q_count > 0:
                 data_cur_date = dec_period_func(data_cur_date)
 
-        # Фильтруем нужные строки
+        # Фильтруем нужные строки данных для отчета - все, начиная с заданной даты
+        # Или у которых дата отчета начиная с этой даты.
         type = { 'rashod': my_uu.models.UType.RASHOD, 'dohod': my_uu.models.UType.DOHOD }[anaType]
         uchet_qs = request.user.uchet_set.filter(utype = type)
-        uchet_qs = uchet_qs.filter(date__gte = data_cur_date)
+        uchet_qs = uchet_qs.filter(Q(date__gte = data_cur_date) | Q(myum_date_rep__gte = data_cur_date))
 
         # Преобразуем к формату словарей
-        uchet_list = uchet_qs.values('date', 'sum', 'category__scf_name').order_by('date')
+        # Берём дату для отчета если она задана а если нет то дату операции.
+        uchet_list = []
+        for r in uchet_qs:
+            uchet_list.append({
+                'date': r.myum_date_rep if r.myum_date_rep else r.date,
+                'sum': r.sum,
+                'category__scf_name': r.category.scf_name,
+            })
+        uchet_list = sortByFields(uchet_list, ['date'])
 
         # Добавляем поле месяца для сортировки и группировки по нему
         for u in uchet_list:
@@ -1818,6 +1831,12 @@ def ajax_lk_save_uchet(request):
 
         # С клиента приходят в формате с ",", меняем на "."
         rowDbData['sum'] = r['sum'].replace(',', '.')
+
+        if r['lkud_date_rep']:
+            rowDbData['myum_date_rep'] = datetime.datetime.strptime(r['lkud_date_rep'], '%d.%m.%Y')
+        else:
+            rowDbData['myum_date_rep'] = None
+        del rowDbData['lkud_date_rep']
 
         # Преобразовываем время
         rowDbData['myum_time'] = datetime.datetime.strptime(r['lkud_time'], '%H:%M').time()
