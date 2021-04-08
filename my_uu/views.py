@@ -604,12 +604,8 @@ class AnaWeekIterator(object):
 @uu_login_required
 def lk_ana(request):
 
-    type = request.GET.get('lka_type', None)
     period = request.GET.get('lka_period', None)
     end_date = request.GET.get('lka_end_date', '')
-
-    if type is None:
-        type = 'rashod'
 
     # Если период не задан, то берем месяц.
     if period is None:
@@ -617,7 +613,6 @@ def lk_ana(request):
 
     return render(request, 'lk_ana.html', {
         'lka_period': period,
-        'lka_type': type,
 
         # Дата по которую отчет
         'lkas_end_date': end_date,
@@ -1200,376 +1195,375 @@ def ajax_lk_ana(request):
     # is_groups_on = УСТАРЕЛО не поддерживается
     def addPeriodAnaDataToPageData(
         pageData,
-        anaType,
         result_suffix,
         format_header_from_val_func,
         period_count,
         get_first_period_date_func,
         dec_period_func,
         inc_period_func,
-        is_groups_on,
-        bperiod,
         end_date_str,
     ):
 
-        # Сколь периодов включая теукщий будет в очтете
-        q_count = period_count
+        for anaType in ['dohod', 'rashod']:
 
-        # Дата, с которой берутся данные для построения отчета тут будет. Но сначала - дата начала ткущего периода.
-        if end_date_str:
-            end_date = pvl_datetime_format.funcs.strToDate(end_date_str)
-            data_start_date = get_first_period_date_func(end_date)
-        else:
-            data_start_date = get_first_period_date_func(datetime.date.today())
+            # Сколь периодов включая теукщий будет в очтете
+            q_count = period_count
 
-        # Первые даты всех периодов для которых строится отчет
-        # Названия заголовков
-        periods_start_dates = []
-        periodsHeaders = []
-        data_cur_date = data_start_date
-        while q_count > 0:
-            periodsHeaders.insert(0, format_header_from_val_func(data_cur_date))
-            periods_start_dates.insert(0, data_cur_date)
-            q_count -= 1
-            if q_count > 0:
-                data_cur_date = dec_period_func(data_cur_date)
-
-        # Фильтруем нужные строки данных для отчета - все, начиная с заданной даты
-        # Или у которых дата отчета начиная с этой даты.
-        type = { 'rashod': my_uu.models.UType.RASHOD, 'dohod': my_uu.models.UType.DOHOD }[anaType]
-        uchet_qs = request.user.uchet_set.filter(utype = type)
-        uchet_qs = uchet_qs.filter(Q(date__gte = data_cur_date) | Q(myum_date_rep__gte = data_cur_date))
-
-        # Преобразуем к формату словарей
-        # Берём дату для отчета если она задана а если нет то дату операции.
-        uchet_list = []
-        for r in uchet_qs:
-            uchet_list.append({
-                'date': r.myum_date_rep if r.myum_date_rep else r.date,
-                'sum': r.sum,
-                'category__scf_name': r.category.scf_name,
-            })
-        uchet_list = sortByFields(uchet_list, ['date'])
-
-        # Добавляем поле месяца для сортировки и группировки по нему
-        for u in uchet_list:
-            u['period_value_sort'] = get_first_period_date_func(u['date'])
-            del u['date']
-
-        # Группируем по полям
-        uchet_list = sortByFields(uchet_list, ['period_value_sort', 'category__scf_name'])
-        uchet_list = groupByFields(uchet_list, ['period_value_sort', 'category__scf_name'], {'sum': lambda a,b: a+b})
-
-        # Преобразуем к формату pivotTable
-        pivot_table = convertTableDataToPivotDate(
-            uchet_list,
-            'category__scf_name',
-            'period_value_sort',
-            'sum',
-            colsTotalFunc=lambda ll: sum([l for l in ll if l])
-        )
-
-        # Форматируем
-        for u in uchet_list:
-            u['sum_str'] = my_uu.utils.formatMoneyValue(u['sum'])
-
-        # Теперь надо сформировать список из категорий, в порядке нужном для пользователя,
-        # только те, по которые видимы либо по ним есть данные
-        # (остальные убираем, т.е. те где нет данных одновременно невидимые).
-        # Если несколько категорий при группировке преобразовались в одну, то на выходе дожна быть только одна.
-        category_qs = request.user.category_set
-        if anaType == 'rashod':
-            category_type_qs = category_qs.filter(lkcm_dohod_rashod_type = my_uu.models.LKCM_DOHOD_RASHOD_TYPE_RASHOD)
-        elif anaType == 'dohod':
-            category_type_qs = category_qs.filter(lkcm_dohod_rashod_type = my_uu.models.LKCM_DOHOD_RASHOD_TYPE_DOHOD)
-        else:
-            raise RuntimeError('На странице анализа ошибка программирования в функции получепния данных.')
-
-        categoryModelListAll = list(category_type_qs.order_by('position', 'id'))
-        categoryNames = set()
-        categoryModelListFiltered1 = []
-        for c in categoryModelListAll:
-
-            c.name = c.scf_name
-
-            # Если уже добавили, то пропускаем
-            if c.name in categoryNames:
-                pass
-
-            # Если нет данных и невдиима - то пропускаем
-            if c.name not in pivot_table['rows'] and not c.scf_visible:
-                pass
-
-            # В остальных случаях - добавляем
+            # Дата, с которой берутся данные для построения отчета тут будет. Но сначала - дата начала ткущего периода.
+            if end_date_str:
+                end_date = pvl_datetime_format.funcs.strToDate(end_date_str)
+                data_start_date = get_first_period_date_func(end_date)
             else:
-                categoryNames.add(c.scf_name)
-                categoryModelListFiltered1.append(c)
+                data_start_date = get_first_period_date_func(datetime.date.today())
 
-        # Сейчас категории идут в порядке сортировки. А нам надо дочерние поставить под родительскими.
-        # Пример
-        #     до http://pvoytko.ru/jx/9CAgthZ36g
-        #     после http://pvoytko.ru/jx/6d5q3FUQ31
-        # Это делаем в 2 прохода
-        # Сначала по ID всех дочерникх собираем
-        # А потом их добавляем в общее
-        childs_by_id = {}
-        categoryModelListFiltered_root = []
-        for c in categoryModelListFiltered1:
-            par_id = c.scf_parent_id
-            if par_id:
-                if par_id in childs_by_id:
-                    childs_by_id[par_id].append(c)
+            # Первые даты всех периодов для которых строится отчет
+            # Названия заголовков
+            periods_start_dates = []
+            periodsHeaders = []
+            data_cur_date = data_start_date
+            while q_count > 0:
+                periodsHeaders.insert(0, format_header_from_val_func(data_cur_date))
+                periods_start_dates.insert(0, data_cur_date)
+                q_count -= 1
+                if q_count > 0:
+                    data_cur_date = dec_period_func(data_cur_date)
+
+            # Фильтруем нужные строки данных для отчета - все, начиная с заданной даты
+            # Или у которых дата отчета начиная с этой даты.
+            type = { 'rashod': my_uu.models.UType.RASHOD, 'dohod': my_uu.models.UType.DOHOD }[anaType]
+            uchet_qs = request.user.uchet_set.filter(utype = type)
+            uchet_qs = uchet_qs.filter(Q(date__gte = data_cur_date) | Q(myum_date_rep__gte = data_cur_date))
+
+            # Преобразуем к формату словарей
+            # Берём дату для отчета если она задана а если нет то дату операции.
+            uchet_list = []
+            for r in uchet_qs:
+                uchet_list.append({
+                    'date': r.myum_date_rep if r.myum_date_rep else r.date,
+                    'sum': r.sum,
+                    'category__scf_name': r.category.scf_name,
+                })
+            uchet_list = sortByFields(uchet_list, ['date'])
+
+            # Добавляем поле месяца для сортировки и группировки по нему
+            for u in uchet_list:
+                u['period_value_sort'] = get_first_period_date_func(u['date'])
+                del u['date']
+
+            # Группируем по полям
+            uchet_list = sortByFields(uchet_list, ['period_value_sort', 'category__scf_name'])
+            uchet_list = groupByFields(uchet_list, ['period_value_sort', 'category__scf_name'], {'sum': lambda a,b: a+b})
+
+            # Преобразуем к формату pivotTable
+            pivot_table = convertTableDataToPivotDate(
+                uchet_list,
+                'category__scf_name',
+                'period_value_sort',
+                'sum',
+                colsTotalFunc=lambda ll: sum([l for l in ll if l])
+            )
+
+            # Форматируем
+            for u in uchet_list:
+                u['sum_str'] = my_uu.utils.formatMoneyValue(u['sum'])
+
+            # Теперь надо сформировать список из категорий, в порядке нужном для пользователя,
+            # только те, по которые видимы либо по ним есть данные
+            # (остальные убираем, т.е. те где нет данных одновременно невидимые).
+            # Если несколько категорий при группировке преобразовались в одну, то на выходе дожна быть только одна.
+            category_qs = request.user.category_set
+            if anaType == 'rashod':
+                category_type_qs = category_qs.filter(lkcm_dohod_rashod_type = my_uu.models.LKCM_DOHOD_RASHOD_TYPE_RASHOD)
+            elif anaType == 'dohod':
+                category_type_qs = category_qs.filter(lkcm_dohod_rashod_type = my_uu.models.LKCM_DOHOD_RASHOD_TYPE_DOHOD)
+            else:
+                raise RuntimeError('На странице анализа ошибка программирования в функции получепния данных.')
+
+            categoryModelListAll = list(category_type_qs.order_by('position', 'id'))
+            categoryNames = set()
+            categoryModelListFiltered1 = []
+            for c in categoryModelListAll:
+
+                c.name = c.scf_name
+
+                # Если уже добавили, то пропускаем
+                if c.name in categoryNames:
+                    pass
+
+                # Если нет данных и невдиима - то пропускаем
+                if c.name not in pivot_table['rows'] and not c.scf_visible:
+                    pass
+
+                # В остальных случаях - добавляем
                 else:
-                    childs_by_id[par_id] = [c]
-            else:
-                categoryModelListFiltered_root.append(c)
-        categoryModelListFiltered_tree = []
-        addCategoryListAndAllSubcategoriesToList(
-            categoryModelListFiltered_tree,
-            childs_by_id,
-            categoryModelListFiltered_root,
-        )
+                    categoryNames.add(c.scf_name)
+                    categoryModelListFiltered1.append(c)
 
-        # Если стоит фильтр по периодичности бюджета, то применяем его
-        # categoryModelListFiltered2 = []
-        # if bperiod:
-        #     for c in categoryModelListFiltered_tree:
-        #         if bperiod == my_uu.models.LKCM_BUDGET_PERIOD_ALL:
-        #             categoryModelListFiltered2.append(c)
-        #         elif c.lkcm_budget_period == bperiod:
-        #             categoryModelListFiltered2.append(c)
-        #         elif c.lkcm_budget_period is None and bperiod == my_uu.models.LKCM_BUDGET_PERIOD_NONE:
-        #             categoryModelListFiltered2.append(c)
-        # else:
-        categoryModelListFiltered2 = categoryModelListFiltered_tree
+            # Сейчас категории идут в порядке сортировки. А нам надо дочерние поставить под родительскими.
+            # Пример
+            #     до http://pvoytko.ru/jx/9CAgthZ36g
+            #     после http://pvoytko.ru/jx/6d5q3FUQ31
+            # Это делаем в 2 прохода
+            # Сначала по ID всех дочерникх собираем
+            # А потом их добавляем в общее
+            childs_by_id = {}
+            categoryModelListFiltered_root = []
+            for c in categoryModelListFiltered1:
+                par_id = c.scf_parent_id
+                if par_id:
+                    if par_id in childs_by_id:
+                        childs_by_id[par_id].append(c)
+                    else:
+                        childs_by_id[par_id] = [c]
+                else:
+                    categoryModelListFiltered_root.append(c)
+            categoryModelListFiltered_tree = []
+            addCategoryListAndAllSubcategoriesToList(
+                categoryModelListFiltered_tree,
+                childs_by_id,
+                categoryModelListFiltered_root,
+            )
 
-        # Обновленний список категорий - пересчитывем сумму
-        # Но перед этим из записей учета удаляем все что не попадают в выбранные категории.
-        uchet_list_cur_filter = []
-        allowed_categories = [c.name for c in categoryModelListFiltered2]
-        for u in uchet_list:
-            if u['category__scf_name'] in allowed_categories:
-                uchet_list_cur_filter.append(u)
-        pivot_table = convertTableDataToPivotDate(
-            uchet_list_cur_filter,
-            'category__scf_name',
-            'period_value_sort',
-            'sum',
-            colsTotalFunc=lambda ll: sum([l for l in ll if l]),
-        )
-        pageData['totalRow'][anaType + '-' + result_suffix] = [
-            getValFormattedOrZero(pivot_table['colsTotalValues'], k) for k in periods_start_dates
-        ]
+            # Если стоит фильтр по периодичности бюджета, то применяем его
+            # categoryModelListFiltered2 = []
+            # if bperiod:
+            #     for c in categoryModelListFiltered_tree:
+            #         if bperiod == my_uu.models.LKCM_BUDGET_PERIOD_ALL:
+            #             categoryModelListFiltered2.append(c)
+            #         elif c.lkcm_budget_period == bperiod:
+            #             categoryModelListFiltered2.append(c)
+            #         elif c.lkcm_budget_period is None and bperiod == my_uu.models.LKCM_BUDGET_PERIOD_NONE:
+            #             categoryModelListFiltered2.append(c)
+            # else:
+            categoryModelListFiltered2 = categoryModelListFiltered_tree
 
-        # в эту переменную сохраняем значения для показа в столбце бюджета
-        # попутно проверяем что все они имеют один период и он задан и если да - то сумму будем выводить
-        budgets_by_category_id = {}
-        for c in categoryModelListFiltered2:
+            # Обновленний список категорий - пересчитывем сумму
+            # Но перед этим из записей учета удаляем все что не попадают в выбранные категории.
+            uchet_list_cur_filter = []
+            allowed_categories = [c.name for c in categoryModelListFiltered2]
+            for u in uchet_list:
+                if u['category__scf_name'] in allowed_categories:
+                    uchet_list_cur_filter.append(u)
+            pivot_table = convertTableDataToPivotDate(
+                uchet_list_cur_filter,
+                'category__scf_name',
+                'period_value_sort',
+                'sum',
+                colsTotalFunc=lambda ll: sum([l for l in ll if l]),
+            )
+            pageData['totalRow'][anaType + '-' + result_suffix] = [
+                getValFormattedOrZero(pivot_table['colsTotalValues'], k) for k in periods_start_dates
+            ]
 
-            # Если это группа для нее не имеет смысла
-            if c.scf_is_group:
-                budget_str = u'--'
-                budget_val = None
-                budget_year_str = u'--'
-                budget_year_val = None
+            # в эту переменную сохраняем значения для показа в столбце бюджета
+            # попутно проверяем что все они имеют один период и он задан и если да - то сумму будем выводить
+            budgets_by_category_id = {}
+            for c in categoryModelListFiltered2:
 
-            # Для категории не задан бюджет
-            elif c.lkcm_budget_value is None or not c.lkcm_budget_period:
-                budget_str = u'не задано'
-                budget_val = None
-                budget_year_str = u'не задано'
-                budget_year_val = None
+                # Если это группа для нее не имеет смысла
+                if c.scf_is_group:
+                    budget_str = u'--'
+                    budget_val = None
+                    budget_year_str = u'--'
+                    budget_year_val = None
 
-            # Все задано
-            else:
-                budget_val = c.lkcm_budget_period
-                budget_str = my_uu.plogic.getBudgetStr(c.lkcm_budget_period, c.lkcm_budget_value)
-                budget_year_val, budget_year_str = my_uu.plogic.getBudgetYearStr(
-                    c.lkcm_budget_period,
-                    c.lkcm_budget_value,
-                )
+                # Для категории не задан бюджет
+                elif c.lkcm_budget_value is None or not c.lkcm_budget_period:
+                    budget_str = u'не задано'
+                    budget_val = None
+                    budget_year_str = u'не задано'
+                    budget_year_val = None
 
-            budgets_by_category_id[c.id] = {
+                # Все задано
+                else:
+                    budget_val = c.lkcm_budget_period
+                    budget_str = my_uu.plogic.getBudgetStr(c.lkcm_budget_period, c.lkcm_budget_value)
+                    budget_year_val, budget_year_str = my_uu.plogic.getBudgetYearStr(
+                        c.lkcm_budget_period,
+                        c.lkcm_budget_value,
+                    )
 
-                # значене в столбце бюджета по категории
-                'bbci_val': budget_val,
-                'bbci_str': budget_str,
+                budgets_by_category_id[c.id] = {
 
-                # Строковое значене в столбце бюджета за код
-                'bbci_year_val': budget_year_val,
-                'bbci_year_str': budget_year_str,
-            }
+                    # значене в столбце бюджета по категории
+                    'bbci_val': budget_val,
+                    'bbci_str': budget_str,
 
-        # Вычисляем значение для отображения в самом низу итоговое
-        budget_sum_val = 0
-        budget_year_sum_val = 0
-        budget_prev_period = None
-        budget_is_all_present = False
-        budget_is_same_period = False
-        is_first_iter = True
-        for c in categoryModelListFiltered2:
+                    # Строковое значене в столбце бюджета за код
+                    'bbci_year_val': budget_year_val,
+                    'bbci_year_str': budget_year_str,
+                }
 
-            # Если это группа, то ее пропускаем (не обрабатываем)
-            # Т.к. иначе итогоовые суммы выводятся как -- даже если все категории (без групп) задан бюджет.
-            if c.scf_is_group:
-                continue
+            # Вычисляем значение для отображения в самом низу итоговое
+            budget_sum_val = 0
+            budget_year_sum_val = 0
+            budget_prev_period = None
+            budget_is_all_present = False
+            budget_is_same_period = False
+            is_first_iter = True
+            for c in categoryModelListFiltered2:
 
-            # Первая итерация -
-            if is_first_iter:
-                budget_is_all_present = True
-                budget_is_same_period = True
-                budget_prev_period = c.lkcm_budget_period
-                is_first_iter = False
+                # Если это группа, то ее пропускаем (не обрабатываем)
+                # Т.к. иначе итогоовые суммы выводятся как -- даже если все категории (без групп) задан бюджет.
+                if c.scf_is_group:
+                    continue
 
-            # Если очередной мес. бюджет период не равен прошлому - то не надо сумму считать
-            if budget_prev_period != c.lkcm_budget_period:
-                budget_is_same_period = False
+                # Первая итерация -
+                if is_first_iter:
+                    budget_is_all_present = True
+                    budget_is_same_period = True
+                    budget_prev_period = c.lkcm_budget_period
+                    is_first_iter = False
 
-            # Если не задана сумма - то не надо сумму счситать
-            if c.lkcm_budget_value is None or c.lkcm_budget_period is None:
-                budget_is_all_present = False
+                # Если очередной мес. бюджет период не равен прошлому - то не надо сумму считать
+                if budget_prev_period != c.lkcm_budget_period:
+                    budget_is_same_period = False
 
-            # Накапливаем бюджетную сумму, если надо считать
+                # Если не задана сумма - то не надо сумму счситать
+                if c.lkcm_budget_value is None or c.lkcm_budget_period is None:
+                    budget_is_all_present = False
+
+                # Накапливаем бюджетную сумму, если надо считать
+                if budget_is_all_present and budget_is_same_period:
+                    budget_sum_val += c.lkcm_budget_value
+
+                # Считаем за год, если надо
+                if budget_is_all_present:
+                    budget_year_sum_val += budgets_by_category_id[c.id]['bbci_year_val']
+
+            # значение для показа в ячейке суммы в бюджете
             if budget_is_all_present and budget_is_same_period:
-                budget_sum_val += c.lkcm_budget_value
+                pageData['pa_budget_summ'] = my_uu.plogic.getBudgetStr(budget_prev_period, budget_sum_val)
+            else:
+                pageData['pa_budget_summ'] = u'--'
 
-            # Считаем за год, если надо
             if budget_is_all_present:
-                budget_year_sum_val += budgets_by_category_id[c.id]['bbci_year_val']
+                pageData['pa_budget_year_summ'] = my_uu.utils.formatMoneyValue(budget_year_sum_val) + u' в год'
+                pageData['pa_budget_quart_summ'] = my_uu.utils.formatMoneyValue(budget_year_sum_val / 4) + u' в кварт.'
+                pageData['pa_budget_month_summ'] = my_uu.utils.formatMoneyValue(budget_year_sum_val / 12) + u' в мес.'
+                pageData['pa_budget_week_summ'] = my_uu.utils.formatMoneyValue(budget_year_sum_val / 53) + u' в нед.'
+                pageData['pa_budget_day_summ'] = my_uu.utils.formatMoneyValue(budget_year_sum_val / 366) + u' в день'
+            else:
+                pageData['pa_budget_year_summ'] = u'--'
+                pageData['pa_budget_quart_summ'] = u'--'
+                pageData['pa_budget_month_summ'] = u'--'
+                pageData['pa_budget_week_summ'] = u'--'
+                pageData['pa_budget_day_summ'] = u'--'
 
-        # значение для показа в ячейке суммы в бюджете
-        if budget_is_all_present and budget_is_same_period:
-            pageData['pa_budget_summ'] = my_uu.plogic.getBudgetStr(budget_prev_period, budget_sum_val)
-        else:
-            pageData['pa_budget_summ'] = u'--'
-
-        if budget_is_all_present:
-            pageData['pa_budget_year_summ'] = my_uu.utils.formatMoneyValue(budget_year_sum_val) + u' в год'
-            pageData['pa_budget_quart_summ'] = my_uu.utils.formatMoneyValue(budget_year_sum_val / 4) + u' в кварт.'
-            pageData['pa_budget_month_summ'] = my_uu.utils.formatMoneyValue(budget_year_sum_val / 12) + u' в мес.'
-            pageData['pa_budget_week_summ'] = my_uu.utils.formatMoneyValue(budget_year_sum_val / 53) + u' в нед.'
-            pageData['pa_budget_day_summ'] = my_uu.utils.formatMoneyValue(budget_year_sum_val / 366) + u' в день'
-        else:
-            pageData['pa_budget_year_summ'] = u'--'
-            pageData['pa_budget_quart_summ'] = u'--'
-            pageData['pa_budget_month_summ'] = u'--'
-            pageData['pa_budget_week_summ'] = u'--'
-            pageData['pa_budget_day_summ'] = u'--'
-
-        budget_colors_by_category_id = alaGetColorsForCategoryBudgets(request, categoryModelListFiltered2)
+            budget_colors_by_category_id = alaGetColorsForCategoryBudgets(request, categoryModelListFiltered2)
 
 
-        # Преобразуем к выходному формату:
-        # periods:
-        #     {anaType}-{period}:
-        #         first: ssss, second sssss # заголовки таблицы
-        #         first: ssss, second sssss
-        # totalRow:
-        #     {anaType}-{period}:
-        #         ssss, # значения итоговой строки, по одному на каждый столбец
-        #         ssss,
-        #         ssss,
-        # dataRows:
-        #     {anaType}-{period}:
-        #         {category}: ssss # название категории
-        #         {data}: [ssss, ssss, ] значения строки, по одному на каждый столбец
-        pageData['periods'][anaType + '-' + result_suffix] = periodsHeaders
-        pageData['dataRows'][anaType + '-' + result_suffix] = []
-        output_list = pageData['dataRows'][anaType + '-' + result_suffix]
-        for r in categoryModelListFiltered2:
-            output_list.append({
-                'category': r.scf_name,
-                'lka_category_id': r.id,
-                'lka_cell_data': [getFromDictDictOrEmpty(
-                    pivot_table['values'], r.scf_name, k, '0 р.', periodCode
-                ) for k in periods_start_dates],
+            # Преобразуем к выходному формату:
+            # periods:
+            #     {anaType}-{period}:
+            #         first: ssss, second sssss # заголовки таблицы
+            #         first: ssss, second sssss
+            # totalRow:
+            #     {anaType}-{period}:
+            #         ssss, # значения итоговой строки, по одному на каждый столбец
+            #         ssss,
+            #         ssss,
+            # dataRows:
+            #     {anaType}-{period}:
+            #         {category}: ssss # название категории
+            #         {data}: [ssss, ssss, ] значения строки, по одному на каждый столбец
+            pageData['periods'][anaType + '-' + result_suffix] = periodsHeaders
+            pageData['dataRows'][anaType + '-' + result_suffix] = []
+            output_list = pageData['dataRows'][anaType + '-' + result_suffix]
+            for r in categoryModelListFiltered2:
+                output_list.append({
+                    'category': r.scf_name,
+                    'lka_category_id': r.id,
+                    'lka_cell_data': [getFromDictDictOrEmpty(
+                        pivot_table['values'], r.scf_name, k, '0 р.', periodCode
+                    ) for k in periods_start_dates],
 
-                # Бюджет по категории за период бюджета
-                'lka_budget_str': budgets_by_category_id[r.id]['bbci_str'],
+                    # Бюджет по категории за период бюджета
+                    'lka_budget_str': budgets_by_category_id[r.id]['bbci_str'],
 
-                # Бюджет по категории за год
-                'lka_budget_year_str': budgets_by_category_id[r.id]['bbci_year_str'],
+                    # Бюджет по категории за год
+                    'lka_budget_year_str': budgets_by_category_id[r.id]['bbci_year_str'],
 
-                # Подсветка серым если категория не видима
-                'lka_is_category_visible': r.scf_visible,
+                    # Подсветка серым если категория не видима
+                    'lka_is_category_visible': r.scf_visible,
 
-                # Подсветка цветом если это группа
-                'lka_is_ana_group': r.scf_is_group,
+                    # Подсветка цветом если это группа
+                    'lka_is_ana_group': r.scf_is_group,
 
-                # ID Родительсткой строки. Это нужно для сворачивания-разворачивания.
-                'lka_parent_id': r.scf_parent_id if r.scf_parent else None,
+                    # ID Родительсткой строки. Это нужно для сворачивания-разворачивания.
+                    'lka_parent_id': r.scf_parent_id if r.scf_parent else None,
 
-                # Флаг должна она быть развернута или свернута
-                'alka_is_collapsed': not r.scf_is_expanded,
+                    # Флаг должна она быть развернута или свернута
+                    'alka_is_collapsed': not r.scf_is_expanded,
 
-                # Цвет для итогового бюджета
-                'bcbci_color': budget_colors_by_category_id[r.id]['bcbci_color'],
-                'bcbci_year_color': budget_colors_by_category_id[r.id]['bcbci_year_color'],
+                    # Цвет для итогового бюджета
+                    'bcbci_color': budget_colors_by_category_id[r.id]['bcbci_color'],
+                    'bcbci_year_color': budget_colors_by_category_id[r.id]['bcbci_year_color'],
 
-                # Отступ
-                'bcbci_indent': my_uu.plogic.getCategoryIndentLevel(r),
-            })
+                    # Отступ
+                    'bcbci_indent': my_uu.plogic.getCategoryIndentLevel(r),
+                })
 
 
-        # Тепреь для каждой категории которая является группой (содержит подкатегрии)
-        # нам надо посчитать сумму по бюджетам.
-        # До http://pvoytko.ru/jx/Bm7AtDFfrt
-        # Нам надо чтобы была сумма
-        # Сначаа строим словарь, ключ - ID категории, значение - строкад ля отображения
-        # при втором проходе - считаем сумму
-        # делаем несколкьо повторов, поднимаясь на уровень выше, пока не дойдем до верха
-        output_rows_by_cat_id = {}
-        for row in output_list:
+            # Тепреь для каждой категории которая является группой (содержит подкатегрии)
+            # нам надо посчитать сумму по бюджетам.
+            # До http://pvoytko.ru/jx/Bm7AtDFfrt
+            # Нам надо чтобы была сумма
+            # Сначаа строим словарь, ключ - ID категории, значение - строкад ля отображения
+            # при втором проходе - считаем сумму
+            # делаем несколкьо повторов, поднимаясь на уровень выше, пока не дойдем до верха
+            output_rows_by_cat_id = {}
+            for row in output_list:
 
-            cur_cat_id = row['lka_category_id']
-            output_rows_by_cat_id[cur_cat_id] = row
-        for row in output_list:
+                cur_cat_id = row['lka_category_id']
+                output_rows_by_cat_id[cur_cat_id] = row
+            for row in output_list:
 
-            # Если эта категория имеет дочерние
-            # и является коневой то для нее вызываем расчет суммы, а он в свою очередь рекурсивоно посчитает
-            # расчет суммы для остальных (дочяерних). Поэтому и нужна проверка чтобы вызвать только для корневых.
-            cur_cat_id = row['lka_category_id']
-            cur_cat_par_id = row['lka_parent_id']
-            if cur_cat_id in childs_by_id and not cur_cat_par_id:
-                fillSumForGroupOrSubgroup(
-                    periods_start_dates,
-                    childs_by_id,
-                    output_rows_by_cat_id,
-                    cur_cat_id,
-                    row,
-                )
+                # Если эта категория имеет дочерние
+                # и является коневой то для нее вызываем расчет суммы, а он в свою очередь рекурсивоно посчитает
+                # расчет суммы для остальных (дочяерних). Поэтому и нужна проверка чтобы вызвать только для корневых.
+                cur_cat_id = row['lka_category_id']
+                cur_cat_par_id = row['lka_parent_id']
+                if cur_cat_id in childs_by_id and not cur_cat_par_id:
+                    fillSumForGroupOrSubgroup(
+                        periods_start_dates,
+                        childs_by_id,
+                        output_rows_by_cat_id,
+                        cur_cat_id,
+                        row,
+                    )
 
-        # Если у групповой строки ни одной дочерней категории
-        # с данными (т.е. нет данных), и отметка скрыть ее,
-        # то она скрывается (без явной отметки юзером - не скрывается)
-        # Раньше эта фиьтрация стояля выше по коду, но была ошибка при расчете суммы по группам
-        # та функция ожидала что все категории есть, поэтому блок этого кода
-        # по исключению пустых групп сместил ниже в конец.
-        child_count_by_id = {}
-        for c in output_list:
-            if c['lka_category_id'] not in child_count_by_id:
-                child_count_by_id[c['lka_category_id']] = 0
-            if c['lka_parent_id']:
-                child_count_by_id[c['lka_parent_id']] += 1
-        output_list_new = []
-        for c in output_list:
-            if c['lka_is_ana_group'] and not child_count_by_id[c['lka_category_id']] and not c['lka_is_category_visible']:
-                continue
-            output_list_new.append(c)
-        pageData['dataRows'][anaType + '-' + result_suffix] = output_list_new
+            # Если у групповой строки ни одной дочерней категории
+            # с данными (т.е. нет данных), и отметка скрыть ее,
+            # то она скрывается (без явной отметки юзером - не скрывается)
+            # Раньше эта фиьтрация стояля выше по коду, но была ошибка при расчете суммы по группам
+            # та функция ожидала что все категории есть, поэтому блок этого кода
+            # по исключению пустых групп сместил ниже в конец.
+            child_count_by_id = {}
+            for c in output_list:
+                if c['lka_category_id'] not in child_count_by_id:
+                    child_count_by_id[c['lka_category_id']] = 0
+                if c['lka_parent_id']:
+                    child_count_by_id[c['lka_parent_id']] += 1
+            output_list_new = []
+            for c in output_list:
+                if c['lka_is_ana_group'] and not child_count_by_id[c['lka_category_id']] and not c['lka_is_category_visible']:
+                    continue
+                output_list_new.append(c)
+            pageData['dataRows'][anaType + '-' + result_suffix] = output_list_new
 
-        # можем ли мотать влево и вправо (есть ли еще периоды) и какой аргумент в урл для этого передавать
-        pageData['lka_is_can_left'] = True
-        pageData['lka_is_can_right'] = True
-        data_start_date_1 = dec_period_func(data_start_date)
-        data_start_date_2 = inc_period_func(data_start_date)
-        pageData['lka_move_left_end_date'] = pvl_datetime_format.funcs.dateToStr(data_start_date_1)
-        pageData['lka_move_right_end_date'] = pvl_datetime_format.funcs.dateToStr(data_start_date_2)
+            # можем ли мотать влево и вправо (есть ли еще периоды) и какой аргумент в урл для этого передавать
+            pageData['lka_is_can_left'] = True
+            pageData['lka_is_can_right'] = True
+            data_start_date_1 = dec_period_func(data_start_date)
+            data_start_date_2 = inc_period_func(data_start_date)
+            pageData['lka_move_left_end_date'] = pvl_datetime_format.funcs.dateToStr(data_start_date_1)
+            pageData['lka_move_right_end_date'] = pvl_datetime_format.funcs.dateToStr(data_start_date_2)
 
 
 
     # Данные для показа на странице
-    def getAnaPageData(periodCode, anaType, is_groups_on, bperiod, end_date_str):
+    def getAnaPageData(periodCode, is_groups_on, bperiod, end_date_str):
 
         pageData = {
             'periods': {},
@@ -1580,15 +1574,12 @@ def ajax_lk_ana(request):
 
             addPeriodAnaDataToPageData(
                 pageData,
-                anaType,
                 'day',
                 format_header_from_val_func = lambda dt: { 'first': formatDayAndMonth(dt), 'second': formatDayOfWeek(dt) },
                 period_count = 5,
                 get_first_period_date_func = lambda dt: dt,
                 dec_period_func = lambda dt: dt - datetime.timedelta(days=1),
                 inc_period_func = lambda dt: dt + datetime.timedelta(days=1),
-                is_groups_on = False,
-                bperiod = bperiod,
                 end_date_str = end_date_str,
             )
 
@@ -1599,15 +1590,12 @@ def ajax_lk_ana(request):
 
             addPeriodAnaDataToPageData(
                 pageData,
-                anaType,
                 'week',
                 format_header_from_val_func = formatWeekHeader,
                 period_count = 5,
                 get_first_period_date_func = plogic.getFirstMomentOfWeek0,
                 dec_period_func = lambda dt: addWeeks(dt, -1),
                 inc_period_func = lambda dt: addWeeks(dt, 1),
-                is_groups_on = False,
-                bperiod = bperiod,
                 end_date_str = end_date_str,
             )
 
@@ -1617,15 +1605,12 @@ def ajax_lk_ana(request):
 
             addPeriodAnaDataToPageData(
                 pageData,
-                anaType,
                 'month',
                 format_header_from_val_func = lambda dt: dict(first = monthNames[dt.month-1], second = dt.year),
                 period_count = 5,
                 get_first_period_date_func = plogic.getFirstMomentOfMonth0,
                 dec_period_func = lambda dt: addMonths0(dt, -1),
                 inc_period_func = lambda dt: addMonths0(dt, 1),
-                is_groups_on = False,
-                bperiod = bperiod,
                 end_date_str = end_date_str,
             )
 
@@ -1633,15 +1618,12 @@ def ajax_lk_ana(request):
 
             addPeriodAnaDataToPageData(
                 pageData,
-                anaType,
                 'quart',
                 format_header_from_val_func = lambda q_start_date: {'first': formatQuartStr(q_start_date), 'second': ''},
                 period_count = 5,
                 get_first_period_date_func = getQuartFirstDate,
                 dec_period_func = lambda dt: addMonths0(dt, -3),
                 inc_period_func = lambda dt: addMonths0(dt, 3),
-                is_groups_on = False,
-                bperiod = bperiod,
                 end_date_str = end_date_str,
             )
 
@@ -1649,15 +1631,12 @@ def ajax_lk_ana(request):
 
             addPeriodAnaDataToPageData(
                 pageData,
-                anaType,
                 'app_year',
                 format_header_from_val_func = lambda q_start_date: {'first': formatYearStr(q_start_date), 'second': ''},
                 period_count = 5,
                 get_first_period_date_func = getYearFirstDate,
                 dec_period_func = lambda dt: dt.replace(year = dt.year - 1),
                 inc_period_func = lambda dt: dt.replace(year = dt.year + 1),
-                is_groups_on = False,
-                bperiod = bperiod,
                 end_date_str = end_date_str,
             )
 
@@ -1667,15 +1646,14 @@ def ajax_lk_ana(request):
         return pageData
 
 
-    anaType, periodCode, end_date_str = extractAngularPostData(
+    periodCode, end_date_str = extractAngularPostData(
         request,
-        'anaType',
         'periodCode',
         'lkax_end_date',
     )
 
     # Данные для таблицы
-    pageData = getAnaPageData(periodCode, anaType, False, None, end_date_str)
+    pageData = getAnaPageData(periodCode, False, None, end_date_str)
 
     return JsonResponse(request, {
         'pageData': pageData,

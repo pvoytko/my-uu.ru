@@ -20,7 +20,6 @@
 
             // какие открыть в таблице
             $scope.periodCode = '{{ lka_period }}';
-            $scope.anaType = '{{ lka_type }}';
             $scope.ac_end_date = '{{ lkas_end_date }}';
 
             // Тут получаем с сервера данные в формате
@@ -42,13 +41,9 @@
                 // Если они не указаны (undefined), тогда взять их из УРЛ. Если в урл их нет,
                 // тогда они будут по-умолчанию.
                 url = window.location.href;
-                if (type === undefined){
-                    type = getParameterByName('lka_type', url);
-                }
                 if (period === undefined){
                     period = getParameterByName('lka_period', url);
                 }
-                url = pvlGetUrlReplaceParam(url, 'lka_type', type, true);
                 url = pvlGetUrlReplaceParam(url, 'lka_period', period, true);
 
                 window.location.href = url;
@@ -67,7 +62,6 @@
                     baps_loading_status: [$scope, 'lkafl_is_loading'],
                     baps_post_parameters: {
                         periodCode: $scope.periodCode,
-                        anaType: $scope.anaType,
                         lkax_end_date: $scope.ac_end_date
                     },
                     baps_error_callback: function(server_response){
@@ -83,14 +77,19 @@
                         // После загрузки данных - просатвляем ссылки на родитсельсткую строку
                         // это нужно для механизма сворачивания-разворачивания
                         // Сначала для этого строим список строк по ID
-                        var rows_by_id = {}
-                        for (i = 0; i<$scope.getDataRowList().length; ++i){
-                            var row = $scope.getDataRowList()[i];
-                            rows_by_id[row.lka_category_id] = row;
-                        }
-                        for (i = 0; i<$scope.getDataRowList().length; ++i){
-                            var row = $scope.getDataRowList()[i];
-                            row['lka_parent_row'] = rows_by_id[row.lka_parent_id];
+                        var rows_rashod_dohod = [$scope.getDataRowListDohod(), $scope.getDataRowListRashod()];
+                        for (j=0; j<rows_rashod_dohod.length; ++j){
+                            var rows_by_id = {}
+                            var data_rows = rows_rashod_dohod[j];
+
+                            for (i = 0; i<data_rows.length; ++i){
+                                var row = data_rows[i];
+                                rows_by_id[row.lka_category_id] = row;
+                            }
+                            for (i = 0; i<data_rows.length; ++i){
+                                var row = data_rows[i];
+                                row['lka_parent_row'] = rows_by_id[row.lka_parent_id];
+                            }
                         }
                     }
                 });
@@ -99,9 +98,13 @@
             };
             $scope.lkafLoad();
 
-            $scope.getDataRowList = function(){
-                return $scope.loader_api_pageData['dataRows'][$scope.anaType + '-' + $scope.periodCode]
+            $scope.getDataRowListDohod = function(){
+                return $scope.loader_api_pageData['dataRows']['dohod-' + $scope.periodCode]
             };
+            $scope.getDataRowListRashod = function(){
+                return $scope.loader_api_pageData['dataRows']['rashod-' + $scope.periodCode]
+            };
+
             // Проверяет всех родителей рекурсивно, один из них свернут, то и эту строку не надо показывать.
             $scope.lkaOneOfParentIsCollapsed = function(row){
                 while(row.lka_parent_row){
@@ -112,20 +115,26 @@
                 }
                 return false;
             };
-            $scope.getTotalRow = function(){
-                return $scope.loader_api_pageData['totalRow'][$scope.anaType + '-' + $scope.periodCode];
+            $scope.getTotalRowDohod = function(){
+                return $scope.loader_api_pageData['totalRow']['dohod-' + $scope.periodCode];
+            };
+            $scope.getTotalRowRashod = function(){
+                return $scope.loader_api_pageData['totalRow']['rashod-' + $scope.periodCode];
+            };
+            $scope.getTotalRowLength1 = function(){
+                return $scope.getTotalRowRashod().length;
+            };
+            $scope.getTotalRowLength2 = function(){
+                return $scope.getTotalRowRashod().length + 2;
             };
             $scope.getPeriods = function(){
-                return $scope.loader_api_pageData['periods'][$scope.anaType + '-' + $scope.periodCode];
+                return $scope.loader_api_pageData['periods']['rashod-' + $scope.periodCode];
             };
             $scope.getSimplePageData = function(){
                 return $scope.loader_api_pageData;
             };
             $scope.getCatCaption = function(){
                 return "Категории";
-            };
-            $scope.getTotCaption = function(){
-                return "Сумма";
             };
 
             // Переод периодов для анализа влево или вправо
@@ -217,14 +226,6 @@
             <div style="padding: 0px 25px 25px 25px;">
 
                 <!-- Выбор группировки -->
-                <h5 style="margin: 0px 0px 0px 0px;">Анализ </h5>
-                <div style="padding-bottom: 7px; display: inline-block; position: relative; top:0px;" ng-cloak>
-
-                    <button style="margin-top: 5px;" type="button" class="btn btn-default" ng-class="{active: anaType=='rashod'}" ng-click="acGoToAnaUrl('rashod', undefined, undefined, undefined)">расходов</button>
-                    <button style="margin-top: 5px;" type="button" class="btn btn-default" ng-class="{active: anaType=='dohod'}" ng-click="acGoToAnaUrl('dohod', undefined, undefined, undefined)">доходов</button>
-
-                </div>
-
                 <h5 style="margin: 10px 0px 0px 0px;">По периодам</h5>
                 <div style="padding-bottom: 7px; display: inline-block; position: relative;" ng-cloak>
 
@@ -305,88 +306,11 @@
                         </thead>
                         <tbody>
 
-                            {# Если нет строк - то показ спец. строки #}
-                            <tr ng-show="getDataRowList().length == 0">
-                                <td colspan="1" style="text-align: center; padding: 50px;">Нет операций для отображения.</td>
-                            </tr>
+                            {# Сумма Доходов итого по периодам - сначала пустая строка, потом заголовок, потом стркои данных #}
+                            {% include "include_ana_rashod_dohod_rows.html" with iard_cap="Доходы" iard_rows_ng="getDataRowListDohod()" iard_total_ng="getTotalRowDohod()" %}
 
-                            {# Далее показывем строки, но если есть родитель и родитель свернут - то эту (дочернюю) не показываем #}
-                            <tr
-                                    ng-repeat="row in getDataRowList()"
-                                    ng-show="!row.lka_parent_row || !lkaOneOfParentIsCollapsed(row)"
-                                    >
-                                <td
-                                        class="myuu_ana_row_header"
-                                        ng-class="{ 'myuu_ana_row_group': row.lka_is_ana_group }"
-                                        >
-
-                                    <div
-                                            style="text-overflow: ellipsis; white-space: nowrap; overflow: hidden; width: 300px; min-width: 300px; margin-left: {% ng row.bcbci_indent * '40' + 'px' %} "
-                                            pv-tooltip-directive='row.category'
-
-                                            {# Если категория не видима то подсветка цветом #}
-                                            ng-style="{'color': row.lka_is_category_visible ? 'auto' : '#dddddd'}"
-                                            >
-
-                                        {# Либо просто название либо название кликабельное с плюсиком #}
-                                        {# смотря это группа или не группа #}
-                                        <span
-                                            ng-if="row.lka_is_ana_group"
-                                            style="cursor: pointer;"
-                                            ng-click="lkaafExpandCollapseRowAndSaveToServer(row)"
-                                                >
-
-                                            <i class="far fa-minus-square" ng-if="!row.alka_is_collapsed"></i>
-                                            <i class="far fa-plus-square" ng-if="row.alka_is_collapsed"></i>
-                                            {% ng row.category %}
-
-                                        </span>
-                                        <span
-                                            ng-if="!row.lka_is_ana_group"
-                                                >
-
-                                            {% ng row.category %}
-
-                                        </span>
-
-                                    </div>
-                                </td>
-
-                                {# Отступ #}
-                                <td style="border: none;">
-                                </td>
-
-                                <td
-                                        ng-repeat="i in row.lka_cell_data track by $index"
-                                        style="text-align: right; white-space: nowrap;"
-                                        ng-class="{ 'myuu_ana_row_group': row.lka_is_ana_group }"
-                                        >
-                                    <a
-                                            href="/lk/{% ng i.lka_cell_period %}/None/{% ng row.lka_category_id %}/"
-                                            class="lka_sum_link"
-                                            >
-                                        {% ng i.lka_cell_val %}
-                                    </a>
-                                </td>
-
-                            </tr>
-                            <tr>
-                                <td style="background-color: #f0f0f0; font-weight: bold; text-align: right;">
-                                    <span>{% ng getTotCaption() %}</span>
-                                </td>
-
-                                <td style="border: none;">
-                                </td>
-
-                                <td
-                                        ng-repeat="i in getTotalRow() track by $index"
-                                        style="background-color: #f0f0f0; text-align: right; font-weight: bold; white-space: nowrap;"
-                                        >
-                                    {% ng i %}
-                                </td>
-
-                            </tr>
-
+                            {# Сумма расхдов итого по периодам - сначала пустая строка, потом заголовок, потом стркои данных #}
+                            {% include "include_ana_rashod_dohod_rows.html" with iard_cap="Расходы" iard_rows_ng="getDataRowListRashod()" iard_total_ng="getTotalRowRashod()" %}
 
                         </tbody>
                     </table>

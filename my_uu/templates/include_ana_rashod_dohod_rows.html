@@ -1,0 +1,115 @@
+{% load pvl_angular %}
+
+{# Блок строк расходов доходв на странице анализа чтобы не дуьблировать код #}
+
+
+        <tr>
+            <td
+                    colspan="{% ng getTotalRowLength2() %}"
+                    style="border: none;"
+                    >
+                &nbsp;
+            </td>
+        </tr>
+
+        <tr>
+
+            <td style="background-color: #f0f0f0; font-weight: bold; text-align: left;">
+                <span></span>
+            </td>
+
+            <td style="border: none;">
+            </td>
+
+            <td
+                    colspan="{% ng getTotalRowLength1() %}"
+                    style="background-color: #f0f0f0; text-align: center; font-weight: bold; white-space: nowrap;"
+                    >
+                {{ iard_cap }}
+            </td>
+
+        </tr>
+
+        {# Если нет строк - то показ спец. строки #}
+        <tr ng-show="{{ iard_rows_ng }}.length == 0">
+            <td colspan="1" style="text-align: center; padding: 50px;">Нет операций для отображения.</td>
+        </tr>
+
+        {# Далее показывем строки, но если есть родитель и родитель свернут - то эту (дочернюю) не показываем #}
+        <tr
+                ng-repeat="row in {{ iard_rows_ng }}"
+                ng-show="!row.lka_parent_row || !lkaOneOfParentIsCollapsed(row)"
+                >
+            <td
+                    class="myuu_ana_row_header"
+                    ng-class="{ 'myuu_ana_row_group': row.lka_is_ana_group }"
+                    >
+
+                <div
+                        style="text-overflow: ellipsis; white-space: nowrap; overflow: hidden; width: 300px; min-width: 300px; margin-left: {% ng row.bcbci_indent * '40' + 'px' %} "
+                        pv-tooltip-directive='row.category'
+
+                        {# Если категория не видима то подсветка цветом #}
+                        ng-style="{'color': row.lka_is_category_visible ? 'auto' : '#dddddd'}"
+                        >
+
+                    {# Либо просто название либо название кликабельное с плюсиком #}
+                    {# смотря это группа или не группа #}
+                    <span
+                        ng-if="row.lka_is_ana_group"
+                        style="cursor: pointer;"
+                        ng-click="lkaafExpandCollapseRowAndSaveToServer(row)"
+                            >
+
+                        <i class="far fa-minus-square" ng-if="!row.alka_is_collapsed"></i>
+                        <i class="far fa-plus-square" ng-if="row.alka_is_collapsed"></i>
+                        {% ng row.category %}
+
+                    </span>
+                    <span
+                        ng-if="!row.lka_is_ana_group"
+                            >
+
+                        {% ng row.category %}
+
+                    </span>
+
+                </div>
+            </td>
+
+            {# Отступ #}
+            <td style="border: none;">
+            </td>
+
+            <td
+                    ng-repeat="i in row.lka_cell_data track by $index"
+                    style="text-align: right; white-space: nowrap;"
+                    ng-class="{ 'myuu_ana_row_group': row.lka_is_ana_group }"
+                    >
+                <a
+                        href="/lk/{% ng i.lka_cell_period %}/None/{% ng row.lka_category_id %}/"
+                        class="lka_sum_link"
+                        >
+                    {% ng i.lka_cell_val %}
+                </a>
+            </td>
+
+        </tr>
+
+        <tr>
+
+            <td style="background-color: #f0f0f0; font-weight: bold; text-align: right;">
+                <span>Сумма</span>
+            </td>
+
+            <td style="border: none;">
+            </td>
+
+            <td
+                    ng-repeat="i in {{ iard_total_ng }} track by $index"
+                    style="background-color: #f0f0f0; text-align: right; font-weight: bold; white-space: nowrap;"
+                    >
+                {% ng i %}
+            </td>
+
+        </tr>
