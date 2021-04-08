@@ -386,7 +386,7 @@ def page_lk_uch(request, period = None, account_id = None, category_id = None):
         account_id,
         category_id,
     )
-    uchet_records = uchet_records_filtered.values(
+    uchet_records = list(uchet_records_filtered.values(
         'id',
         'date',
         'utype__name',
@@ -396,7 +396,12 @@ def page_lk_uch(request, period = None, account_id = None, category_id = None):
         'account__name',
         'category__scf_name',
         'comment',
-    )
+    ))
+
+    # Форматируем дату
+    for u in uchet_records:
+        u['ur_date_str'] = pvl_datetime_format.funcs.dateToStr(u['date'])
+        u['ur_time_str'] = pvl_datetime_format.funcs.timeToStr(u['myum_time'])
 
     return render(request, 'page_lk_uch.html', {
         'uchetRecordsJson': json.dumps(list(uchet_records), cls=DjangoJSONEncoder),

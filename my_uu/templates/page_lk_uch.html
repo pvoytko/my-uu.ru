@@ -834,6 +834,9 @@
 
             angular.module('myNgApp').controller('GridCtrl', function($scope, $http){
 
+                // Записи учета
+                $scope.gc_uchet_records = {{ uchetRecordsJson | safe }};
+
                 // Последнипе 3 дня, 30 дней
                 $scope.viewPeriodSet = {{ viewPeriodSetJson | safe }};
 
@@ -1480,9 +1483,55 @@
 
             </div>
 
-            <div>
-                <div id='uuGrid' style="border: 0px solid grey; margin-top: 35px;"></div>
+            {# Новая реализация таблицы #}
+            <div style="margin-top: 65px;">
+
+                <div ng-repeat="r in gc_uchet_records" style="display: flex;">
+                    <div style="min-width: 25px; max-width: 25px; border: 1px solid #60aad2; cursor: pointer; text-align: center;" class='deleteIcon' title='Удалить'>
+                        <span uu-row-id='{% ng r.id %}'>&times;</span>
+                    </div>
+                    <div style="font-family: Verdana, Arial, sans-serif; min-width: 60px; max-width: 60px; border: 1px solid #60aad2; color: rgb(0, 74, 115); padding: 3px 0px 0px 3px;">
+                        {% ng r.id %}
+                    </div>
+                    <div style="font-family: Verdana, Arial, sans-serif; min-width: 90px; max-width: 90px; border: 1px solid #60aad2; color: rgb(0, 74, 115); padding: 3px 0px 0px 3px;">
+                        {% ng r.ur_date_str %}
+                    </div>
+                    <div style="font-family: Verdana, Arial, sans-serif; min-width: 70px; max-width: 70px; border: 1px solid #60aad2; color: rgb(0, 74, 115); padding: 3px 0px 0px 3px;">
+                        {% ng r.ur_time_str %}
+                    </div>
+                    <div style="font-family: Verdana, Arial, sans-serif; min-width: 70px; max-width: 70px; border: 1px solid #60aad2; color: rgb(0, 74, 115); padding: 3px 0px 0px 3px;">
+                        {% ng r.utype__name %}
+                    </div>
+                    <div style="font-family: Verdana, Arial, sans-serif; text-align: right; min-width: 90px; max-width: 90px; border: 1px solid #60aad2; color: rgb(0, 74, 115); padding: 3px 0px 0px 3px;">
+                        {% ng r.sum %}
+                    </div>
+                    <div style="font-family: Verdana, Arial, sans-serif; min-width: 160px; max-width: 160px; border: 1px solid #60aad2; color: rgb(0, 74, 115); padding: 3px 0px 0px 3px; white-space: nowrap; overflow-x: hidden; text-overflow: ellipsis;">
+                        {% ng r.account__name %}
+                    </div>
+                    <div style="font-family: Verdana, Arial, sans-serif; min-width: 470px; max-width: 470px; border: 1px solid #60aad2; color: rgb(0, 74, 115); padding: 3px 0px 0px 3px; white-space: nowrap; overflow-x: hidden;">
+                        <div>
+                            {% ng r.category__scf_name %}
+                        </div>
+                        <div>
+                            {% ng r.comment %}
+                        </div>
+                    </div>
+                    <div
+                            style="min-width: 25px; max-width: 25px; border: 1px solid #60aad2; color: rgb(0, 74, 115); padding: 3px 0px 0px 3px; white-space: nowrap; overflow-x: hidden;"
+                            title='Редактировать'
+                            class='uchRowEditIcon' uu-row-id='{% ng r.id %}'
+                            >
+                        ...
+                    </div>
+                </div>
+
             </div>
+
+            {# Грид со строками #}
+            <div>
+                <div id='uuGrid' style="border: 0px solid grey;"></div>
+            </div>
+
 
             <div style="padding-bottom: 120px;"></div>
 
